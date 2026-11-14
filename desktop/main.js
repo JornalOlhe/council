@@ -207,11 +207,36 @@ function askToRestart(version) {
   setTimeout(show, 1500);
 }
 ipcMain.handle("app:update-state", (e) => { guard(e); return updateState; });
+// "Procurar atualizações": espera a resposta de verdade e mostra o resultado numa janela do Windows (não some calado)
 ipcMain.handle("app:check-update", async (e) => {
   guard(e);
-  if (!autoUpdater || !app.isPackaged) return { state: "idle", version: app.getVersion(), dev: true };
-  await autoUpdater.checkForUpdates().catch(() => {});
-  return updateState;
+  const cur = app.getVersion();
+  if (!autoUpdater || !app.isPackaged) return { state: "idle", version: cur, dev: true };
+  const result = await new Promise((resolve) => {
+    const done = (r) => { clearTimeout(t); ["update-not-available", "update-available", "update-downloaded", "error"].forEach((ev) => autoUpdater.removeListener(ev, h[ev])); resolve(r); };
+    const h = {
+      "update-not-available": () => done({ state: "idle" }),
+      "update-available": (i) => done({ state: "downloading", next: i.version }),
+      "update-downloaded": (i) => done({ state: "ready", next: i.version }),
+      error: (er) => done({ state: "error", message: String((er && er.message) || er).slice(0, 200) }),
+    };
+    Object.keys(h).forEach((ev) => autoUpdater.once(ev, h[ev]));
+    const t = setTimeout(() => done({ state: updateState.state === "ready" ? "ready" : "timeout", next: updateState.next }), 25000);
+    if (updateState.state === "ready") return done({ state: "ready", next: updateState.next });
+    autoUpdater.checkForUpdates().catch((er) => done({ state: "error", message: String((er && er.message) || er).slice(0, 200) }));
+  });
+  const opts = { type: "info", title: "Atualização do IA Council", noLink: true };
+  if (result.state === "ready") {
+    const r = await dialog.showMessageBox(win, { ...opts, message: `A versão ${result.next} está pronta.`, detail: `Você está na ${cur}. Reiniciar agora para atualizar?`, buttons: ["Reiniciar e atualizar", "Depois"], defaultId: 0, cancelId: 1 });
+    if (r.response === 0) setImmediate(() => autoUpdater.quitAndInstall(true, true));
+  } else if (result.state === "downloading") {
+    dialog.showMessageBox(win, { ...opts, message: `Baixando a versão ${result.next}…`, detail: `Você está na ${cur}. Quando terminar de baixar (menos de 1 minuto), aparece o botão "Reiniciar e atualizar".`, buttons: ["Ok"] });
+  } else if (result.state === "idle") {
+    dialog.showMessageBox(win, { ...opts, message: `Você já está na versão mais nova (${cur}).`, buttons: ["Ok"] });
+  } else {
+    dialog.showMessageBox(win, { ...opts, type: "warning", message: "Não consegui verificar agora.", detail: (result.message || "Sem resposta do servidor.") + `\n\nVocê está na ${cur}. Se continuar, baixe o instalador novo em github.com/JornalOlhe/council/releases e instale por cima.`, buttons: ["Ok"] });
+  }
+  return { ...updateState, ...result, version: cur, shown: true };
 });
 ipcMain.handle("app:install-update", (e) => {
   guard(e);
