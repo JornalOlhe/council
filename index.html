@@ -251,7 +251,7 @@ body.collapsed #openSide{display:grid}
 .fcard .fthumb iframe{border:0;width:200%;height:300px;transform:scale(.5);transform-origin:0 0;pointer-events:none;background:#fff}
 .fcard .mini{width:200%;transform:scale(.5);transform-origin:0 0;pointer-events:none;color:#2b2a28;font:15px/1.55 Calibri,"Segoe UI",system-ui,sans-serif}
 .fcard .mini .band{color:#fff;padding:26px 34px 20px}.fcard .mini .band h1{margin:0;font:700 30px/1.15 system-ui,sans-serif;color:#fff}.fcard .mini .band p{margin:6px 0 0;opacity:.92}
-.fcard .mini .bd{padding:18px 34px}.fcard .mini h2,.fcard .mini h3{margin:.8em 0 .3em}.fcard .mini table{border-collapse:collapse;width:100%}.fcard .mini th{color:#fff;text-align:left}.fcard .mini th,.fcard .mini td{padding:5px 8px;border:1px solid #e3e0d9}
+.fcard .mini .bd{padding:18px 34px}.fcard .mini .bd *{color:#3a3936!important}.fcard .mini h2,.fcard .mini h3{margin:.8em 0 .3em}.fcard .mini table{border-collapse:collapse;width:100%}.fcard .mini th{color:#fff;text-align:left}.fcard .mini th,.fcard .mini td{padding:5px 8px;border:1px solid #e3e0d9}
 .fcard .fthumb:after{content:"";position:absolute;inset:auto 0 0;height:50px;background:linear-gradient(transparent,#26262470)}
 .viewer .mbox{width:min(900px,100%);height:92vh}
 .viewer .vbody{flex:1;min-height:0;overflow:auto;background:#fff;color:#222;border-radius:0 0 16px 16px}
@@ -2397,8 +2397,8 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
         var tc = THEMES[a.theme] || THEMES.laranja, mini = document.createElement("div"); mini.className = "mini";
         mini.innerHTML = '<div class="band" style="background:#' + tc.a + '"><h1></h1><p></p></div><div class="bd md">' + md(String(a.content).slice(0, 2500)) + "</div>";
         mini.querySelector("h1").textContent = a.title || a.name; mini.querySelector("p").textContent = a.subtitle || "";
-        Array.prototype.forEach.call(mini.querySelectorAll("h1:not(.band h1),h2,h3"), function (h) { h.style.color = "#" + tc.d; });
-        Array.prototype.forEach.call(mini.querySelectorAll("th"), function (h) { h.style.background = "#" + tc.a; });
+        Array.prototype.forEach.call(mini.querySelectorAll("h1:not(.band h1),h2,h3"), function (h) { h.style.setProperty("color", "#" + tc.d, "important"); });
+        Array.prototype.forEach.call(mini.querySelectorAll("th"), function (h) { h.style.background = "#" + tc.a; h.style.setProperty("color", "#fff", "important"); });
         fc.querySelector(".fthumb").appendChild(mini);
       }
       if (blob && a.format === "html") fc.querySelector(".fthumb iframe").srcdoc = a.content;
