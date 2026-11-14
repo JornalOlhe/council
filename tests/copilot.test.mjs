@@ -85,6 +85,10 @@ await t("controle do PC: ações perigosas/inválidas viram pedido de ajuda", as
   assert.deepEqual(sanitizeAct({ action: { type: "click", point: [5000, -3] } }).action.point, [1000, 0]);
   assert.deepEqual(sanitizeAct({ action: { type: "hotkey", keys: ["CTRL", "s"] } }).action.keys, ["ctrl", "s"]);
   assert.equal(sanitizeAct({ action: { type: "scroll", amount: -999 } }).action.amount, -25);
+  // várias ações de uma vez (mais rápido) — inválidas e "done" cortam a sequência
+  const b = sanitizeAct({ action: { type: "key", key: "win" }, then: [{ type: "wait", seconds: 0.6 }, { type: "type", text: "bloco de notas", enter: true }, { type: "rm" }, { type: "key", key: "enter" }] });
+  assert.deepEqual(b.then.map((x) => x.type), ["wait", "type"]);
+  assert.equal(sanitizeAct({ action: { type: "done" }, then: [{ type: "key", key: "enter" }] }).then.length, 0);
 });
 await t("plano pode pedir controle do PC", async () => {
   reply = '{"say":"Vou abrir o Bloco de Notas no seu PC.","actions":[{"type":"pc","goal":"Abrir o Bloco de Notas e escrever lista de compras"}]}';

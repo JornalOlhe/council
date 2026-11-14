@@ -10,6 +10,9 @@ const SITE = process.env.IA_COUNCIL_URL || "https://council-one-sigma.vercel.app
 const ORIGIN = new URL(SITE).origin;
 const STOP_SHORTCUT = "CommandOrControl+Shift+Q";
 let win = null;
+let autoUpdater = null;
+try { ({ autoUpdater } = require("electron-updater")); } catch { autoUpdater = null; }
+let updateState = { state: "idle", version: app.getVersion() };
 let normalBounds = null;
 let stopFlag = false;
 
@@ -77,10 +80,10 @@ ipcMain.handle("pc:shot", async (e) => {
   if (!src) throw new Error("não consegui capturar a tela");
   let img = src.thumbnail;
   const sz = img.getSize();
-  if (sz.width > 1366) img = img.resize({ width: 1366, quality: "good" });
+  if (sz.width > 1280) img = img.resize({ width: 1280, quality: "good" });
   const cur = screen.getCursorScreenPoint();
   return {
-    image: "data:image/jpeg;base64," + img.toJPEG(72).toString("base64"),
+    image: "data:image/jpeg;base64," + img.toJPEG(64).toString("base64"),
     width: pw, height: ph,
     cursor: [Math.round(((cur.y - d.bounds.y) / d.size.height) * 1000), Math.round(((cur.x - d.bounds.x) / d.size.width) * 1000)],
   };
@@ -108,6 +111,39 @@ ipcMain.handle("pc:act", async (e, a) => {
     }
   }
   return { ok: true, done: control.describe(a) };
+});
+
+// ---------- atualização automática do app (GitHub Releases) ----------
+function sendUpdate(st) {
+  updateState = { ...updateState, ...st };
+  if (win && !win.isDestroyed()) win.webContents.send("app:update", updateState);
+}
+function setupUpdates() {
+  if (!autoUpdater || !app.isPackaged) return;
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.on("checking-for-update", () => sendUpdate({ state: "checking" }));
+  autoUpdater.on("update-not-available", () => sendUpdate({ state: "idle" }));
+  autoUpdater.on("update-available", (i) => sendUpdate({ state: "downloading", next: i.version, percent: 0 }));
+  autoUpdater.on("download-progress", (p) => sendUpdate({ state: "downloading", percent: Math.round(p.percent || 0) }));
+  autoUpdater.on("update-downloaded", (i) => sendUpdate({ state: "ready", next: i.version }));
+  autoUpdater.on("error", (e) => sendUpdate({ state: "error", message: String((e && e.message) || e).slice(0, 200) }));
+  const check = () => autoUpdater.checkForUpdates().catch(() => {});
+  setTimeout(check, 4000);
+  setInterval(check, 15 * 60 * 1000);
+}
+ipcMain.handle("app:update-state", (e) => { guard(e); return updateState; });
+ipcMain.handle("app:check-update", async (e) => {
+  guard(e);
+  if (!autoUpdater || !app.isPackaged) return { state: "idle", version: app.getVersion(), dev: true };
+  await autoUpdater.checkForUpdates().catch(() => {});
+  return updateState;
+});
+ipcMain.handle("app:install-update", (e) => {
+  guard(e);
+  if (updateState.state !== "ready" || !autoUpdater) return false;
+  setImmediate(() => autoUpdater.quitAndInstall(true, true));
+  return true;
 });
 
 // Durante uma tarefa, a janela vira um painel pequeno no canto, sempre por cima
@@ -170,6 +206,7 @@ app.whenReady().then(() => {
   });
   createWindow();
   if (process.platform === "win32") startPS();
+  setupUpdates();
 });
 app.on("will-quit", () => { globalShortcut.unregisterAll(); if (ps) ps.kill(); });
 app.on("window-all-closed", () => app.quit());

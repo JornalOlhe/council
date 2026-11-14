@@ -273,6 +273,13 @@ body.collapsed #openSide{display:grid}
 .alog .ln.err{color:#e3b679}
 .aq{padding:10px 12px;border-top:1px solid var(--line);display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#d977570f}
 .aq span{flex:1;min-width:200px}
+.aq.perm{background:#d977571c;border-top:1px solid #d9775766}
+.aq.perm i{color:var(--tx)}
+.upd{display:flex;align-items:center;gap:10px;padding:8px 14px;background:#2f3b2f;border-bottom:1px solid #3e5a3e;color:#cfe8cf;font-size:14px;flex:none}
+.upd b{font-weight:600}
+.upd .sp{flex:1}
+.upd .btn{background:#3f6e43;color:#fff}.upd .btn:hover{background:#4b8250}
+.upd .x{opacity:.7}.upd .x:hover{opacity:1}
 
 @media(max-width:820px){
   .side{position:fixed;inset:0 auto 0 0;z-index:40;transform:translateX(-100%);transition:transform .2s}
@@ -362,6 +369,7 @@ body.collapsed #openSide{display:grid}
 <div class="scrim" id="scrim"></div>
 
 <div class="main">
+  <div class="upd hidden" id="updBar" role="status"><span id="updTxt"></span><span class="sp"></span><button class="btn" id="updBtn">Atualizar</button><button class="ib x" id="updX" aria-label="Fechar aviso"><svg class="ico"><use href="#i-x"/></svg></button></div>
   <div class="top" id="top">
     <button class="ib" id="openSide" aria-label="Abrir menu"><svg class="ico"><use href="#i-panel"/></svg></button>
     <button class="ttl hidden" id="ttl"><span id="title"></span><svg><use href="#i-chev"/></svg></button>
@@ -935,11 +943,25 @@ body.collapsed #openSide{display:grid}
       '<button class="it" data-a="clear">' + ic("trash") + "Limpar histórico</button>" +
       "<hr>" +
       '<button class="it" data-a="src">' + ic("code") + "Código-fonte no GitHub</button>" +
-      '<button class="it" data-a="about">' + ic("info") + "Como funciona</button>");
+      '<button class="it" data-a="about">' + ic("info") + "Como funciona</button>" +
+      (D ? "<hr>" + '<button class="it" data-a="upd">' + ic("retry") + 'Procurar atualizações<span class="r">' + esc(pc.version ? "app " + pc.version : "") + "</span></button>" +
+        (sget(PERMK) === "always" ? '<button class="it" data-a="perm">' + ic("monitor") + "Pedir permissão antes de mexer no PC</button>" : "") : ""));
     p.querySelector('[data-a="members"]').onclick = function () { openPicker($("meBtn")); };
     p.querySelector('[data-a="clear"]').onclick = function () { history = []; saveHist(); closePop(); goHome(); toast("Histórico apagado"); };
     p.querySelector('[data-a="src"]').onclick = function () { closePop(); window.open("https://github.com/JornalOlhe/council", "_blank", "noopener"); };
     p.querySelector('[data-a="about"]').onclick = function () { closePop(); goHome(); ta.value = "Como funciona o IA Council?"; autosize(); updSend(); };
+    var bu = p.querySelector('[data-a="upd"]');
+    if (bu) bu.onclick = function () {
+      closePop(); toast("Procurando atualizações…"); checkWeb();
+      D.checkUpdate().then(function (st) {
+        upd.app = st; upd.dismissed = false; showUpd();
+        if (st.dev) toast("Versão de desenvolvimento: sem atualização automática.");
+        else if (st.state === "idle") toast("Você já está na versão mais nova (" + (st.version || pc.version) + ").");
+        else if (st.state === "error") toast("Não consegui verificar: " + (st.message || "sem internet?"));
+      }, function () { toast("Não consegui verificar agora."); });
+    };
+    var bp = p.querySelector('[data-a="perm"]');
+    if (bp) bp.onclick = function () { closePop(); try { localStorage.removeItem(PERMK); } catch (e) {} toast("Ok, vou pedir permissão toda vez."); };
   };
 
   // ---------- histórico (sem fotos, para caber no localStorage) ----------
@@ -1349,7 +1371,8 @@ body.collapsed #openSide{display:grid}
 
   // ----- Copiloto no PC: dentro do app IA Council para Windows (window.iaDesktop) -----
   var D = window.iaDesktop || null;
-  var pc = { connected: false, os: "", running: null, stopHook: null };
+  var pc = { connected: false, os: "", running: null, stopHook: null, version: "" };
+  var PERMK = "iacouncil_pcperm";
   function pcSetState(ok, os) {
     pc.connected = ok; pc.os = os || pc.os;
     $("pcPill").classList.toggle("on", ok);
@@ -1358,7 +1381,7 @@ body.collapsed #openSide{display:grid}
   }
   function pcCheck() {
     if (!D) { pcSetState(false); return Promise.resolve(false); }
-    return D.info().then(function (j) { pcSetState(!!j.ok, j.os); return !!j.ok; }, function () { pcSetState(false); return false; });
+    return D.info().then(function (j) { pc.version = j.version || ""; pcSetState(!!j.ok, j.os); return !!j.ok; }, function () { pcSetState(false); return false; });
   }
   function pcErr(e) {
     var m = String((e && e.message) || e || "falha");
@@ -1436,7 +1459,6 @@ body.collapsed #openSide{display:grid}
     pc.running = card;
     stopBtn.onclick = function () { stopped = true; stopBtn.disabled = true; stopBtn.textContent = "Parando…"; };
     pc.stopHook = function () { stopBtn.onclick(); };
-    D.mini(true).catch(function () {});
     var step = 0;
     function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
     function loop() {
@@ -1448,7 +1470,7 @@ body.collapsed #openSide{display:grid}
       return pcScreenshot().then(function (sh) {
         shot = sh; showShot(shot, null);
         if (stopped) throw { stop: true };
-        nowLine("Identificando o que tem na tela e decidindo o próximo passo…");
+        nowLine("Identificando o que tem na tela…");
         return fetch("/api/copilot", { method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ stage: "act", goal: goal, image: shot.image, steps: log.steps, cursor: shot.cursor, os: pc.os }) })
           .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || "Erro " + r.status); return j; }); });
@@ -1470,13 +1492,22 @@ body.collapsed #openSide{display:grid}
           if (stopped) throw { stop: true };
           if (!ok) { log.steps.push("Usuário NÃO autorizou: " + plan.say); return finish("stopped", "Cancelado: você não autorizou.", "err"); }
           nowLine(plan.say);
-          return pcAct(a).then(function () {
-            clearNow(); var txt = plan.say + " (" + describeAct(a) + ")"; line(txt); log.steps.push(txt);
-            return wait(a.type === "type" || a.type === "key" || a.type === "hotkey" ? 900 : 700).then(loop);
+          var seq = [a].concat(plan.then || []), done = [];
+          var run = seq.reduce(function (p, x) {
+            return p.then(function () {
+              if (stopped) throw { stop: true };
+              return pcAct(x).then(function () { if (x.type !== "wait") done.push(describeAct(x)); });
+            });
+          }, Promise.resolve());
+          return run.then(function () {
+            clearNow(); var txt = plan.say + " (" + done.join(", ") + ")"; line(txt); log.steps.push(txt);
+            var last = seq[seq.length - 1];
+            return wait(last.type === "wait" ? 150 : last.type === "type" || last.type === "key" || last.type === "hotkey" ? 550 : 380).then(loop);
           }, function (e) {
+            if (e && e.stop) throw e;
             clearNow();
             if (e.emergency) return finish("stopped", "Parada de emergência: " + e.message + ".", "err");
-            line("Não deu certo: " + e.message, "err"); log.steps.push("FALHOU (" + describeAct(a) + "): " + e.message);
+            line("Não deu certo: " + e.message, "err"); log.steps.push("FALHOU (" + (done.length ? "fez " + done.join(", ") + "; depois " : "") + describeAct(a) + "): " + e.message);
             return loop();
           });
         });
@@ -1486,8 +1517,60 @@ body.collapsed #openSide{display:grid}
         return finish("error", (e && e.message) || "Falha inesperada.", "err");
       });
     }
-    loop();
+    // pede permissão antes de começar a mexer no PC
+    var always = sget(PERMK) === "always";
+    var perm = always ? Promise.resolve("once") : new Promise(function (resolve) {
+      var q = document.createElement("div"); q.className = "aq perm";
+      q.innerHTML = '<span>🖱 <b>Posso controlar seu PC?</b> Vou ver a tela, mover o mouse e digitar para: <i>' + esc(goal) +
+        '</i>. Você pode parar a qualquer momento (Parar, Ctrl+Shift+Q ou mouse no canto superior esquerdo).</span>' +
+        '<button class="btn pri" data-p="once">Permitir</button><button class="btn" data-p="always">Sempre permitir</button><button class="btn" data-p="no">Não</button>';
+      card.appendChild(q);
+      Array.prototype.forEach.call(q.querySelectorAll("[data-p]"), function (b) {
+        b.onclick = function () { q.remove(); resolve(b.getAttribute("data-p")); };
+      });
+      stopBtn.addEventListener("click", function () { if (q.parentNode) { q.remove(); resolve("no"); } }, { once: true });
+    });
+    perm.then(function (v) {
+      if (v === "no" || stopped) return finish("stopped", "Tudo bem, não mexi no seu PC.", "err");
+      if (v === "always") { sset(PERMK, "always"); toast("Permissão salva. Você pode revogar no menu “Conselho”."); }
+      log.steps.push("O usuário permitiu controlar o PC.");
+      D.mini(true).catch(function () {});
+      loop();
+    });
   }
+  // ----- atualizações: site (a cada deploy) e app do Windows -----
+  var upd = { web: false, app: null, dismissed: false };
+  function showUpd() {
+    var bar = $("updBar"), txt = "", btn = "Atualizar";
+    if (upd.app && upd.app.state === "ready") { txt = "✨ <b>Nova versão do app (" + esc(upd.app.next || "") + ")</b> pronta para instalar."; btn = "Reiniciar e atualizar"; }
+    else if (upd.web) { txt = "✨ <b>Nova versão do IA Council</b> disponível."; btn = "Atualizar agora"; }
+    else if (upd.app && upd.app.state === "downloading") { txt = "⬇ Baixando nova versão do app… " + (upd.app.percent ? upd.app.percent + "%" : ""); btn = ""; }
+    if (!txt || upd.dismissed) { bar.classList.add("hidden"); return; }
+    $("updTxt").innerHTML = txt; $("updBtn").textContent = btn; $("updBtn").classList.toggle("hidden", !btn);
+    bar.classList.remove("hidden");
+  }
+  $("updX").onclick = function () { upd.dismissed = true; showUpd(); };
+  $("updBtn").onclick = function () {
+    if (anyRunning() || pc.running) { toast("Espere as respostas em andamento terminarem para atualizar."); return; }
+    if (upd.app && upd.app.state === "ready" && D) { D.installUpdate(); return; }
+    location.reload();
+  };
+  var webTag = null;
+  function checkWeb() {
+    fetch("/", { method: "HEAD", cache: "no-store" }).then(function (r) {
+      var tag = r.headers.get("etag") || r.headers.get("last-modified");
+      if (!tag) return;
+      if (webTag === null) webTag = tag;
+      else if (tag !== webTag && !upd.web) { upd.web = true; upd.dismissed = false; showUpd(); }
+    }).catch(function () {});
+  }
+  checkWeb(); setInterval(checkWeb, 3 * 60 * 1000);
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) checkWeb(); });
+  if (D && D.onUpdate) {
+    D.onUpdate(function (st) { var was = upd.app && upd.app.state; upd.app = st; if (st.state === "ready" && was !== "ready") upd.dismissed = false; showUpd(); });
+    D.updateState().then(function (st) { upd.app = st; showUpd(); }, function () {});
+  }
+
   function pcNeeded(box, retry) {
     var card = document.createElement("div"); card.className = "acard";
     card.innerHTML = '<span class="ai">' + ic("monitor") + '</span><span class="at"><b>Para mexer no seu PC, use o app IA Council para Windows</b><span>No navegador, nenhum site consegue controlar o mouse. No app, sim — é só instalar e pedir de novo.</span></span>';

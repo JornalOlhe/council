@@ -17,6 +17,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      - name: Versão nova a cada build (para o app saber que tem atualização)
+        working-directory: desktop
+        run: npm version "1.0.${{ github.run_number }}" --no-git-tag-version --allow-same-version
       - name: Instalar dependências
         working-directory: desktop
         run: npm install --no-audit --no-fund
@@ -41,5 +44,9 @@ jobs:
           body: |
             Instalador do **IA Council para Windows** (conselho de IAs + Copiloto que mexe no seu PC).
             Baixe `IA-Council-Setup.exe`, abra e pronto. Se o Windows mostrar "O Windows protegeu o computador", clique em **Mais informações → Executar assim mesmo**.
-          files: desktop/dist/IA-Council-Setup.exe
+          files: |
+            desktop/dist/IA-Council-Setup.exe
+            desktop/dist/IA-Council-Setup.exe.blockmap
+            desktop/dist/latest.yml
+          overwrite_files: true
           make_latest: true

@@ -9,4 +9,8 @@ contextBridge.exposeInMainWorld("iaDesktop", {
   act: (a) => ipcRenderer.invoke("pc:act", a).catch(clean),
   mini: (on) => ipcRenderer.invoke("pc:mini", !!on).catch(clean),
   onStop: (cb) => { ipcRenderer.on("pc:stop", () => cb()); },
+  updateState: () => ipcRenderer.invoke("app:update-state").catch(clean),
+  checkUpdate: () => ipcRenderer.invoke("app:check-update").catch(clean),
+  installUpdate: () => ipcRenderer.invoke("app:install-update").catch(clean),
+  onUpdate: (cb) => { ipcRenderer.on("app:update", (_e, st) => cb(st)); },
 });

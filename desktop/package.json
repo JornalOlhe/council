@@ -20,11 +20,28 @@
   "build": {
     "appId": "com.jornalolhe.iacouncil",
     "productName": "IA Council",
-    "files": ["main.js", "preload.js", "control.js", "input.ps1", "icon.png"],
-    "asarUnpack": ["input.ps1"],
-    "directories": { "output": "dist" },
+    "files": [
+      "main.js",
+      "preload.js",
+      "control.js",
+      "input.ps1",
+      "icon.png"
+    ],
+    "asarUnpack": [
+      "input.ps1"
+    ],
+    "directories": {
+      "output": "dist"
+    },
     "win": {
-      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
       "icon": "icon.ico",
       "artifactName": "IA-Council-Setup.${ext}"
     },
@@ -35,6 +52,15 @@
       "createStartMenuShortcut": true,
       "shortcutName": "IA Council",
       "runAfterFinish": true
-    }
+    },
+    "publish": [
+      {
+        "provider": "generic",
+        "url": "https://github.com/JornalOlhe/council/releases/download/desktop-latest"
+      }
+    ]
+  },
+  "dependencies": {
+    "electron-updater": "^6.3.9"
   }
 }
