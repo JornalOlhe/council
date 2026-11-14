@@ -1097,7 +1097,9 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
       D.checkUpdate().then(function (st) {
         upd.app = st; upd.dismissed = false; showUpd();
         if (st.dev) toast("Versão de desenvolvimento: sem atualização automática.");
-        else if (st.state === "idle") toast("Você já está na versão mais nova (" + (st.version || pc.version) + ").");
+        else if (st.state === "idle" || st.state === "checking") toast("Você já está na versão mais nova (" + (st.version || pc.version) + ").");
+        else if (st.state === "downloading") toast("Baixando a versão " + (st.next || "nova") + "… avisarei quando estiver pronta.");
+        else if (st.state === "ready") toast("Versão " + (st.next || "nova") + " pronta: clique em “Reiniciar e atualizar”.");
         else if (st.state === "error") toast("Não consegui verificar: " + (st.message || "sem internet?"));
       }, function () { toast("Não consegui verificar agora."); });
     };

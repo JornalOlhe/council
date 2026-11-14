@@ -1,7 +1,7 @@
 // IA Council para Windows — abre o IA Council numa janela própria e deixa o Copiloto
 // ver a tela, mover o mouse e digitar no PC (só para o site oficial, dentro deste app).
 "use strict";
-const { app, BrowserWindow, ipcMain, desktopCapturer, screen, clipboard, globalShortcut, shell, session, Menu } = require("electron");
+const { app, BrowserWindow, ipcMain, desktopCapturer, screen, clipboard, globalShortcut, shell, session, Menu, dialog, Notification } = require("electron");
 const { spawn } = require("child_process");
 const path = require("path");
 const control = require("./control.js");
@@ -126,11 +126,41 @@ function setupUpdates() {
   autoUpdater.on("update-not-available", () => sendUpdate({ state: "idle" }));
   autoUpdater.on("update-available", (i) => sendUpdate({ state: "downloading", next: i.version, percent: 0 }));
   autoUpdater.on("download-progress", (p) => sendUpdate({ state: "downloading", percent: Math.round(p.percent || 0) }));
-  autoUpdater.on("update-downloaded", (i) => sendUpdate({ state: "ready", next: i.version }));
+  autoUpdater.on("update-downloaded", (i) => {
+    sendUpdate({ state: "ready", next: i.version });
+    askToRestart(i.version);
+  });
   autoUpdater.on("error", (e) => sendUpdate({ state: "error", message: String((e && e.message) || e).slice(0, 200) }));
-  const check = () => autoUpdater.checkForUpdates().catch(() => {});
+  let last = 0;
+  const check = () => { last = Date.now(); autoUpdater.checkForUpdates().catch(() => {}); };
   setTimeout(check, 4000);
   setInterval(check, 15 * 60 * 1000);
+  // também confere quando você volta para a janela (no máx. a cada 3 min)
+  app.on("browser-window-focus", () => { if (Date.now() - last > 3 * 60 * 1000) check(); });
+}
+// Aviso nativo do Windows quando a atualização está pronta (além da faixa no app)
+let askedFor = null;
+function askToRestart(version) {
+  if (askedFor === version) return;
+  askedFor = version;
+  try {
+    if (Notification.isSupported()) {
+      const n = new Notification({ title: "IA Council", body: `Nova versão ${version} pronta. Clique para reiniciar e atualizar.`, icon: path.join(__dirname, "icon.png") });
+      n.on("click", () => autoUpdater.quitAndInstall(true, true));
+      n.show();
+    }
+  } catch {}
+  const show = () => {
+    if (normalBounds) return setTimeout(show, 30000); // não interrompe uma tarefa no PC
+    if (!win || win.isDestroyed()) return;
+    dialog.showMessageBox(win, {
+      type: "info", title: "Atualização do IA Council",
+      message: `A versão ${version} do IA Council está pronta.`,
+      detail: `Você está na ${app.getVersion()}. Reiniciar agora para atualizar? Leva poucos segundos.`,
+      buttons: ["Reiniciar e atualizar", "Depois"], defaultId: 0, cancelId: 1, noLink: true,
+    }).then((r) => { if (r.response === 0) autoUpdater.quitAndInstall(true, true); });
+  };
+  setTimeout(show, 1500);
 }
 ipcMain.handle("app:update-state", (e) => { guard(e); return updateState; });
 ipcMain.handle("app:check-update", async (e) => {
@@ -197,7 +227,7 @@ ipcMain.handle("pc:mini", (e, on) => {
 function createWindow() {
   win = new BrowserWindow({
     width: 1280, height: 820, minWidth: 380, minHeight: 480,
-    title: "IA Council", backgroundColor: "#262624", autoHideMenuBar: true,
+    title: "IA Council", backgroundColor: "#1f1e1d", autoHideMenuBar: true,
     icon: path.join(__dirname, "icon.png"),
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
