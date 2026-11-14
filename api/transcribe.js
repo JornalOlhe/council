@@ -27,6 +27,14 @@ async function groqWhisper(key, mime, buf, model) {
   }
 }
 
+// O Whisper às vezes "inventa" frases no silêncio; descarta pontuação solta e essas frases conhecidas.
+const GHOST = /^(obrigad[oa] por assistir[!.]*|legendas? (pela|por) .*|inscreva-se.*|tchau[!.]*|\.+|amara\.org.*|thanks? for watching[!.]*|you)$/i;
+export function cleanTranscript(t) {
+  const s = String(t || "").replace(/\s+/g, " ").trim();
+  if (!s || /^[\s.,!?…\-–—"'“”]*$/.test(s) || GHOST.test(s)) return "";
+  return s;
+}
+
 export default async function handler(req, res) {
   const send = (code, obj) => res.status(code).json(obj);
   try {
@@ -43,7 +51,7 @@ export default async function handler(req, res) {
     const errors = [];
     if (process.env.GROQ_API_KEY) {
       for (const model of [process.env.GROQ_WHISPER_MODEL || "whisper-large-v3-turbo", "whisper-large-v3"]) {
-        try { return send(200, { text: await groqWhisper(process.env.GROQ_API_KEY, mime, buf, model), by: "Groq " + model }); }
+        try { return send(200, { text: cleanTranscript(await groqWhisper(process.env.GROQ_API_KEY, mime, buf, model)), by: "Groq " + model }); }
         catch (e) { errors.push(e.message); if (e.status && e.status !== 404 && e.status !== 400) break; }
       }
     }
@@ -53,7 +61,7 @@ export default async function handler(req, res) {
         const text = await ask(gemini,
           "Você é um transcritor. Transcreva LITERALMENTE o áudio em português do Brasil, com pontuação. Responda só com a transcrição, sem comentários. Se não houver fala, responda vazio.",
           "Transcreva este áudio.", Date.now() + 45000, EFFORTS.low, 2000, [{ mime: mime.split(";")[0], data: m[2] }]);
-        return send(200, { text: text.replace(/^["“]|["”]$/g, "").trim(), by: "Gemini" });
+        return send(200, { text: cleanTranscript(text.replace(/^["“]|["”]$/g, "")), by: "Gemini" });
       } catch (e) { errors.push(e.message); }
     }
     return send(502, { error: "Não consegui transcrever o áudio.", details: errors });

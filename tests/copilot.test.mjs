@@ -1,7 +1,7 @@
 // node tests/copilot.test.mjs
 import assert from "node:assert/strict";
 const { default: copilot, sanitizePlan } = await import("../api/copilot.js");
-const { default: transcribe } = await import("../api/transcribe.js");
+const { default: transcribe, cleanTranscript } = await import("../api/transcribe.js");
 
 let reply = "", calls = [], groqAudio = { status: 200, text: "olá mundo" };
 globalThis.fetch = async (url, init = {}) => {
@@ -59,6 +59,11 @@ await t("Whisper indisponível: cai para o Gemini", async () => {
   const r = await run(transcribe, { audio });
   assert.equal(r.json.by, "Gemini");
   groqAudio = { status: 200, text: "ok" };
+});
+await t("descarta silêncio e frases fantasma do Whisper", async () => {
+  assert.equal(cleanTranscript("."), "");
+  assert.equal(cleanTranscript("Obrigado por assistir!"), "");
+  assert.equal(cleanTranscript("  abra o youtube  "), "abra o youtube");
 });
 await t("áudio inválido = 400", async () => {
   assert.equal((await run(transcribe, { audio: "data:text/plain;base64,AAAA" })).code, 400);
