@@ -1,33 +1,35 @@
-// IA Council - função serverless (Node 20+, sem dependências)
-const CALL_TIMEOUT = 25000; // por chamada
-const TOTAL_BUDGET = 56000; // orçamento total (Vercel: 60 s)
-const FINAL_RESERVE = 14000; // tempo reservado para a decisão final
+// IA Council — função serverless (Node 20+, sem dependências)
+// O conselho roda em ETAPAS (cada uma é uma chamada própria, com até ~55 s):
+//   start  -> decide se é conversa ou conselho; se houver fotos, o "olho" (Gemini) descreve
+//   open   -> rodada 1: cada membro dá sua análise independente
+//   debate -> cada membro lê os outros, critica e revisa (1 a 3 vezes, chamada pelo site)
+//   final  -> o presidente escolhido sintetiza a decisão
+const STAGE_BUDGET = 55000;
 const MAX_TEXT = 6000;
 const MAX_IMAGES = 4;
+const MODEL_ID = /^[\w.\-/:@]{1,120}$/;
+
+export const EFFORTS = {
+  low: { label: "Baixo", timeout: 22000, hedge: 12000, words: [150, 120, 350], tokens: 1600, think: "minimal", budget25: 0, reason: "low" },
+  medium: { label: "Médio", timeout: 34000, hedge: 17000, words: [300, 250, 600], tokens: 3200, think: "low", budget25: 1024, reason: "medium" },
+  high: { label: "Alto", timeout: 50000, hedge: 30000, words: [500, 400, 900], tokens: 7000, think: "high", budget25: 8192, reason: "high" },
+};
 
 const SYSTEM = `Você é um membro de um conselho de IAs que analisa questões com rigor. Responda SEMPRE em português do Brasil.
 Regras: seja direto; fundamente cada ponto; seja honesto e não bajule; não invente dados, fontes, números ou citações; separe claramente FATOS de SUPOSIÇÕES; diga "não sei" ou "incerto" quando for o caso.`;
 
+const DESCRIPTIONS = {
+  Gemini: "Google · enxerga fotos (é o olho do conselho)",
+  Groq: "Groq · raciocínio forte e respostas muito rápidas",
+  OpenRouter: "OpenRouter · maior modelo grátis disponível",
+  Cerebras: "Cerebras · inferência ultrarrápida",
+  "GitHub Models": "GitHub · modelos da OpenAI e outros",
+};
+
 const stripThink = (t) =>
   String(t || "").replace(/<think>[\s\S]*?<\/think>/gi, "").replace(/<think>[\s\S]*$/i, "").trim();
 
-export function buildProviders(env) {
-  const list = [];
-  if (env.GEMINI_API_KEY)
-    list.push({ name: "Gemini", kind: "gemini", key: env.GEMINI_API_KEY, model: env.GEMINI_MODEL || "gemini-3.8-flash",
-      fallback: env.GEMINI_FALLBACK_MODEL ?? "gemini-3.5-flash-lite" });
-  if (env.GROQ_API_KEY)
-    list.push({ name: "Groq", kind: "openai", url: "https://api.groq.com/openai/v1/chat/completions", key: env.GROQ_API_KEY, model: env.GROQ_MODEL || "openai/gpt-oss-120b" });
-  if (env.OPENROUTER_API_KEY)
-    list.push({ name: "OpenRouter", kind: "openai", url: "https://openrouter.ai/api/v1/chat/completions", key: env.OPENROUTER_API_KEY, model: env.OPENROUTER_MODEL || "nvidia/nemotron-3-ultra-550b-a55b:free" });
-  if (env.CEREBRAS_API_KEY)
-    list.push({ name: "Cerebras", kind: "openai", url: "https://api.cerebras.ai/v1/chat/completions", key: env.CEREBRAS_API_KEY, model: env.CEREBRAS_MODEL || "llama3.1-8b" });
-  if (env.GITHUB_MODELS_TOKEN)
-    list.push({ name: "GitHub Models", kind: "openai", url: "https://models.github.ai/inference/chat/completions", key: env.GITHUB_MODELS_TOKEN, model: env.GITHUB_MODELS_MODEL || "openai/gpt-4o-mini" });
-  return list;
-}
-
-// Nome amigável do modelo, para mostrar na tela
+// ---------- nomes amigáveis ----------
 export function modelLabel(id) {
   const UP = { gpt: "GPT", oss: "OSS", it: "IT", vl: "VL", ai: "AI" };
   return String(id || "").split("/").pop().replace(/:free$/, "").split(/[-_]/).filter(Boolean)
@@ -35,18 +37,34 @@ export function modelLabel(id) {
     .join(" ").replace(/GPT OSS/, "GPT-OSS");
 }
 
-const CASUAL = /^\s*(oi+|ol[aá]+|opa+|e a[ií]|eai|hey|hi|hello|bom dia|boa tarde|boa noite|tudo (bem|bom|certo)\??|como vai\??|obrigad[oa]s?|valeu+|vlw|blz|beleza|ok+|okay|show|top|legal|massa|teste|testando|kk+|haha+|rs+|tchau|at[eé] mais|quem [eé] voc[eê]s?\??|o que voc[eê]s? (faz|fazem)\??)[\s!.?,\p{Extended_Pictographic}]*$/iu;
-
-async function classify(fast, prompt, deadline) {
-  // Pergunta curta e ambígua: um modelo rápido decide se é conversa ou caso para o conselho.
-  try {
-    const out = await ask(fast,
-      "Classifique a mensagem do usuário. Responda APENAS uma palavra: CONVERSA (saudação, agradecimento, papo casual, pergunta sobre você, mensagem sem tarefa) ou CONSELHO (pergunta, pedido, decisão, análise, qualquer tarefa real).",
-      prompt, Math.min(deadline, Date.now() + 6000), 300);
-    return /CONVERSA/i.test(out) && !/CONSELHO/i.test(out) ? "chat" : "council";
-  } catch { return "council"; }
+// ---------- provedores ----------
+export function buildProviders(env, overrides = {}) {
+  const ov = (name, def) => {
+    const v = overrides && overrides[name];
+    return typeof v === "string" && MODEL_ID.test(v) ? v : def;
+  };
+  const list = [];
+  if (env.GEMINI_API_KEY)
+    list.push({ name: "Gemini", kind: "gemini", key: env.GEMINI_API_KEY,
+      model: ov("Gemini", env.GEMINI_MODEL || "gemini-3.8-flash"),
+      fallback: env.GEMINI_FALLBACK_MODEL ?? "gemini-3.5-flash-lite" });
+  if (env.GROQ_API_KEY)
+    list.push({ name: "Groq", kind: "openai", url: "https://api.groq.com/openai/v1/chat/completions", key: env.GROQ_API_KEY,
+      model: ov("Groq", env.GROQ_MODEL || "openai/gpt-oss-120b") });
+  if (env.OPENROUTER_API_KEY)
+    list.push({ name: "OpenRouter", kind: "openai", url: "https://openrouter.ai/api/v1/chat/completions", key: env.OPENROUTER_API_KEY,
+      model: ov("OpenRouter", env.OPENROUTER_MODEL || "nvidia/nemotron-3-ultra-550b-a55b:free") });
+  if (env.CEREBRAS_API_KEY)
+    list.push({ name: "Cerebras", kind: "openai", url: "https://api.cerebras.ai/v1/chat/completions", key: env.CEREBRAS_API_KEY,
+      model: ov("Cerebras", env.CEREBRAS_MODEL || "gpt-oss-120b") });
+  if (env.GITHUB_MODELS_TOKEN)
+    list.push({ name: "GitHub Models", kind: "openai", url: "https://models.github.ai/inference/chat/completions", key: env.GITHUB_MODELS_TOKEN,
+      model: ov("GitHub Models", env.GITHUB_MODELS_MODEL || "openai/gpt-4.1") });
+  for (const p of list) if (p.fallback === p.model) p.fallback = null;
+  return list;
 }
 
+// ---------- HTTP ----------
 async function timedFetch(url, init, ms) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), ms);
@@ -69,7 +87,14 @@ async function httpError(r) {
   return err;
 }
 
-async function callOpenAI(p, system, user, ms, maxTokens) {
+function reasoningParams(p, eff) {
+  if (p.noEffort) return {};
+  if (p.name === "OpenRouter") return { reasoning: { effort: eff.reason } };
+  if (/gpt-oss/i.test(p.model)) return { reasoning_effort: eff.reason };
+  return {};
+}
+
+async function callOpenAI(p, system, user, ms, maxTokens, eff) {
   const r = await timedFetch(p.url, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${p.key}` },
@@ -78,6 +103,7 @@ async function callOpenAI(p, system, user, ms, maxTokens) {
       messages: [{ role: "system", content: system }, { role: "user", content: user }],
       temperature: 0.4,
       max_tokens: maxTokens,
+      ...reasoningParams(p, eff),
     }),
   }, ms);
   if (!r.ok) throw await httpError(r);
@@ -87,16 +113,16 @@ async function callOpenAI(p, system, user, ms, maxTokens) {
   return text;
 }
 
-// Desliga/reduz o "raciocínio" do Gemini para caber no tempo. Se o modelo recusar o parâmetro, tenta sem ele.
-const THINK_LEVELS = ["minimal", "low"];
-function thinkingFor(p) {
-  if (/2\.5/.test(p.model)) return p.noThinkCfg ? {} : { thinkingConfig: { thinkingBudget: 0 } };
+// Nível de raciocínio do Gemini; se o modelo recusar um nível, tenta o próximo e por fim nenhum.
+function geminiThinking(p, eff) {
+  if (/2\.5/.test(p.model)) return p.noEffort ? {} : { thinkingConfig: { thinkingBudget: eff.budget25 } };
   if (!/gemini-[3-9]/.test(p.model)) return {};
-  const lvl = THINK_LEVELS[p.thinkIdx || 0];
+  const chain = [...new Set([eff.think, "low"])];
+  const lvl = chain[p.thinkIdx || 0];
   return lvl ? { thinkingConfig: { thinkingLevel: lvl } } : {};
 }
 
-async function callGemini(p, system, user, ms, maxTokens, images = []) {
+async function callGemini(p, system, user, ms, maxTokens, eff, images = []) {
   const parts = [{ text: user }];
   for (const im of images) parts.push({ inlineData: { mimeType: im.mime, data: im.data } });
   const r = await timedFetch(
@@ -107,20 +133,21 @@ async function callGemini(p, system, user, ms, maxTokens, images = []) {
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: system }] },
         contents: [{ role: "user", parts }],
-        generationConfig: { temperature: 0.4, maxOutputTokens: maxTokens, ...thinkingFor(p) },
+        generationConfig: { temperature: 0.4, maxOutputTokens: maxTokens * 2, ...geminiThinking(p, eff) },
       }),
     }, ms);
   if (!r.ok) throw await httpError(r);
   const j = await r.json();
-  const text = stripThink((j?.candidates?.[0]?.content?.parts || []).map((x) => x.text || "").join(""));
+  const text = stripThink((j?.candidates?.[0]?.content?.parts || []).filter((x) => !x.thought).map((x) => x.text || "").join(""));
   if (!text) throw new Error("resposta vazia");
   return text;
 }
 
-// ---------- descoberta automática de modelo (quando o padrão some) ----------
+// ---------- descoberta de modelos ----------
 const MODEL_GONE = /model.?not.?found|does not exist|no longer available|not available|unavailable|not supported|decommissioned|deprecated|is not found/i;
-const discovered = new Map(); // nome do provedor -> Promise<string|null>
-const SKIP = /guard|whisper|tts|orpheus|safeguard|embed|audio|image|vision-only|transcri|moderation|rerank|live|native-audio/i;
+const SKIP = /guard|whisper|tts|orpheus|safeguard|embed|audio|image|transcri|moderation|rerank|live|native-audio|veo|imagen|lyria|aqa|robotics/i;
+const discovered = new Map();
+const geminiThinkIdx = new Map();
 
 function rank(ids, prefs) {
   for (const re of prefs) {
@@ -130,101 +157,131 @@ function rank(ids, prefs) {
   return ids[0] || null;
 }
 
+async function listModels(p, ms) {
+  if (p.kind === "gemini") {
+    const r = await timedFetch("https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000",
+      { headers: { "x-goog-api-key": p.key } }, ms);
+    if (!r.ok) throw await httpError(r);
+    const j = await r.json();
+    return (j.models || [])
+      .filter((m) => (m.supportedGenerationMethods || []).includes("generateContent"))
+      .map((m) => String(m.name).replace(/^models\//, ""))
+      .filter((id) => /gemini|gemma/.test(id) && !SKIP.test(id));
+  }
+  const base = p.url.replace(/\/chat\/completions$/, "");
+  const url = p.name === "GitHub Models" ? "https://models.github.ai/catalog/models" : `${base}/models`;
+  const r = await timedFetch(url, { headers: { Authorization: `Bearer ${p.key}` } }, ms);
+  if (!r.ok) throw await httpError(r);
+  const j = await r.json();
+  const arr = Array.isArray(j) ? j : (j.data || j.models || []);
+  let ids = arr.map((m) => m.id || m.name).filter(Boolean).filter((id) => !SKIP.test(id));
+  if (p.name === "OpenRouter") ids = ids.filter((id) => id.endsWith(":free"));
+  return [...new Set(ids)];
+}
+
 async function discoverModel(p, err, deadline, exclude = null) {
   const ms = Math.min(8000, deadline - Date.now());
   if (ms < 1500) return null;
   if (p.kind === "gemini") {
     const sug = /use (?:models\/)?([a-z0-9.\-]+)/i.exec(err?.body || "");
     if (sug && sug[1] !== p.model) return sug[1];
-    const r = await timedFetch("https://generativelanguage.googleapis.com/v1beta/models?pageSize=200",
-      { headers: { "x-goog-api-key": p.key } }, ms);
-    if (!r.ok) return null;
-    const j = await r.json();
-    const ids = (j.models || [])
-      .filter((m) => (m.supportedGenerationMethods || []).includes("generateContent"))
-      .map((m) => String(m.name).replace(/^models\//, ""))
-      .filter((id) => /gemini/.test(id) && !SKIP.test(id) && !/preview|exp/.test(id));
+    const ids = (await listModels(p, ms)).filter((id) => /gemini/.test(id) && !/preview|exp/.test(id) && id !== exclude);
     return rank(ids, [/flash$/, /flash(?!-lite)/, /flash/, /pro/]);
   }
-  const base = p.url.replace(/\/chat\/completions$/, "");
-  const r = await timedFetch(`${base}/models`, { headers: { Authorization: `Bearer ${p.key}` } }, ms);
-  if (!r.ok) return null;
-  const j = await r.json();
-  let ids = (j.data || j.models || []).map((m) => m.id || m.name).filter(Boolean).filter((id) => !SKIP.test(id));
-  if (p.name === "OpenRouter") ids = ids.filter((id) => id.endsWith(":free"));
+  let ids = await listModels(p, ms);
   if (exclude) ids = ids.filter((id) => id !== exclude);
-  return rank(ids, [/gpt-oss-120b/, /gemma-4-31b|llama-3\.3-70b|70b|120b|large|ultra/i, /llama|qwen|gpt-oss|gemma|deepseek|kimi|mistral|nemotron/i]);
+  return rank(ids, [/gpt-oss-120b/, /ultra|120b|70b|large/i, /llama|qwen|gpt-oss|gemma|deepseek|kimi|mistral|nemotron/i]);
 }
 
-function callRaw(p, system, user, deadline, maxTokens, images) {
-  const ms = Math.min(CALL_TIMEOUT, deadline - Date.now());
+// ---------- chamada com reserva em paralelo ----------
+function callRaw(p, system, user, deadline, maxTokens, eff, images) {
+  const ms = Math.min(eff.timeout, deadline - Date.now());
   if (ms < 2000) return Promise.reject(new Error("sem tempo restante"));
   return p.kind === "gemini"
-    ? callGemini(p, system, user, ms, maxTokens, images)
-    : callOpenAI(p, system, user, ms, maxTokens);
+    ? callGemini(p, system, user, ms, maxTokens, eff, images)
+    : callOpenAI(p, system, user, ms, maxTokens, eff);
 }
 
-// Corrida de segurança: o modelo principal (o mais forte) sempre tenta; se demorar
-// mais que HEDGE_AFTER, um modelo reserva mais rápido começa em paralelo e vale o primeiro que responder.
-const HEDGE_AFTER = Number(process.env.HEDGE_AFTER_MS) || 14000;
-function callOnce(p, system, user, deadline, maxTokens, images) {
+// O modelo principal sempre tenta; se demorar mais que eff.hedge, a reserva rápida começa em paralelo.
+function callOnce(p, system, user, deadline, maxTokens, eff, images) {
   p.lastUsed = p.model;
-  if (!p.fallback || p.fallback === p.model) return callRaw(p, system, user, deadline, maxTokens, images);
+  if (!p.fallback) return callRaw(p, system, user, deadline, maxTokens, eff, images);
+  const hedgeAfter = Number(process.env.HEDGE_AFTER_MS) || eff.hedge;
   return new Promise((resolve, reject) => {
     let settled = false, backupStarted = false, primaryErr = null, backupErr = null, timer;
     const win = (text, model) => { if (settled) return; settled = true; clearTimeout(timer); p.lastUsed = model; resolve(text); };
-    const lose = () => { if (settled) return; if (primaryErr && (backupErr || !backupStarted)) { settled = true; clearTimeout(timer); reject(primaryErr); } };
+    const lose = () => {
+      if (settled) return;
+      if (primaryErr && (backupErr || !backupStarted)) { settled = true; clearTimeout(timer); reject(primaryErr); }
+    };
     const startBackup = () => {
       if (backupStarted || settled || deadline - Date.now() < 4000) return;
       backupStarted = true;
-      const b = { ...p, model: p.fallback, fallback: null, thinkIdx: 0, noThinkCfg: false };
-      callRaw(b, system, user, deadline, maxTokens, images)
+      const b = { ...p, model: p.fallback, fallback: null, thinkIdx: 0 };
+      callRaw(b, system, user, deadline, maxTokens, eff, images)
         .then((t) => win(t, b.model), (e) => { backupErr = e; if (primaryErr) lose(); });
     };
-    callRaw(p, system, user, deadline, maxTokens, images).then((t) => win(t, p.model), (e) => {
+    callRaw(p, system, user, deadline, maxTokens, eff, images).then((t) => win(t, p.model), (e) => {
       primaryErr = e;
-      // erro de "modelo sumiu"/parâmetro: devolve logo para o ask() tratar; outros erros: usa a reserva
       if ((e.status === 400 || e.status === 404) && !backupStarted) return lose();
       if (!backupStarted) startBackup();
       if (!backupStarted || backupErr) lose();
     });
-    timer = setTimeout(startBackup, HEDGE_AFTER);
+    timer = setTimeout(startBackup, hedgeAfter);
   });
 }
 
-const geminiThink = new Map(); // modelo -> índice do nível aceito
-
-async function ask(p, system, user, deadline, maxTokens = 1200, images = []) {
-  const cached = discovered.get(p.name);
+async function ask(p, system, user, deadline, eff, maxTokens, images = [], depth = 0) {
+  const cached = discovered.get(p.name + "|" + p.model);
   if (cached) { const m = await cached; if (m) p.model = m; }
-  if (p.kind === "gemini" && geminiThink.has(p.model)) p.thinkIdx = geminiThink.get(p.model);
+  if (p.kind === "gemini" && geminiThinkIdx.has(p.model)) p.thinkIdx = geminiThinkIdx.get(p.model);
   try {
-    return await callOnce(p, system, user, deadline, maxTokens, images);
+    return await callOnce(p, system, user, deadline, maxTokens || eff.tokens, eff, images);
   } catch (e) {
-    if (p.kind === "gemini" && e.status === 400 && /thinking/i.test(e.body || "")) {
-      // nível de raciocínio recusado: tenta o próximo, depois sem o parâmetro
-      p.noThinkCfg = true;
+    if (depth > 3) throw e;
+    const body = e.body || "";
+    // parâmetro de raciocínio recusado: tenta mais simples
+    if (e.status === 400 && p.kind === "gemini" && /thinking/i.test(body)) {
       p.thinkIdx = (p.thinkIdx || 0) + 1;
-      geminiThink.set(p.model, p.thinkIdx);
-      return ask(p, system, user, deadline, maxTokens, images);
+      geminiThinkIdx.set(p.model, p.thinkIdx);
+      return ask(p, system, user, deadline, eff, maxTokens, images, depth + 1);
     }
+    if (e.status === 400 && !p.noEffort && /reason|effort|unsupported|unrecognized|not support|unknown|invalid/i.test(body)) {
+      p.noEffort = true;
+      return ask(p, system, user, deadline, eff, maxTokens, images, depth + 1);
+    }
+    // modelo grátis congestionado: troca por outro grátis
     if (p.name === "OpenRouter" && e.status === 429) {
-      // modelo grátis congestionado: tenta outro grátis uma vez
       const alt = await discoverModel(p, e, deadline, p.model).catch(() => null);
       if (!alt) throw e;
       p.model = alt;
-      return callOnce(p, system, user, deadline, maxTokens, images);
+      return callOnce(p, system, user, deadline, maxTokens || eff.tokens, eff, images);
     }
-    const gone = (e.status === 404 || e.status === 400) && MODEL_GONE.test(e.body || e.message);
+    // modelo saiu do ar: descobre outro disponível
+    const gone = (e.status === 404 || e.status === 400) && MODEL_GONE.test(body || e.message);
     if (!gone) throw e;
-    if (!discovered.has(p.name)) discovered.set(p.name, discoverModel(p, e, deadline).catch(() => null));
-    const m = await discovered.get(p.name);
+    const k = p.name + "|" + p.model;
+    if (!discovered.has(k)) discovered.set(k, discoverModel(p, e, deadline).catch(() => null));
+    const m = await discovered.get(k);
     if (!m || m === p.model) throw e;
     p.model = m;
-    return callOnce(p, system, user, deadline, maxTokens, images);
+    return callOnce(p, system, user, deadline, maxTokens || eff.tokens, eff, images);
   }
 }
 
+// ---------- roteamento: conversa x conselho ----------
+const CASUAL = /^\s*(oi+|ol[aá]+|opa+|e a[ií]|eai|hey|hi|hello|bom dia|boa tarde|boa noite|tudo (bem|bom|certo)\??|como vai\??|obrigad[oa]s?|valeu+|vlw|blz|beleza|ok+|okay|show|top|legal|massa|teste|testando|kk+|haha+|rs+|tchau|at[eé] mais|quem [eé] voc[eê]s?\??|o que voc[eê]s? (faz|fazem)\??)[\s!.?,\p{Extended_Pictographic}]*$/iu;
+
+async function classify(fast, prompt, deadline) {
+  try {
+    const out = await ask(fast,
+      "Classifique a mensagem do usuário. Responda APENAS uma palavra: CONVERSA (saudação, agradecimento, papo casual, pergunta sobre você, mensagem sem tarefa) ou CONSELHO (pergunta, pedido, decisão, análise, qualquer tarefa real).",
+      prompt, Math.min(deadline, Date.now() + 8000), EFFORTS.low, 400);
+    return /CONVERSA/i.test(out) && !/CONSELHO/i.test(out) ? "chat" : "council";
+  } catch { return "council"; }
+}
+
+// ---------- validação ----------
 function parseImages(images) {
   const out = [];
   for (const im of images) {
@@ -235,25 +292,66 @@ function parseImages(images) {
   return out;
 }
 
+function parsePositions(raw, byName) {
+  if (!Array.isArray(raw) || raw.length > 8) return null;
+  const out = [];
+  for (const x of raw) {
+    if (!x || typeof x !== "object" || !byName.has(x.name) || typeof x.text !== "string") return null;
+    out.push({ name: x.name, text: x.text.slice(0, 8000), model: typeof x.model === "string" ? x.model.slice(0, 120) : undefined });
+  }
+  return out;
+}
+
+const fmt = (positions) => positions.map((o) => `### ${o.name}\n${o.text}`).join("\n\n");
+
+// ---------- catálogo (cache curto) ----------
+let catalogCache = null;
+async function catalog(providers) {
+  if (catalogCache && Date.now() - catalogCache.at < 10 * 60 * 1000) return catalogCache.data;
+  const res = await Promise.allSettled(providers.map((p) => listModels(p, 9000)));
+  const data = {};
+  res.forEach((r, i) => {
+    data[providers[i].name] = r.status === "fulfilled"
+      ? { models: r.value.sort().map((id) => ({ id, label: modelLabel(id) })) }
+      : { models: [], error: r.reason?.message || "falha" };
+  });
+  if (res.some((r) => r.status === "fulfilled")) catalogCache = { at: Date.now(), data };
+  return data;
+}
+
+// ---------- handler ----------
 export default async function handler(req, res) {
   const send = (code, obj) => res.status(code).json(obj);
   try {
+    const access = process.env.ACCESS_CODE;
+    const authed = !access || req.headers["x-access-code"] === access;
+
     if (req.method === "GET") {
       const ps = buildProviders(process.env);
-      return send(200, { members: ps.map((p) => ({ name: p.name, model: p.model, label: modelLabel(p.model), ...(p.fallback ? { fallback: p.fallback, fallbackLabel: modelLabel(p.fallback) } : {}) })), locked: !!process.env.ACCESS_CODE });
+      const wantList = /[?&]list=1/.test(req.url || "") || req.query?.list === "1";
+      if (wantList) {
+        if (!authed) return send(401, { error: "Código de acesso inválido." });
+        return send(200, { catalog: await catalog(ps) });
+      }
+      return send(200, {
+        locked: !!access,
+        efforts: Object.fromEntries(Object.entries(EFFORTS).map(([k, v]) => [k, v.label])),
+        members: ps.map((p) => ({
+          name: p.name, model: p.model, label: modelLabel(p.model), desc: DESCRIPTIONS[p.name] || p.name,
+          ...(p.fallback ? { fallback: p.fallback, fallbackLabel: modelLabel(p.fallback) } : {}),
+        })),
+      });
     }
-    if (req.method !== "POST") return send(405, { error: "Use o método POST." });
-
-    const access = process.env.ACCESS_CODE;
-    if (access && req.headers["x-access-code"] !== access)
-      return send(401, { error: "Código de acesso inválido." });
+    if (req.method !== "POST") return send(405, { error: "Use POST ou GET." });
+    if (!authed) return send(401, { error: "Código de acesso inválido." });
 
     let body = req.body;
     if (typeof body === "string") { try { body = JSON.parse(body); } catch { body = null; } }
     if (!body || typeof body !== "object") return send(400, { error: "Corpo da requisição inválido." });
 
+    const stage = ["start", "open", "debate", "final"].includes(body.stage) ? body.stage : "start";
     const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
-    if (!prompt) return send(400, { error: "Escreva um prompt." });
+    if (!prompt) return send(400, { error: "Escreva uma mensagem." });
     if (prompt.length > MAX_TEXT) return send(400, { error: `Texto longo demais (máximo ${MAX_TEXT} caracteres).` });
 
     const rawImages = Array.isArray(body.images) ? body.images : [];
@@ -261,125 +359,112 @@ export default async function handler(req, res) {
     const images = parseImages(rawImages);
     if (!images) return send(400, { error: "Imagem inválida (use data URL image/*;base64)." });
 
-    const debateRounds = Math.max(0, Math.min(2, parseInt(body.debateRounds, 10) || 0));
-
-    const providers = buildProviders(process.env);
+    const eff = EFFORTS[body.effort] || EFFORTS.medium;
+    const overrides = body.models && typeof body.models === "object" ? body.models : {};
+    const providers = buildProviders(process.env, overrides);
     if (!providers.length) return send(500, { error: "Nenhuma chave de API configurada no servidor." });
+    const byName = new Map(providers.map((p) => [p.name, p]));
+    const leader = byName.get(body.leader) || providers[0];
     const gemini = providers.find((p) => p.kind === "gemini");
     if (images.length && !gemini)
       return send(400, { error: "Fotos exigem GEMINI_API_KEY configurada (só o Gemini enxerga imagens)." });
 
-    const start = Date.now();
-    const deadline = start + TOTAL_BUDGET;
-
-    // MODO: auto (decide sozinho), council (sempre o conselho) ou quick (uma IA só)
-    const mode = ["auto", "council", "quick"].includes(body.mode) ? body.mode : "auto";
-    const fastest = providers.find((p) => p.name === "Groq") || providers.find((p) => p.kind !== "gemini") || providers[0];
-    let route = mode === "quick" ? "chat" : mode === "council" ? "council" : null;
-    if (!route) {
-      if (images.length) route = "council";
-      else if (CASUAL.test(prompt)) route = "chat";
-      else if (prompt.length <= 60) route = await classify(fastest, prompt, deadline);
-      else route = "council";
-    }
-    if (route === "chat") {
-      const errs = [];
-      const order = [fastest, ...providers.filter((p) => p !== fastest)];
-      const team = providers.map((p) => `${p.name} (${modelLabel(p.model)})`).join(", ");
-      for (const p of order) {
-        if (images.length && p.kind !== "gemini") continue;
-        try {
-          const text = await ask(p,
-            `Você é o IA Council, um assistente formado por um conselho de IAs (${team}). Responda SEMPRE em português do Brasil, de forma natural, cordial e direta, como um assistente de conversa. Para saudações e papo casual, responda em 1 ou 2 frases e ofereça ajuda. Não use títulos nem listas a menos que ajudem. Não invente fatos. Se a pessoa pedir algo que mereça análise profunda, responda o essencial e sugira mandar a pergunta completa para o conselho debater.`,
-            prompt, Math.min(deadline, Date.now() + CALL_TIMEOUT), 900, images);
-          return send(200, { mode: "chat", members: providers.map((x) => x.name), models: Object.fromEntries(providers.map((x) => [x.name, x.model])), description: "", rounds: [], final: text, judge: p.name, judgeModel: p.lastUsed || p.model, errors: errs });
-        } catch (e) {
-          errs.push({ name: p.name, stage: "Resposta", error: e.message });
-        }
-      }
-      return send(502, { error: "Nenhuma IA conseguiu responder.", errors: errs });
-    }
-    const errors = [];
-    const rounds = [];
-    let description = "";
-
-    // 0. O OLHO
-    if (images.length) {
-      try {
-        description = await ask(gemini,
-          `${SYSTEM}\nVocê é o OLHO do conselho: as outras IAs só leem texto e dependem da sua descrição.`,
-          `Descreva de forma exaustiva cada foto (Foto 1, Foto 2...). Para cada uma: cena e contexto; objetos, pessoas (sem identificar por rosto), textos/números/placas transcritos LITERALMENTE entre aspas; estado e condição (danos, desgaste, anomalias); medidas aproximadas; detalhes pequenos; o que está fora do enquadramento. Separe FATOS de INFERÊNCIAS, marque "NÃO VISÍVEL" ou "INCERTO" quando necessário.\n\nPergunta do usuário (para focar o que importa): ${prompt}`,
-          deadline - FINAL_RESERVE - 15000, 2000, images);
-      } catch (e) {
-        return send(502, { error: `O olho (Gemini) falhou ao ler as fotos: ${e.message}` });
-      }
-    }
-
+    const description = typeof body.description === "string" ? body.description.slice(0, 12000) : "";
     const context = `PERGUNTA DO USUÁRIO:\n${prompt}` +
       (description ? `\n\nDESCRIÇÃO DAS FOTOS (feita pelo "olho" do conselho):\n${description}` : "");
+    const deadline = Date.now() + STAGE_BUDGET;
+    const errors = [];
+    const info = { members: providers.map((p) => p.name), models: Object.fromEntries(providers.map((p) => [p.name, p.model])) };
 
-    // 1. RODADA 1
-    const r1Deadline = Math.min(deadline - FINAL_RESERVE, Date.now() + CALL_TIMEOUT);
-    const r1 = await Promise.allSettled(providers.map((p) =>
-      ask(p, SYSTEM, `${context}\n\nDê sua análise independente em até 300 palavras.`, r1Deadline, 700)));
-    let positions = [];
-    r1.forEach((r, i) => {
-      if (r.status === "fulfilled") positions.push({ p: providers[i], name: providers[i].name, model: providers[i].lastUsed, text: r.value });
-      else errors.push({ name: providers[i].name, stage: "Rodada 1", error: r.reason.message });
-    });
-    if (!positions.length)
-      return send(502, { error: "Todas as IAs falharam.", errors });
-    rounds.push({ title: "Rodada 1 — análises independentes", answers: positions.map(({ name, model, text }) => ({ name, model, text })) });
-
-    // 2. DEBATE
-    for (let d = 1; d <= debateRounds; d++) {
-      if (positions.length < 2) break;
-      if (deadline - Date.now() < FINAL_RESERVE + 10000) {
-        errors.push({ name: "Conselho", stage: `Debate ${d}`, error: "pulado por falta de tempo" });
-        break;
+    // ===== START =====
+    if (stage === "start") {
+      const mode = ["auto", "council", "quick"].includes(body.mode) ? body.mode : "auto";
+      const fastest = providers.find((p) => p.name === "Groq") || providers.find((p) => p.kind !== "gemini") || providers[0];
+      let route = mode === "quick" ? "chat" : mode === "council" ? "council" : null;
+      if (!route) {
+        if (images.length) route = "council";
+        else if (CASUAL.test(prompt)) route = "chat";
+        else if (prompt.length <= 60) route = await classify(fastest, prompt, deadline);
+        else route = "council";
       }
-      const dDeadline = Math.min(deadline - FINAL_RESERVE, Date.now() + CALL_TIMEOUT);
-      const prev = positions;
-      const res2 = await Promise.allSettled(prev.map((me) => {
-        const others = prev.filter((o) => o.name !== me.name)
-          .map((o) => `### ${o.name}\n${o.text}`).join("\n\n");
-        return ask(me.p, SYSTEM,
-          `${context}\n\nSUA POSIÇÃO ANTERIOR:\n${me.text}\n\nPOSIÇÕES DOS OUTROS MEMBROS:\n${others}\n\nCritique as posições (erros e acertos), diga com o que concorda e discorda e entregue sua posição REVISADA em até 250 palavras. Só mude de ideia se o argumento do outro for realmente melhor.`,
-          dDeadline, 600);
-      }));
-      const next = [];
-      res2.forEach((r, i) => {
-        if (r.status === "fulfilled") next.push({ p: prev[i].p, name: prev[i].name, model: prev[i].p.lastUsed, text: r.value });
-        else {
-          errors.push({ name: prev[i].name, stage: `Debate ${d}`, error: r.reason.message });
-          next.push(prev[i]); // mantém a posição anterior
+      if (route === "chat") {
+        const first = mode === "quick" ? leader : fastest;
+        const order = [first, ...providers.filter((p) => p !== first)];
+        const team = providers.map((p) => `${p.name} (${modelLabel(p.model)})`).join(", ");
+        for (const p of order) {
+          if (images.length && p.kind !== "gemini") continue;
+          try {
+            const text = await ask(p,
+              `Você é o IA Council, um assistente formado por um conselho de IAs (${team}). Responda SEMPRE em português do Brasil, de forma natural, cordial e direta, como um assistente de conversa. Para saudações e papo casual, responda em 1 ou 2 frases e ofereça ajuda. Não use títulos nem listas a menos que ajudem. Não invente fatos. Se a pessoa pedir algo que mereça análise profunda, responda o essencial e sugira mandar a pergunta completa para o conselho debater.`,
+              prompt, deadline, mode === "quick" ? eff : EFFORTS.low, mode === "quick" ? eff.tokens : 1200, images);
+            return send(200, { ...info, mode: "chat", final: text, judge: p.name, judgeModel: p.lastUsed || p.model, errors });
+          } catch (e) {
+            errors.push({ name: p.name, stage: "Resposta", error: e.message });
+          }
         }
-      });
-      const revised = res2.filter((r) => r.status === "fulfilled").length;
-      positions = next;
-      if (revised)
-        rounds.push({ title: `Debate ${d} — posições revisadas`, answers: res2
-          .map((r, i) => r.status === "fulfilled" ? { name: prev[i].name, model: next[i].model, text: r.value } : null).filter(Boolean) });
+        return send(502, { error: "Nenhuma IA conseguiu responder.", errors });
+      }
+      let desc = "";
+      if (images.length) {
+        try {
+          desc = await ask(gemini,
+            `${SYSTEM}\nVocê é o OLHO do conselho: as outras IAs só leem texto e dependem da sua descrição.`,
+            `Descreva de forma exaustiva cada foto (Foto 1, Foto 2...). Para cada uma: cena e contexto; objetos, pessoas (sem identificar por rosto), textos/números/placas transcritos LITERALMENTE entre aspas; estado e condição (danos, desgaste, anomalias); medidas aproximadas; detalhes pequenos; o que está fora do enquadramento. Separe FATOS de INFERÊNCIAS, marque "NÃO VISÍVEL" ou "INCERTO" quando necessário.\n\nPergunta do usuário (para focar o que importa): ${prompt}`,
+            deadline, eff, Math.max(eff.tokens, 3000), images);
+        } catch (e) {
+          return send(502, { error: `O olho (Gemini) falhou ao ler as fotos: ${e.message}` });
+        }
+      }
+      return send(200, { ...info, mode: "council", description: desc, eyeModel: images.length ? gemini.lastUsed : undefined, errors });
     }
 
-    // 3. DECISÃO FINAL
-    const finalPrompt = `${context}\n\nPOSIÇÕES FINAIS DOS MEMBROS:\n${positions.map((o) => `### ${o.name}\n${o.text}`).join("\n\n")}\n\nVocê é o PRESIDENTE do conselho. Pese a qualidade dos argumentos (não o número de votos), corrija erros, não esconda divergências reais e responda em markdown, neste formato exato:\n\n## Decisão\n## Confiança\n(0–100% e por quê)\n## Onde o conselho concorda\n## Onde divergiu e como resolvi\n## Próximos passos\n## Limitações e alertas`;
-    let final = "", judge = "", judgeModel = "";
-    const order = [...positions.map((x) => x.p), ...providers.filter((p) => !positions.some((x) => x.p === p))];
+    // ===== OPEN (rodada 1) =====
+    if (stage === "open") {
+      const r = await Promise.allSettled(providers.map((p) =>
+        ask(p, SYSTEM, `${context}\n\nDê sua análise independente em até ${eff.words[0]} palavras.`, deadline, eff)));
+      const answers = [];
+      r.forEach((x, i) => {
+        if (x.status === "fulfilled") answers.push({ name: providers[i].name, model: providers[i].lastUsed, text: x.value });
+        else errors.push({ name: providers[i].name, stage: "Rodada 1", error: x.reason.message });
+      });
+      if (!answers.length) return send(502, { error: "Todas as IAs falharam.", errors });
+      return send(200, { ...info, answers, errors });
+    }
+
+    const positions = parsePositions(body.positions, byName);
+    if (!positions || !positions.length) return send(400, { error: "Posições inválidas." });
+
+    // ===== DEBATE =====
+    if (stage === "debate") {
+      const round = Math.max(1, Math.min(3, parseInt(body.round, 10) || 1));
+      if (positions.length < 2) return send(200, { ...info, answers: [], errors: [{ name: "Conselho", stage: `Debate ${round}`, error: "só 1 membro respondeu; não há com quem debater" }] });
+      const r = await Promise.allSettled(positions.map((me) => {
+        const others = fmt(positions.filter((o) => o.name !== me.name));
+        return ask(byName.get(me.name), SYSTEM,
+          `${context}\n\nSUA POSIÇÃO ANTERIOR:\n${me.text}\n\nPOSIÇÕES DOS OUTROS MEMBROS:\n${others}\n\nEsta é a rodada de debate ${round}. Critique as posições (erros e acertos), diga com o que concorda e discorda e entregue sua posição REVISADA em até ${eff.words[1]} palavras. Só mude de ideia se o argumento do outro for realmente melhor.`,
+          deadline, eff);
+      }));
+      const answers = [];
+      r.forEach((x, i) => {
+        const p = byName.get(positions[i].name);
+        if (x.status === "fulfilled") answers.push({ name: p.name, model: p.lastUsed, text: x.value });
+        else errors.push({ name: p.name, stage: `Debate ${round}`, error: x.reason.message });
+      });
+      return send(200, { ...info, answers, errors });
+    }
+
+    // ===== FINAL =====
+    const finalPrompt = `${context}\n\nPOSIÇÕES FINAIS DOS MEMBROS:\n${fmt(positions)}\n\nVocê é o PRESIDENTE do conselho. Pese a qualidade dos argumentos (não o número de votos), corrija erros, não esconda divergências reais e responda em markdown (até ${eff.words[2]} palavras), neste formato exato:\n\n## Decisão\n## Confiança\n(0–100% e por quê)\n## Onde o conselho concorda\n## Onde divergiu e como resolvi\n## Próximos passos\n## Limitações e alertas`;
+    const order = [leader, ...providers.filter((p) => p !== leader)];
     for (const p of order) {
       try {
-        const fd = Math.max(deadline, Date.now() + 8000);
-        final = await ask(p, SYSTEM, finalPrompt, Math.min(fd, start + 59000), 1500);
-        judge = p.name;
-        judgeModel = p.lastUsed || p.model;
-        break;
+        const final = await ask(p, SYSTEM, finalPrompt, deadline, eff, Math.round(eff.tokens * 1.5));
+        return send(200, { ...info, final, judge: p.name, judgeModel: p.lastUsed || p.model, errors });
       } catch (e) {
         errors.push({ name: p.name, stage: "Decisão final", error: e.message });
       }
     }
-    if (!final) return send(502, { error: "Ninguém conseguiu emitir a decisão final.", errors, rounds, description });
-
-    return send(200, { mode: "council", members: providers.map((p) => p.name), models: Object.fromEntries(providers.map((p) => [p.name, p.model])), description, rounds, final, judge, judgeModel, errors });
+    return send(502, { error: "Ninguém conseguiu emitir a decisão final.", errors });
   } catch (e) {
     return send(500, { error: "Erro interno no conselho." });
   }

@@ -66,7 +66,9 @@ svg{flex:none;display:block}
 .pop .it{width:100%;display:flex;align-items:center;gap:11px;padding:8px 10px;border-radius:8px;text-align:left;color:var(--tx)}
 .pop button.it:hover,.pop .it:focus-visible{background:var(--hover);outline:none}
 .pop .it .sub{display:block;color:var(--mut);font-size:12.5px;line-height:1.35}
-.pop .it .r{margin-left:auto;color:var(--mut);font-size:12.5px;white-space:nowrap}
+.pop .it .r{margin-left:auto;color:var(--mut);font-size:13px;white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+.pop .it .r svg{width:14px;height:14px}
+.pop .it.row2 .r{color:var(--tx2)}
 .pop .it .ck{margin-left:auto;color:var(--ac);visibility:hidden}
 .pop .it.sel .ck{visibility:visible}
 .pop .it .dot{width:8px;height:8px;border-radius:50%;background:#3ddc97;flex:none}
@@ -75,6 +77,24 @@ svg{flex:none;display:block}
 .pop .row input{width:100%;background:#262624;border:1px solid var(--line);border-radius:8px;padding:7px 10px;outline:none;font-size:14px}
 .pop .row input:focus{border-color:var(--line2)}
 .pop .note{padding:4px 10px 8px;color:var(--mut);font-size:12px}
+.pop.picker{width:400px;max-width:94vw;padding:6px}
+.pop .lead{padding:9px 10px}
+.pop .lead b{font-weight:600;font-size:14.5px}
+.pop .it.row2{justify-content:space-between}
+.pop .it.row2.hl{background:#ffffff12}
+.pop .back{display:flex;align-items:center;gap:8px;padding:8px 10px;color:var(--tx);font-weight:500;width:100%;border-radius:8px;text-align:left}
+.pop .back:hover{background:var(--hover)}
+.pop .back svg{transform:rotate(180deg);width:14px;height:14px;color:var(--mut)}
+.pop .scrollbox{max-height:min(52vh,420px);overflow-y:auto;scrollbar-width:thin;scrollbar-color:#ffffff22 transparent}
+.pop .grp{padding:10px 10px 4px;color:var(--mut);font-size:12px;display:flex;justify-content:space-between;gap:8px;position:sticky;top:0;background:var(--pop)}
+.pop .msearch{margin:2px 4px 6px;display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:8px;padding:0 9px;height:34px}
+.pop .msearch input{flex:1;background:none;border:0;outline:none;font-size:14px;min-width:0}
+.pop .it .mid{font:12px var(--mono);color:var(--mut);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:300px}
+.prog{margin:0 0 14px;display:flex;flex-direction:column;gap:2px}
+.prog .ln{color:var(--mut);font-size:14.5px;display:flex;align-items:center;gap:8px}
+.prog .ln.now{color:var(--tx2)}
+.prog .ln svg{width:14px;height:14px}
+.prog .ln .okc{color:#7fbf8e}
 
 /* ====== Main ====== */
 .main{flex:1;display:flex;flex-direction:column;height:100%;min-width:0;position:relative}
@@ -286,7 +306,7 @@ body.collapsed #openSide{display:grid}
   "use strict";
   var MAX_IMG = 4, HIST = "iacouncil_hist", CODE = "iacouncil_code", PREF = "iacouncil_prefs";
   var images = [], busy = false, history = [], current = -1, members = [], filter = "";
-  var prefs = { rounds: 1, mode: "auto" };
+  var prefs = { rounds: 1, mode: "auto", effort: "medium", leader: "", models: {} };
   var $ = function (id) { return document.getElementById(id); };
   var ic = function (n) { return '<svg class="ico"><use href="#i-' + n + '"/></svg>'; };
 
@@ -314,8 +334,11 @@ body.collapsed #openSide{display:grid}
   function sset(k, v) { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } }
   try {
     var pp = JSON.parse(sget(PREF) || "{}");
-    if (pp && [0, 1, 2].indexOf(pp.rounds) >= 0) prefs.rounds = pp.rounds;
+    if (pp && [1, 2, 3].indexOf(pp.rounds) >= 0) prefs.rounds = pp.rounds;
     if (pp && ["auto", "council", "quick"].indexOf(pp.mode) >= 0) prefs.mode = pp.mode;
+    if (pp && ["low", "medium", "high"].indexOf(pp.effort) >= 0) prefs.effort = pp.effort;
+    if (pp && typeof pp.leader === "string") prefs.leader = pp.leader;
+    if (pp && pp.models && typeof pp.models === "object") prefs.models = pp.models;
   } catch (e) {}
   function savePrefs() { sset(PREF, JSON.stringify(prefs)); }
   var toastT;
@@ -380,34 +403,134 @@ body.collapsed #openSide{display:grid}
     if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); if (!$("go").disabled) send(); }
   });
 
-  // ---------- seletores: modelos / modo ----------
+  // ---------- seletores: presidente / esforço / debates / modelos / modo ----------
   var MODES = {
     auto: ["Auto", "Conversa normal para “oi” e papo; conselho completo para perguntas de verdade"],
     council: ["Conselho", "Sempre todas as IAs respondem, debatem e o presidente decide"],
-    quick: ["Rápido", "Uma IA só responde, como um chat comum"]
+    quick: ["Rápido", "Só o presidente responde, como um chat comum"]
   };
-  var RN = ["Sem debate", "1 rodada", "2 rodadas"];
-  var RD = ["Respostas independentes + decisão (mais rápido)", "Cada IA lê e critica as outras uma vez", "Debate mais profundo (pode chegar a 1 min)"];
+  var EFF = { low: ["Baixo", "Respostas curtas e rápidas, pouco raciocínio"], medium: ["Médio", "Equilíbrio entre profundidade e tempo"], high: ["Alto", "Raciocínio máximo dos modelos e respostas mais completas (mais lento)"] };
+  var RN = { 1: "1 debate", 2: "2 debates", 3: "3 debates" };
+  var RD = { 1: "Cada IA lê e critica as outras uma vez", 2: "Duas rodadas de crítica e revisão", 3: "Debate mais profundo — demora um pouco mais" };
+  var catalogData = null;
+
+  function modelLabel(id) {
+    var UP = { gpt: "GPT", oss: "OSS", it: "IT", vl: "VL", ai: "AI" };
+    return String(id || "").split("/").pop().replace(/:free$/, "").split(/[-_]/).filter(Boolean).map(function (w) {
+      return UP[w.toLowerCase()] || (/^[a-z]?\d+[a-z]?\d*b?$/i.test(w) ? w.toUpperCase() : w.charAt(0).toUpperCase() + w.slice(1));
+    }).join(" ").replace(/GPT OSS/, "GPT-OSS");
+  }
+  function modelOf(m) { return prefs.models[m.name] || m.model; }
+  function labelOfMember(m) { return prefs.models[m.name] ? modelLabel(prefs.models[m.name]) : m.label; }
+  function leaderMember() {
+    for (var i = 0; i < members.length; i++) if (members[i].name === prefs.leader) return members[i];
+    return members[0] || null;
+  }
   function updPick() {
-    var quick = prefs.mode === "quick";
-    $("pickName").textContent = quick ? (members[0] ? members[0].label : "Rápido") : "Conselho" + (members.length ? " · " + members.length + " IAs" : "");
-    $("pickEffort").textContent = quick ? "" : RN[prefs.rounds];
+    var L = leaderMember();
+    $("pickName").textContent = L ? labelOfMember(L) : "Conselho";
+    $("pickEffort").textContent = EFF[prefs.effort][0];
     $("modeTxt").textContent = MODES[prefs.mode][0];
   }
-  function openModels(anchor) {
-    var h = '<div class="hd">Membros do conselho</div>';
-    if (!members.length) h += '<div class="note">Nenhuma chave de API configurada no servidor.</div>';
-    members.forEach(function (m) {
-      h += '<div class="it"><span class="dot"></span><span style="min-width:0">' + esc(m.label) + '<span class="sub">' + esc(m.name) + " · " + esc(m.model) +
-        (m.fallback ? "<br>reserva rápida: " + esc(m.fallbackLabel) : "") + "</span></span></div>";
-    });
-    h += '<hr><div class="hd">Rodadas de debate</div>';
-    [0, 1, 2].forEach(function (n) {
-      h += '<button class="it' + (prefs.rounds === n ? " sel" : "") + '" data-r="' + n + '"><span>' + RN[n] + '<span class="sub">' + RD[n] + '</span></span><svg class="ico ck"><use href="#i-check"/></svg></button>';
-    });
-    var p = popover(anchor, h, "right");
-    Array.prototype.forEach.call(p.querySelectorAll("[data-r]"), function (b) {
-      b.onclick = function () { prefs.rounds = +b.getAttribute("data-r"); savePrefs(); updPick(); closePop(); };
+  function relayout(p, anchor, align) {
+    var r = anchor.getBoundingClientRect(), w = p.offsetWidth, h = p.offsetHeight, vw = window.innerWidth, vh = window.innerHeight;
+    var left = align === "right" ? r.right - w : r.left;
+    left = Math.max(8, Math.min(left, vw - w - 8));
+    var top = r.top - h - 8; if (top < 8) top = Math.max(8, Math.min(r.bottom + 8, vh - h - 8));
+    p.style.left = left + "px"; p.style.top = top + "px";
+  }
+  function openPicker(anchor, view) {
+    var p = popover(anchor, "", "right"); p.classList.add("picker");
+    function back(title) { return '<button class="back" data-v="main">' + ic("right") + esc(title) + "</button><hr>"; }
+    function draw(v) {
+      var h = "";
+      if (v === "main") {
+        if (!members.length) h += '<div class="note">Nenhuma chave de API configurada no servidor.</div>';
+        var L = leaderMember();
+        members.forEach(function (m) {
+          h += '<button class="it lead' + (L && L.name === m.name ? " sel" : "") + '" data-leader="' + esc(m.name) + '"><span style="min-width:0"><b>' + esc(labelOfMember(m)) +
+            '</b><span class="sub">' + esc(m.desc || m.name) + (L && L.name === m.name ? " · presidente" : "") + '</span></span><svg class="ico ck"><use href="#i-check"/></svg></button>';
+        });
+        h += '<hr><button class="it row2 hl" data-v="effort"><span>Esforço</span><span class="r">' + EFF[prefs.effort][0] + " " + ic("right") + "</span></button>";
+        h += '<button class="it row2" data-v="rounds"><span>Debates</span><span class="r">' + RN[prefs.rounds] + " " + ic("right") + "</span></button>";
+        h += '<button class="it row2" data-v="models"><span>Mais modelos</span><span class="r">' + ic("right") + "</span></button>";
+        h += '<hr><div class="note">O presidente escolhido dá a decisão final; todos os membros respondem e debatem.</div>';
+      } else if (v === "effort") {
+        h += back("Esforço");
+        ["low", "medium", "high"].forEach(function (k) {
+          h += '<button class="it' + (prefs.effort === k ? " sel" : "") + '" data-eff="' + k + '"><span>' + EFF[k][0] + '<span class="sub">' + EFF[k][1] + '</span></span><svg class="ico ck"><use href="#i-check"/></svg></button>';
+        });
+      } else if (v === "rounds") {
+        h += back("Debates");
+        [1, 2, 3].forEach(function (n) {
+          h += '<button class="it' + (prefs.rounds === n ? " sel" : "") + '" data-r="' + n + '"><span>' + RN[n] + '<span class="sub">' + RD[n] + '</span></span><svg class="ico ck"><use href="#i-check"/></svg></button>';
+        });
+      } else if (v === "models") {
+        h += back("Mais modelos");
+        h += '<div class="msearch"><svg style="width:15px;height:15px;color:var(--mut)"><use href="#i-search"/></svg><input id="mfind" placeholder="Procurar modelo" aria-label="Procurar modelo"></div>';
+        h += '<div class="scrollbox" id="mbox">' + (catalogData ? "" : '<div class="note">Carregando os modelos de cada chave…</div>') + "</div>";
+        h += '<hr><button class="it" data-reset="1">' + ic("retry") + "Restaurar modelos padrão</button>";
+      }
+      p.innerHTML = h;
+      wire(v);
+      relayout(p, anchor, "right");
+    }
+    function fillModels(q) {
+      var box = p.querySelector("#mbox"); if (!box || !catalogData) return;
+      q = (q || "").toLowerCase();
+      var html = "";
+      members.forEach(function (m) {
+        var c = catalogData[m.name] || { models: [] };
+        var cur = modelOf(m);
+        var list = c.models.filter(function (x) { return !q || (x.id + " " + x.label).toLowerCase().indexOf(q) >= 0; });
+        html += '<div class="grp"><span>' + esc(m.name) + " · " + c.models.length + " modelos</span><span>usando " + esc(modelLabel(cur)) + "</span></div>";
+        if (c.error) html += '<div class="note">Não consegui listar: ' + esc(c.error) + "</div>";
+        if (m.name === "OpenRouter" && !q) html += '<div class="note">Só modelos grátis (:free) — os pagos exigem créditos.</div>';
+        list.slice(0, q ? 80 : 200).forEach(function (x) {
+          html += '<button class="it' + (x.id === cur ? " sel" : "") + '" data-pm="' + esc(m.name) + '" data-id="' + esc(x.id) + '"><span style="min-width:0">' + esc(x.label) +
+            (x.id === m.model ? ' <span style="color:var(--mut);font-size:12px">· padrão</span>' : "") + '<span class="mid">' + esc(x.id) + '</span></span><svg class="ico ck"><use href="#i-check"/></svg></button>';
+        });
+        if (!list.length && !c.error) html += '<div class="note">Nenhum modelo encontrado.</div>';
+      });
+      box.innerHTML = html;
+      Array.prototype.forEach.call(box.querySelectorAll("[data-pm]"), function (b) {
+        b.onclick = function () {
+          var name = b.getAttribute("data-pm"), id = b.getAttribute("data-id");
+          var m = members.filter(function (x) { return x.name === name; })[0];
+          if (m && id === m.model) delete prefs.models[name]; else prefs.models[name] = id;
+          savePrefs(); updPick(); fillModels(p.querySelector("#mfind").value);
+          toast(name + " agora usa " + modelLabel(id));
+        };
+      });
+    }
+    function wire(v) {
+      Array.prototype.forEach.call(p.querySelectorAll("[data-v]"), function (b) { b.onclick = function () { draw(b.getAttribute("data-v")); }; });
+      Array.prototype.forEach.call(p.querySelectorAll("[data-leader]"), function (b) {
+        b.onclick = function () { prefs.leader = b.getAttribute("data-leader"); savePrefs(); updPick(); draw("main"); };
+      });
+      Array.prototype.forEach.call(p.querySelectorAll("[data-eff]"), function (b) {
+        b.onclick = function () { prefs.effort = b.getAttribute("data-eff"); savePrefs(); updPick(); draw("main"); };
+      });
+      Array.prototype.forEach.call(p.querySelectorAll("[data-r]"), function (b) {
+        b.onclick = function () { prefs.rounds = +b.getAttribute("data-r"); savePrefs(); updPick(); draw("main"); };
+      });
+      var rs = p.querySelector("[data-reset]");
+      if (rs) rs.onclick = function () { prefs.models = {}; savePrefs(); updPick(); fillModels(""); toast("Modelos padrão restaurados"); };
+      if (v === "models") {
+        var f = p.querySelector("#mfind");
+        f.addEventListener("input", function () { fillModels(f.value); });
+        if (catalogData) fillModels("");
+        else loadCatalog().then(function () { if (openPop === p) { fillModels(f.value); relayout(p, anchor, "right"); } }, function (e) {
+          var box = p.querySelector("#mbox"); if (box) box.innerHTML = '<div class="note">' + esc(e.message) + "</div>";
+        });
+      }
+    }
+    draw(view || "main");
+  }
+  function loadCatalog() {
+    var headers = {}, code = sget(CODE); if (code) headers["x-access-code"] = code;
+    return fetch("/api/council?list=1", { headers: headers }).then(function (r) {
+      return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || "Erro " + r.status); catalogData = j.catalog || {}; });
     });
   }
   function openModes(anchor) {
@@ -420,9 +543,9 @@ body.collapsed #openSide{display:grid}
       b.onclick = function () { prefs.mode = b.getAttribute("data-m"); savePrefs(); updPick(); closePop(); };
     });
   }
-  $("modelPick").onclick = function (e) { e.stopPropagation(); openModels($("modelPick")); };
+  $("modelPick").onclick = function (e) { e.stopPropagation(); openPicker($("modelPick")); };
   $("modePick").onclick = function (e) { e.stopPropagation(); openModes($("modePick")); };
-  $("membersBtn").onclick = function (e) { e.stopPropagation(); openModels($("membersBtn")); };
+  $("membersBtn").onclick = function (e) { e.stopPropagation(); openPicker($("membersBtn")); };
   updPick();
 
   function loadMembers() {
@@ -482,12 +605,14 @@ body.collapsed #openSide{display:grid}
       '<button class="it" data-a="up">' + ic("clip") + 'Fazer upload de fotos<span class="r">Ctrl+U</span></button>' +
       '<button class="it" data-a="cam">' + ic("cam") + "Tirar foto</button>" +
       "<hr>" +
-      '<button class="it" data-a="rounds">' + ic("users") + 'Rodadas de debate<span class="r">' + RN[prefs.rounds] + "</span>" + ic("right") + "</button>" +
-      '<button class="it" data-a="mode">' + ic("gear") + 'Modo de resposta<span class="r">' + MODES[prefs.mode][0] + "</span>" + ic("right") + "</button>" +
+      '<button class="it" data-a="rounds">' + ic("users") + 'Debates<span class="r">' + RN[prefs.rounds] + "</span>" + ic("right") + "</button>" +
+      '<button class="it" data-a="effort">' + ic("gear") + 'Esforço<span class="r">' + EFF[prefs.effort][0] + "</span>" + ic("right") + "</button>" +
+      '<button class="it" data-a="mode">' + ic("chat") + 'Modo de resposta<span class="r">' + MODES[prefs.mode][0] + "</span>" + ic("right") + "</button>" +
       '<div class="note">Dica: cole uma imagem com Ctrl+V ou arraste para a caixa.</div>');
     p.querySelector('[data-a="up"]').onclick = function () { closePop(); pick(); };
     p.querySelector('[data-a="cam"]').onclick = function () { closePop(); $("cam").click(); };
-    p.querySelector('[data-a="rounds"]').onclick = function () { openModels($("modelPick")); };
+    p.querySelector('[data-a="rounds"]').onclick = function () { openPicker($("modelPick"), "rounds"); };
+    p.querySelector('[data-a="effort"]').onclick = function () { openPicker($("modelPick"), "effort"); };
     p.querySelector('[data-a="mode"]').onclick = function () { openModes($("modePick")); };
   };
   var comp = $("composer");
@@ -543,7 +668,7 @@ body.collapsed #openSide{display:grid}
       '<button class="it" data-a="about">' + ic("info") + "Como funciona</button>");
     var ci = p.querySelector("#codeIn"); ci.value = sget(CODE) || "";
     ci.addEventListener("change", function () { sset(CODE, ci.value); loadMembers(); toast("Código salvo"); });
-    p.querySelector('[data-a="members"]').onclick = function () { openModels($("meBtn")); };
+    p.querySelector('[data-a="members"]').onclick = function () { openPicker($("meBtn")); };
     p.querySelector('[data-a="clear"]').onclick = function () { history = []; saveHist(); closePop(); goHome(); toast("Histórico apagado"); };
     p.querySelector('[data-a="src"]').onclick = function () { closePop(); window.open("https://github.com/JornalOlhe/council", "_blank", "noopener"); };
     p.querySelector('[data-a="about"]').onclick = function () { closePop(); goHome(); ta.value = "Como funciona o IA Council?"; autosize(); updSend(); };
@@ -634,36 +759,91 @@ body.collapsed #openSide{display:grid}
     var full = "CONVERSA ANTERIOR (contexto):\n" + ctx + "\n\nNOVA MENSAGEM DO USUÁRIO:\n" + prompt;
     return full.length > 5900 ? "…" + full.slice(full.length - 5890) : full;
   }
-  function send() {
-    var prompt = ta.value.trim(); if (!prompt || busy) return;
-    busy = true; updSend();
-    var sent = images.slice(), rounds = prefs.rounds, mode = prefs.mode, isNew = current < 0;
-    ensureChat(isNew ? shortTitle(prompt) : $("title").textContent);
-    var body = addTurn(prompt, sent);
-    var hint = mode === "quick" ? "" :
-      (sent.length ? "O olho está lendo as fotos. " : "") +
-      (mode === "auto" ? "Se for uma pergunta de verdade, as IAs respondem e debatem (até 1 min)." :
-        "As IAs respondem" + (rounds ? " e debatem " + RN[rounds].toLowerCase() : "") + ". Pode levar até 1 minuto.");
-    body.innerHTML = '<div class="thinking"><svg class="star spinstar"><use href="#i-star"/></svg><div>' +
-      (mode === "quick" ? "Pensando…" : "Consultando o conselho…") + (hint ? "<small>" + hint + "</small>" : "") + "</div></div>";
-    body.scrollIntoView({ behavior: "smooth", block: "end" });
-    ta.value = ""; images = []; renderThumbs(); autosize();
-
+  function api(payload) {
     var headers = { "Content-Type": "application/json" }, code = sget(CODE);
     if (code) headers["x-access-code"] = code;
-    fetch("/api/council", {
-      method: "POST", headers: headers,
-      body: JSON.stringify({ prompt: isNew ? prompt : withContext(prompt), images: sent, debateRounds: rounds, mode: mode })
-    }).then(function (r) {
+    return fetch("/api/council", { method: "POST", headers: headers, body: JSON.stringify(payload) }).then(function (r) {
       return r.text().then(function (t) {
         var j;
         try { j = JSON.parse(t); } catch (e) {
-          j = { error: r.status === 413 ? "Fotos grandes demais (limite de 4,5 MB)." : r.status === 504 ? "O conselho demorou demais. Tente com menos rodadas de debate." : "Resposta inesperada do servidor (HTTP " + r.status + ")." };
+          j = { error: r.status === 413 ? "Fotos grandes demais (limite de 4,5 MB)." : r.status === 504 ? "Esta etapa demorou demais. Tente com esforço menor." : "Resposta inesperada do servidor (HTTP " + r.status + ")." };
         }
         if (!r.ok) { var er = new Error(j.error || "Erro HTTP " + r.status); er.details = j.errors || []; er.status = r.status; throw er; }
         return j;
       });
-    }).then(function (data) {
+    });
+  }
+  function progress(body, done, now) {
+    var h = '<div class="prog">' + done.map(function (d) {
+      return '<div class="ln"><svg class="okc"><use href="#i-check"/></svg>' + esc(d) + "</div>";
+    }).join("") + "</div>";
+    h += '<div class="thinking"><svg class="star spinstar"><use href="#i-star"/></svg><div>' + esc(now[0]) + (now[1] ? "<small>" + esc(now[1]) + "</small>" : "") + "</div></div>";
+    body.innerHTML = h;
+  }
+  function send() {
+    var prompt = ta.value.trim(); if (!prompt || busy) return;
+    busy = true; updSend();
+    var sent = images.slice(), rounds = prefs.rounds, mode = prefs.mode, isNew = current < 0;
+    var L = leaderMember();
+    var base = {
+      prompt: isNew ? prompt : withContext(prompt), effort: prefs.effort, mode: mode,
+      leader: L ? L.name : "", models: prefs.models
+    };
+    ensureChat(isNew ? shortTitle(prompt) : $("title").textContent);
+    var body = addTurn(prompt, sent);
+    var done = [];
+    progress(body, done, [mode === "quick" ? "Pensando…" : sent.length ? "O olho do conselho está lendo as fotos…" : "Lendo sua mensagem…", ""]);
+    body.scrollIntoView({ behavior: "smooth", block: "end" });
+    ta.value = ""; images = []; renderThumbs(); autosize();
+
+    var data = { mode: "council", rounds: [], errors: [] };
+    var positions = [];
+    function addErr(j) { (j.errors || []).forEach(function (e) { data.errors.push(e); }); }
+    function merge(answers) {
+      var map = {}; positions.forEach(function (p) { map[p.name] = p; });
+      answers.forEach(function (a) { map[a.name] = a; });
+      positions = Object.keys(map).map(function (k) { return map[k]; });
+    }
+
+    api(Object.assign({ stage: "start", images: sent }, base)).then(function (j) {
+      addErr(j);
+      data.members = j.members; data.models = j.models;
+      if (j.mode === "chat") { data.mode = "chat"; data.final = j.final; data.judge = j.judge; data.judgeModel = j.judgeModel; return; }
+      data.description = j.description || ""; data.eyeModel = j.eyeModel;
+      if (data.description) done.push("O olho do conselho leu " + (sent.length > 1 ? "as fotos" : "a foto"));
+      var n = (j.members || []).length;
+      progress(body, done, ["Rodada 1 — " + n + " IAs analisando…", "Cada membro dá sua opinião independente."]);
+      return api(Object.assign({ stage: "open", description: data.description }, base)).then(function (o) {
+        addErr(o);
+        data.rounds.push({ title: "Rodada 1 — análises independentes", answers: o.answers });
+        positions = o.answers.slice();
+        done.push("Rodada 1 · " + o.answers.length + " IAs responderam");
+        var chain = Promise.resolve();
+        for (var d = 1; d <= rounds; d++) (function (d) {
+          chain = chain.then(function () {
+            if (positions.length < 2) return;
+            progress(body, done, ["Debate " + d + " de " + rounds + " — as IAs estão se criticando…", d === 3 ? "Último debate: o mais profundo." : "Cada uma lê as outras e revisa a própria posição."]);
+            return api(Object.assign({ stage: "debate", round: d, description: data.description, positions: positions }, base)).then(function (r) {
+              addErr(r);
+              if (r.answers.length) data.rounds.push({ title: "Debate " + d + " — posições revisadas", answers: r.answers });
+              merge(r.answers);
+              done.push("Debate " + d + " · " + r.answers.length + " IAs revisaram");
+            }, function (e) {
+              data.errors.push({ name: "Conselho", stage: "Debate " + d, error: e.message });
+              done.push("Debate " + d + " · falhou, seguindo com as posições anteriores");
+            });
+          });
+        })(d);
+        return chain.then(function () {
+          var lm = leaderMember();
+          progress(body, done, ["O presidente " + (lm ? lm.name + " (" + labelOfMember(lm) + ")" : "") + " está decidindo…", "Pesando os argumentos, não os votos."]);
+          return api(Object.assign({ stage: "final", description: data.description, positions: positions }, base)).then(function (f) {
+            addErr(f);
+            data.final = f.final; data.judge = f.judge; data.judgeModel = f.judgeModel;
+          });
+        });
+      });
+    }).then(function () {
       render(body, data, prompt);
       var turn = { prompt: prompt, data: data };
       if (isNew) {
@@ -676,7 +856,7 @@ body.collapsed #openSide{display:grid}
       if (history.length > 40) history.length = 40;
       saveHist(); renderRecent();
     }).catch(function (e) {
-      var det = (e.details || []).map(function (x) { return '<div class="warn">' + esc(x.name) + " — " + esc(x.stage) + ": " + esc(x.error) + "</div>"; }).join("");
+      var det = (e.details || []).concat(data.errors).map(function (x) { return '<div class="warn">' + esc(x.name) + " — " + esc(x.stage) + ": " + esc(x.error) + "</div>"; }).join("");
       body.innerHTML = '<div class="err">' + esc(e.message || "Falha de rede.") +
         (e.status === 401 ? " Abra o menu “Conselho” no canto inferior esquerdo e informe o código." : "") + "</div>" + det;
     }).then(function () { busy = false; updSend(); ta.focus(); });
@@ -687,6 +867,7 @@ body.collapsed #openSide{display:grid}
     if (!id) return "";
     for (var i = 0; i < members.length; i++) {
       if (members[i].model === id) return members[i].label;
+      if (prefs.models[members[i].name] === id) return modelLabel(id);
       if (members[i].fallback === id) return members[i].fallbackLabel + " · reserva";
     }
     return id.split("/").pop().replace(/:free$/, "").split(/[-_]/).map(function (w) { return /^\d/.test(w) ? w.toUpperCase() : w.charAt(0).toUpperCase() + w.slice(1); }).join(" ");
