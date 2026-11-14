@@ -253,6 +253,16 @@ async function act(tabId, a) {
   }
   if (t === "back" || t === "forward") { await evaluate(tabId, t === "back" ? "history.back()" : "history.forward()"); await waitReady(tabId); return t === "back" ? "voltou" : "avançou"; }
   if (t === "wait") { await sleep(Math.max(300, Math.min(5000, (Number(a.seconds) || 1) * 1000))); return ""; }
+  if (t === "media") {
+    const r = await evaluate(tabId, `(() => { const v = [...document.querySelectorAll("video,audio")].sort((a, b) => (b.duration || 0) - (a.duration || 0))[0]; if (!v) return "sem vídeo na página";
+  const d = ${JSON.stringify(a.do)};
+  if (d === "seek") { if (v.duration && ${Number(a.seconds) || 0} > v.duration) return "o vídeo tem só " + Math.floor(v.duration / 60) + " min"; v.currentTime = ${Number(a.seconds) || 0}; }
+  else if (d === "pause") v.pause(); else if (d === "play") v.play(); else if (d === "mute") v.muted = true; else if (d === "unmute") v.muted = false; else if (d === "speed") v.playbackRate = ${Number(a.rate) || 1};
+  const t = Math.floor(v.currentTime), f = (n) => String(n).padStart(2, "0");
+  return "ok " + Math.floor(t / 3600) + ":" + f(Math.floor(t % 3600 / 60)) + ":" + f(t % 60) + (v.paused ? " (pausado)" : " (tocando)"); })()`);
+    if (!String(r).startsWith("ok")) throw new Error(r);
+    return "vídeo: " + a.do + " → " + String(r).slice(3);
+  }
   if (t === "scroll") { await evaluate(tabId, `window.scrollBy({ top: ${-(Math.max(-25, Math.min(25, Number(a.amount) || -5))) * 120} })`); await sleep(350); return "rolou a página"; }
   let done = "";
   if (t === "key") { await key(tabId, a.key); done = "apertou " + a.key; }

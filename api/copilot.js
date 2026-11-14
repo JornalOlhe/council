@@ -6,7 +6,7 @@ import { ask, askVision, buildProviders, EFFORTS } from "./council.js";
 const ENGINES = ["google", "youtube", "maps", "imagens", "noticias", "shopping", "wikipedia", "mercadolivre", "amazon", "github", "spotify", "tradutor"];
 const TYPES = ["search", "open", "copy", "timer", "screen", "email", "whatsapp", "route", "pc", "web", "image", "file"];
 const FILE_FORMATS = ["txt", "md", "csv", "html", "json", "pdf", "docx", "zip"];
-const WEB_TYPES = ["click", "type", "select", "key", "scroll", "navigate", "back", "forward", "wait", "done", "ask_user"];
+const WEB_TYPES = ["click", "type", "select", "key", "scroll", "navigate", "back", "forward", "wait", "media", "done", "ask_user"];
 const WEB_KEYS = new Set(["enter", "tab", "escape", "backspace", "delete", "space", "arrowdown", "arrowup", "arrowleft", "arrowright", "pagedown", "pageup", "home", "end"]);
 const ACT_TYPES = ["click", "double_click", "right_click", "move", "drag", "scroll", "type", "key", "hotkey", "wait", "done", "ask_user"];
 const KEYS = new Set(["enter", "tab", "esc", "escape", "backspace", "delete", "space", "up", "down", "left", "right", "home", "end", "pageup", "pagedown",
@@ -220,6 +220,7 @@ Ações:
 - {"type":"key","key":"Enter|Tab|Escape|ArrowDown|PageDown|..."}
 - {"type":"scroll","amount":-5}   (negativo = descer)
 - {"type":"wait","seconds":1}
+- {"type":"media","do":"play|pause|seek|mute|unmute|speed","seconds":3600,"rate":1.5}  controla o VÍDEO/ÁUDIO da página (YouTube etc.): seek = pular para o segundo exato (1h = 3600), speed = velocidade. Use isto em vez de clicar na barra do player.
 - {"type":"done"}  terminou (preencha "answer")
 - {"type":"ask_user"}  precisa do usuário (login, senha, captcha, código, escolha pessoal) — explique em "say"
 
@@ -256,6 +257,11 @@ export function sanitizeWeb(raw) {
     if (t === "key") { const k = str(a.key, 20).toLowerCase(); if (!WEB_KEYS.has(k)) return { type: "ask_user" }; o.key = k; }
     if (t === "scroll") o.amount = Math.max(-25, Math.min(25, Math.round(Number(a.amount) || -5)));
     if (t === "wait") o.seconds = Math.max(0.3, Math.min(5, Number(a.seconds) || 1.5));
+    if (t === "media") {
+      const d = ["play", "pause", "seek", "mute", "unmute", "speed"].includes(a.do) ? a.do : "pause"; o.do = d;
+      if (d === "seek") o.seconds = Math.max(0, Math.min(86400, Number(a.seconds) || 0));
+      if (d === "speed") o.rate = Math.max(0.25, Math.min(4, Number(a.rate) || 1));
+    }
     return o;
   };
   out.action = clean(raw && raw.action);

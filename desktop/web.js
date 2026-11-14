@@ -1,7 +1,7 @@
 // Navegador do Copiloto: uma janela de navegador própria que o Copiloto controla por dentro
 // (sem mexer no mouse/teclado do usuário), como o Claude in Chrome.
 "use strict";
-const { BrowserWindow, screen } = require("electron");
+const { WebContentsView } = require("electron");
 
 const KEYS = {
   enter: "Enter", tab: "Tab", escape: "Escape", esc: "Escape", backspace: "Backspace", delete: "Delete", space: "Space",
@@ -76,67 +76,68 @@ const READ_PAGE = `(() => {
 })()`;
 
 class CopilotBrowser {
-  constructor() { this.win = null; this.working = false; this.onStop = null; this.visible = false; }
+  // Navegador EMBUTIDO no app: um painel à direita da janela principal (você vê tudo o que ele faz, ao vivo)
+  constructor(getParent, onPanel) {
+    this.getParent = getParent; this.onPanel = onPanel || (() => {});
+    this.view = null; this.attached = false; this.working = false; this.onStop = null; this.status = "";
+  }
+  get wc() { return this.view && this.view.webContents; }
+  get win() { return this.view ? { webContents: this.view.webContents, isDestroyed: () => this.view.webContents.isDestroyed() } : null; }
 
-  // A janela trabalha ESCONDIDA (fora da tela, sem roubar o foco); só aparece quando o usuário pede "Ver janela"
   ensure() {
-    if (this.win && !this.win.isDestroyed()) return this.win;
-    const wa = screen.getPrimaryDisplay().workArea;
-    const w = Math.round(wa.width * 0.55), h = Math.round(wa.height * 0.9);
-    this.bounds = { x: wa.x + wa.width - w - 12, y: wa.y + Math.round((wa.height - h) / 2), width: w, height: h };
-    this.win = new BrowserWindow({
-      x: -32000, y: -32000, width: w, height: h, skipTaskbar: true, focusable: true,
-      title: "Navegador do Copiloto", show: false, autoHideMenuBar: true, backgroundColor: "#ffffff",
-      webPreferences: { partition: "persist:iac-copilot", sandbox: true, contextIsolation: true, nodeIntegration: false, backgroundThrottling: false },
-    });
-    const wc = this.win.webContents;
-    // pop-ups e "abrir em nova aba" ficam na mesma janela, para o Copiloto continuar no controle
+    if (this.view && !this.view.webContents.isDestroyed()) { if (!this.attached) this.attach(); return this.win; }
+    this.view = new WebContentsView({ webPreferences: { partition: "persist:iac-copilot", sandbox: true, contextIsolation: true, nodeIntegration: false, backgroundThrottling: false } });
+    this.view.setBackgroundColor("#ffffff");
+    const wc = this.view.webContents;
+    // pop-ups e "abrir em nova aba" ficam no mesmo painel, para o Copiloto continuar no controle
     wc.setWindowOpenHandler(({ url }) => { if (/^https?:/i.test(url)) wc.loadURL(url); return { action: "deny" }; });
     wc.on("did-finish-load", () => this.applyGlow());
+    const st = () => this.emit();
+    wc.on("page-title-updated", st); wc.on("did-navigate", st); wc.on("did-navigate-in-page", st); wc.on("did-start-loading", st); wc.on("did-stop-loading", st);
     wc.on("console-message", (e, level, message) => { const m = typeof message === "string" ? message : e && e.message; if (m === "__iacStop__" && this.onStop) this.onStop(); });
-    this.win.showInactive(); // fora da tela: renderiza para os prints, mas você não vê nem perde o foco
-    this.visible = false;
-    this.win.on("page-title-updated", (e) => { e.preventDefault(); this.updateTitle(); });
-    this.win.on("close", (e) => { if (this.working) { e.preventDefault(); this.hide(); } }); // fechar durante a tarefa só esconde
-    this.win.on("closed", () => { this.win = null; });
+    this.attach();
     return this.win;
   }
-
-  updateTitle(status) {
-    if (!this.win || this.win.isDestroyed()) return;
-    if (status !== undefined) this.status = status;
-    const t = this.win.webContents.getTitle() || "Navegador do Copiloto";
-    this.win.setTitle((this.working ? "🤖 Copiloto " + (this.status ? "— " + this.status + " · " : "trabalhando · ") : "") + t);
+  attach() {
+    const p = this.getParent(); if (!p || p.isDestroyed()) throw new Error("janela do app fechada");
+    if (!this.attached) { p.contentView.addChildView(this.view); this.attached = true; if (!this.onResize) { this.onResize = () => this.layout(); p.on("resize", this.onResize); } }
+    this.layout(); this.emit();
   }
+  layout() {
+    const p = this.getParent(); if (!p || p.isDestroyed() || !this.view || !this.attached) return;
+    const [w, h] = p.getContentSize(), pw = Math.max(380, Math.min(Math.round(w * 0.48), w - 360)), HEAD = 46;
+    this.panelW = pw; this.view.setBounds({ x: w - pw, y: HEAD, width: pw, height: Math.max(100, h - HEAD) });
+    this.emit();
+  }
+  emit() {
+    const wc = this.wc;
+    this.onPanel({ open: this.attached, width: this.attached ? this.panelW || 0 : 0, url: wc && !wc.isDestroyed() ? wc.getURL() : "", title: wc && !wc.isDestroyed() ? wc.getTitle() : "",
+      loading: wc && !wc.isDestroyed() ? wc.isLoading() : false, working: this.working, status: this.status });
+  }
+  close() {
+    const p = this.getParent();
+    if (this.view && this.attached && p && !p.isDestroyed()) { p.contentView.removeChildView(this.view); }
+    this.attached = false; this.emit();
+  }
+  nav(dir) { const wc = this.wc; if (!wc) return; const h = wc.navigationHistory || wc; if (dir === "back" && (h.canGoBack ? h.canGoBack() : true)) h.goBack(); else if (dir === "forward") h.goForward(); else if (dir === "reload") wc.reload(); }
 
   async applyGlow() {
-    if (!this.win || this.win.isDestroyed()) return;
-    const wc = this.win.webContents;
+    const wc = this.wc; if (!wc || wc.isDestroyed()) return;
     try { await wc.executeJavaScript(this.working ? GLOW + ";" + pillText(this.status) : UNGLOW, true); } catch {}
-    this.updateTitle();
+    this.emit();
   }
 
   async setWorking(on, status) {
-    this.working = !!on;
-    this.status = status || "";
-    if (!this.win || this.win.isDestroyed()) return; // não cria (nem mostra) a janela antes da hora
+    this.working = !!on; this.status = status || "";
+    if (!this.view) { this.emit(); return; } // não cria o painel antes da permissão
     await this.applyGlow();
   }
 
-  show(focus) {
-    const w = this.ensure();
-    if (!this.visible && this.bounds) { w.setBounds(this.bounds); w.setSkipTaskbar(false); this.visible = true; }
-    if (w.isMinimized()) w.restore();
-    if (focus) { w.show(); w.focus(); } else w.showInactive();
-  }
-
-  hide() {
-    if (!this.win || this.win.isDestroyed()) return;
-    if (this.visible) { this.bounds = this.win.getBounds(); this.win.setBounds({ ...this.bounds, x: -32000, y: -32000 }); this.win.setSkipTaskbar(true); this.visible = false; }
-  }
+  show() { this.ensure(); }
+  hide() { this.close(); }
 
   async pointTo(x, y, mode) {
-    const wc = this.win.webContents;
+    const wc = this.wc;
     await wc.executeJavaScript(moveCursor(x, y, ""), true).catch(() => {});
     await new Promise((r) => setTimeout(r, 430)); // dá para ver o cursor indo até o alvo
     if (mode) await wc.executeJavaScript(moveCursor(null, null, mode), true).catch(() => {});
@@ -158,19 +159,22 @@ class CopilotBrowser {
     const u = new URL(url);
     if (!/^https?:$/.test(u.protocol)) throw new Error("só abro endereços http/https");
     const w = this.ensure();
-    await w.webContents.loadURL(u.href).catch(() => {});
+    w.webContents.loadURL(u.href).catch(() => {}); // não espera o loadURL (pode nunca resolver); espera o carregamento com limite
+    await new Promise((r) => setTimeout(r, 150));
     await this.waitLoad();
     return { url: w.webContents.getURL() };
   }
 
   async snapshot() {
-    if (!this.win || this.win.isDestroyed()) return { url: "about:blank", title: "", elements: [], text: "", image: null, empty: true };
-    const w = this.win;
-    const wc = w.webContents;
+    if (!this.view || this.view.webContents.isDestroyed()) return { url: "about:blank", title: "", elements: [], text: "", image: null, empty: true };
+    if (!this.attached) this.attach();
+    const wc = this.view.webContents;
     if (!wc.getURL() || wc.getURL() === "about:blank") return { url: "about:blank", title: "", elements: [], text: "", image: null, empty: true };
     const page = await wc.executeJavaScript(READ_PAGE, true).catch(() => ({ url: wc.getURL(), title: wc.getTitle(), elements: [], text: "" }));
-    let img = await wc.capturePage();
-    if (img.isEmpty()) { await new Promise((r) => setTimeout(r, 300)); img = await wc.capturePage(); }
+    const cap = () => Promise.race([wc.capturePage(), new Promise((r) => setTimeout(() => r(null), 4000))]);
+    let img = await cap();
+    if (!img || img.isEmpty()) { await new Promise((r) => setTimeout(r, 300)); img = await cap(); }
+    if (!img) { page.image = null; return page; }
     const sz = img.getSize();
     if (sz.width > 1100) img = img.resize({ width: 1100, quality: "good" });
     page.image = img.isEmpty() ? null : "data:image/jpeg;base64," + img.toJPEG(68).toString("base64");
@@ -214,6 +218,16 @@ class CopilotBrowser {
     if (t === "back") { if (wc.navigationHistory ? wc.navigationHistory.canGoBack() : wc.canGoBack()) (wc.navigationHistory || wc).goBack(); await this.waitLoad(); return { done: "voltou" }; }
     if (t === "forward") { (wc.navigationHistory || wc).goForward(); await this.waitLoad(); return { done: "avançou" }; }
     if (t === "wait") { await new Promise((r) => setTimeout(r, Math.max(200, Math.min(5000, (Number(a.seconds) || 1) * 1000)))); return { done: "esperou" }; }
+    if (t === "media") {
+      const r = await wc.executeJavaScript(`(() => { const v = [...document.querySelectorAll("video,audio")].sort((a, b) => (b.duration || 0) - (a.duration || 0))[0]; if (!v) return "sem vídeo na página";
+  const d = ${JSON.stringify(a.do)};
+  if (d === "seek") { if (v.duration && ${Number(a.seconds) || 0} > v.duration) return "o vídeo tem só " + Math.floor(v.duration / 60) + " min"; v.currentTime = ${Number(a.seconds) || 0}; }
+  else if (d === "pause") v.pause(); else if (d === "play") v.play(); else if (d === "mute") v.muted = true; else if (d === "unmute") v.muted = false; else if (d === "speed") v.playbackRate = ${Number(a.rate) || 1};
+  const t = Math.floor(v.currentTime), f = (n) => String(n).padStart(2, "0");
+  return "ok " + Math.floor(t / 3600) + ":" + f(Math.floor(t % 3600 / 60)) + ":" + f(t % 60) + (v.paused ? " (pausado)" : " (tocando)"); })()`, true);
+      if (!String(r).startsWith("ok")) throw new Error(r);
+      return { done: "vídeo: " + a.do + " → " + String(r).slice(3) };
+    }
     if (t === "scroll") {
       const amt = Math.max(-25, Math.min(25, Math.round(Number(a.amount) || -5)));
       await wc.executeJavaScript(`window.scrollBy({ top: ${-amt * 120}, behavior: "instant" })`, true);

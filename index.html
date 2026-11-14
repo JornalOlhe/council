@@ -268,6 +268,16 @@ body.collapsed #openSide{display:grid}
 .shotwrap .acur.clk i{animation:iacr .6s ease-out}@keyframes iacr{0%{opacity:1;transform:scale(.3)}100%{opacity:0;transform:scale(1.6)}}
 .shotwrap .acur b{position:absolute;left:18px;top:18px;background:#d97757;color:#fff;font:600 10.5px/1 system-ui;padding:3px 6px;border-radius:5px;white-space:nowrap;display:none}
 .shotwrap .acur.typ b{display:block}
+.cpanel{flex:none;height:100%;display:flex;flex-direction:column;border-left:1px solid var(--line2);background:#1b1b1a}
+.cph{height:46px;flex:none;display:flex;align-items:center;gap:2px;padding:0 6px;border-bottom:1px solid var(--line2);background:#232321}
+.cph .ib{width:30px;height:30px}
+.cpu{flex:1;min-width:0;display:flex;align-items:center;gap:8px;background:#ffffff0c;border:1px solid var(--line);border-radius:999px;padding:5px 12px;margin:0 6px;font-size:12.5px}
+.cpu b{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:45%}
+.cpu span:last-child{color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cpd{flex:none;width:8px;height:8px;border-radius:50%;background:#5c5b57}
+.cpanel.work .cpd{background:#d97757;box-shadow:0 0 0 3px #d9775744;animation:iacp 1.1s ease-in-out infinite}@keyframes iacp{50%{opacity:.35}}
+.cpanel.work{border-left:2px solid #d97757}
+.cpbody{flex:1;display:grid;place-items:center;color:var(--mut);font-size:13px;background:#fff}
 .genimg{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#ffffff06;max-width:520px}
 .genimg .gi{position:relative;background:#ffffff08;min-height:180px;display:grid;place-items:center}
 .genimg img{display:block;width:100%;height:auto}
@@ -544,6 +554,17 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
   </div>
 </aside>
 <div class="scrim" id="scrim"></div>
+<aside class="cpanel hidden" id="cpPanel" aria-label="Navegador do Copiloto">
+  <div class="cph">
+    <button class="ib" data-n="back" title="Voltar" aria-label="Voltar"><svg style="width:16px;height:16px;transform:rotate(180deg)"><use href="#i-right"/></svg></button>
+    <button class="ib" data-n="forward" title="Avançar" aria-label="Avançar"><svg style="width:16px;height:16px"><use href="#i-right"/></svg></button>
+    <button class="ib" data-n="reload" title="Recarregar" aria-label="Recarregar"><svg style="width:15px;height:15px"><use href="#i-retry"/></svg></button>
+    <div class="cpu"><span class="cpd"></span><b id="cpTitle">Navegador do Copiloto</b><span id="cpUrl"></span></div>
+    <button class="ib" id="cpExt" title="Abrir no seu navegador" aria-label="Abrir no seu navegador"><svg style="width:15px;height:15px"><use href="#i-share"/></svg></button>
+    <button class="ib" id="cpClose" title="Fechar painel" aria-label="Fechar painel"><svg class="ico"><use href="#i-x"/></svg></button>
+  </div>
+  <div class="cpbody"><span>Carregando…</span></div>
+</aside>
 
 <div class="main">
   <div class="upd hidden" id="updBar" role="status"><span id="updTxt"></span><span class="sp"></span><button class="btn" id="updBtn">Atualizar</button><button class="ib x" id="updX" aria-label="Fechar aviso"><svg class="ico"><use href="#i-x"/></svg></button></div>
@@ -1854,6 +1875,21 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
 
   // ----- Navegador do Copiloto: tarefas em sites numa janela própria (sem mexer no mouse do usuário) -----
   var webBusy = null;
+  // ----- painel do navegador embutido no app (você vê tudo ao vivo) -----
+  if (D && D.web && D.web.onPanel) {
+    D.web.onPanel(function (st) {
+      var p = $("cpPanel");
+      p.classList.toggle("hidden", !st.open); p.style.width = (st.width || 0) + "px"; p.classList.toggle("work", !!st.working);
+      $("cpTitle").textContent = st.title || "Navegador do Copiloto";
+      $("cpUrl").textContent = (st.url || "").replace(/^https?:\/\/(www\.)?/, "").replace(/^about:blank$/, "");
+    });
+    Array.prototype.forEach.call(document.querySelectorAll("#cpPanel [data-n]"), function (b) { b.onclick = function () { D.web.nav(b.dataset.n); }; });
+    $("cpExt").onclick = function () { D.web.openExternal(); };
+    $("cpClose").onclick = function () {
+      if (webBusy) { var sb = webBusy.querySelector(".stop"); if (sb && !sb.disabled) sb.click(); }
+      D.web.close();
+    };
+  }
   // ----- permissão por site (igual à extensão / Claude in Chrome) -----
   function sitesOK() { try { return JSON.parse(localStorage.getItem("iac-sites") || "{}"); } catch (e) { return {}; } }
   function hostOf(u) { try { var x = new URL(u); return /^https?:$/.test(x.protocol) ? x.hostname.replace(/^www\./, "") : ""; } catch (e) { return ""; } }
@@ -1884,7 +1920,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
     var log = data.webLog = { goal: goal, steps: [], status: "running" };
     var card = document.createElement("div"); card.className = "agent";
     card.innerHTML = '<div class="ah"><svg class="ico" style="color:var(--ac)"><use href="#i-globe"/></svg><b>No navegador do Copiloto: ' + esc(goal) +
-      '</b><button class="btn show">Ver janela</button><button class="btn stop">Parar</button></div>' +
+      '</b><button class="btn show">Ver painel</button><button class="btn stop">Parar</button></div>' +
       '<div class="shotwrap hidden"><img alt="Navegador do Copiloto"></div><div class="obs hidden"></div><div class="alog"></div>';
     box.appendChild(card);
     var stopBtn = card.querySelector(".stop"), showBtn = card.querySelector(".show"), wrap = card.querySelector(".shotwrap"), img = wrap.querySelector("img"),
@@ -1893,10 +1929,12 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
     function nowLine(t) { var d = card.querySelector(".ln.cur"); if (!d) { d = document.createElement("div"); d.className = "ln cur"; alog.appendChild(d); } d.innerHTML = '<svg class="star spinstar" style="color:var(--ac)"><use href="#i-star"/></svg><span>' + esc(t) + "</span>"; alog.scrollTop = alog.scrollHeight; }
     function clearNow() { var d = card.querySelector(".ln.cur"); if (d) d.remove(); }
     function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+    var finished = false;
     function finish(status, msg, cls, answer) {
+      if (finished) return; finished = true;
       clearNow(); log.status = status; log.result = msg; if (answer) log.answer = answer;
       [stopBtn].forEach(function (b) { if (b.parentNode) b.remove(); });
-      line(msg, cls);
+      line(msg, cls); W.working(false).catch(function () {});
       if (answer) { var a = document.createElement("div"); a.className = "md"; a.style.cssText = "padding:4px 12px 12px"; a.innerHTML = md(answer); card.appendChild(a); }
       if (webBusy === card) webBusy = null;
       var cx = wrap.querySelector(".acur"); if (cx) cx.remove();
@@ -1928,20 +1966,23 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
       if (a.id != null) (page.elements || []).forEach(function (e) { if (e.id === a.id) lab = e.label; });
       return a.type === "navigate" ? "abriu " + a.url.replace(/^https?:\/\/(www\.)?/, "").slice(0, 60) : a.type === "click" ? "clicou" + (lab ? " em “" + lab.slice(0, 40) + "”" : "") :
         a.type === "type" ? "digitou “" + a.text.slice(0, 50) + "”" + (a.enter ? " + Enter" : "") : a.type === "select" ? "escolheu “" + a.value + "”" :
-        a.type === "key" ? "apertou " + a.key : a.type === "scroll" ? "rolou a página" : a.type === "back" ? "voltou" : a.type === "wait" ? "esperou" : a.type;
+        a.type === "key" ? "apertou " + a.key : a.type === "scroll" ? "rolou a página" : a.type === "back" ? "voltou" : a.type === "wait" ? "esperou" : a.type === "media" ? "vídeo: " + a.do + (a.seconds != null ? " " + a.seconds + "s" : "") : a.type;
     }
     if (webBusy) { finish("error", "O navegador do Copiloto já está ocupado com outra tarefa. Espere ou clique em Parar nela.", "err"); return; }
     webBusy = card;
-    stopBtn.onclick = function () { stopped = true; stopBtn.disabled = true; stopBtn.textContent = "Parando…"; };
+    // Parar é IMEDIATO (não espera a página responder)
+    stopBtn.onclick = function () { stopped = true; finish("stopped", "Parado por você.", "err"); };
+    function tmo(p, ms, what) { return Promise.race([p, new Promise(function (_, rej) { setTimeout(function () { rej(new Error(what + " demorou demais")); }, ms); })]); }
     if (W.onStop && !W.__stopHooked) { W.__stopHooked = true; W.onStop(function () { if (webBusy) { var sb = webBusy.querySelector(".stop"); if (sb && !sb.disabled) sb.click(); } }); }
     showBtn.onclick = function () { W.show(true); };
     function loop() {
       if (stopped) return finish("stopped", "Parado por você.", "err");
       if (step >= MAX) return finish("max", "Parei depois de " + MAX + " passos. Peça para continuar se precisar.", "err");
       step++;
-      nowLine(step === 1 ? "Planejando… (a janela só abre depois que você permitir)" : "Lendo a página… (passo " + step + ")");
+      if (finished) return;
+      nowLine(step === 1 ? "Planejando… (o painel do navegador abre depois que você permitir)" : "Lendo a página… (passo " + step + ")");
       var page;
-      return W.snapshot().then(function (pg) {
+      return tmo(W.snapshot(), 15000, "ler a página").then(function (pg) {
         page = pg; showShot(page, null);
         if (stopped) throw { stop: true };
         nowLine("Entendendo a página e decidindo o próximo passo…");
@@ -1976,7 +2017,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
           nowLine(plan.say); W.working(true, plan.say.slice(0, 60)).catch(function () {});
           var seq = [a].concat(plan.then || []), did = [];
           return seq.reduce(function (p, x) {
-            return p.then(function () { if (stopped) throw { stop: true }; return W.act(x).then(function (r) { if (r && r.cur) paintCursor(wrap, r.cur); if (x.type !== "wait") did.push(describe(x, page)); }); });
+            return p.then(function () { if (stopped) throw { stop: true }; return tmo(W.act(x), 25000, "a ação").then(function (r) { if (r && r.cur) paintCursor(wrap, r.cur); if (x.type !== "wait") did.push(describe(x, page)); }); });
           }, Promise.resolve()).then(function () {
             clearNow(); failed = 0; var t = plan.say + " (" + did.join(", ") + ")"; line(t); log.steps.push(t);
             return wait(250).then(loop);

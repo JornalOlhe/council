@@ -19,6 +19,10 @@ contextBridge.exposeInMainWorld("iaDesktop", {
     working: (on, status) => ipcRenderer.invoke("web:working", !!on, status || "").catch(clean),
     show: (focus) => ipcRenderer.invoke("web:show", !!focus).catch(clean),
     onStop: (cb) => { ipcRenderer.on("web:stop", () => cb()); },
+    close: () => ipcRenderer.invoke("web:close").catch(clean),
+    nav: (d) => ipcRenderer.invoke("web:nav", d).catch(clean),
+    openExternal: () => ipcRenderer.invoke("web:openExternal").catch(clean),
+    onPanel: (cb) => { ipcRenderer.on("web:panel", (_e, st) => cb(st)); },
   },
   ext: {
     info: () => ipcRenderer.invoke("ext:info").catch(clean),

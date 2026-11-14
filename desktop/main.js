@@ -7,7 +7,7 @@ const { spawn } = require("child_process");
 const path = require("path");
 const control = require("./control.js");
 const { CopilotBrowser } = require("./web.js");
-const browser = new CopilotBrowser();
+const browser = new CopilotBrowser(() => win, (st) => { if (win && !win.isDestroyed()) win.webContents.send("web:panel", st); });
 browser.onStop = () => { if (win && !win.isDestroyed()) win.webContents.send("web:stop"); }; // botão "Parar" da pílula na janela do Copiloto
 
 const SITE = process.env.IA_COUNCIL_URL || "https://council-one-sigma.vercel.app";
@@ -156,6 +156,9 @@ ipcMain.handle("web:snapshot", async (e) => { guard(e); return browser.snapshot(
 ipcMain.handle("web:act", async (e, a) => { guard(e); return browser.act(a || {}); });
 ipcMain.handle("web:working", async (e, on, status) => { guard(e); await browser.setWorking(!!on, String(status || "").slice(0, 80)); return true; });
 ipcMain.handle("web:show", (e, focus) => { guard(e); browser.show(!!focus); return true; });
+ipcMain.handle("web:close", (e) => { guard(e); browser.close(); return true; });
+ipcMain.handle("web:nav", (e, d) => { guard(e); browser.nav(String(d || "")); return true; });
+ipcMain.handle("web:openExternal", (e) => { guard(e); const u = browser.wc && browser.wc.getURL(); if (u && /^https?:/i.test(u)) shell.openExternal(u); return true; });
 
 // ---------- atualização automática do app (GitHub Releases) ----------
 function sendUpdate(st) {
@@ -317,6 +320,7 @@ function createWindow() {
     if (input.type === "keyDown" && input.key === "F5") win.webContents.reload();
     if (input.type === "keyDown" && input.control && input.shift && input.key.toLowerCase() === "i") win.webContents.toggleDevTools();
   });
+  win.on("closed", () => { browser.attached = false; browser.onResize = null; browser.working = false; });
   win.loadURL(SITE);
 }
 
