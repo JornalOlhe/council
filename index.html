@@ -247,12 +247,12 @@ body.collapsed #openSide{display:grid}
 .fcard .ft{flex:1;min-width:0}.fcard .ft b{display:block;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fcard .ft span{color:var(--mut);font-size:12.5px}
 .fcard .fb{display:flex;gap:6px;flex-wrap:wrap;padding:0 12px 12px}
-.fcard .thumb{height:150px;overflow:hidden;position:relative;border-top:1px solid var(--line);background:#fff;cursor:pointer}
-.fcard .thumb iframe{border:0;width:200%;height:300px;transform:scale(.5);transform-origin:0 0;pointer-events:none;background:#fff}
+.fcard .fthumb{height:150px;overflow:hidden;position:relative;border-top:1px solid var(--line);background:#fff;cursor:pointer}
+.fcard .fthumb iframe{border:0;width:200%;height:300px;transform:scale(.5);transform-origin:0 0;pointer-events:none;background:#fff}
 .fcard .mini{width:200%;transform:scale(.5);transform-origin:0 0;pointer-events:none;color:#2b2a28;font:15px/1.55 Calibri,"Segoe UI",system-ui,sans-serif}
 .fcard .mini .band{color:#fff;padding:26px 34px 20px}.fcard .mini .band h1{margin:0;font:700 30px/1.15 system-ui,sans-serif;color:#fff}.fcard .mini .band p{margin:6px 0 0;opacity:.92}
 .fcard .mini .bd{padding:18px 34px}.fcard .mini h2,.fcard .mini h3{margin:.8em 0 .3em}.fcard .mini table{border-collapse:collapse;width:100%}.fcard .mini th{color:#fff;text-align:left}.fcard .mini th,.fcard .mini td{padding:5px 8px;border:1px solid #e3e0d9}
-.fcard .thumb:after{content:"";position:absolute;inset:auto 0 0;height:50px;background:linear-gradient(transparent,#26262470)}
+.fcard .fthumb:after{content:"";position:absolute;inset:auto 0 0;height:50px;background:linear-gradient(transparent,#26262470)}
 .viewer .mbox{width:min(900px,100%);height:92vh}
 .viewer .vbody{flex:1;min-height:0;overflow:auto;background:#fff;color:#222;border-radius:0 0 16px 16px}
 .viewer .vbody iframe{border:0;width:100%;height:100%;display:block}
@@ -2391,7 +2391,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
       fc.innerHTML = '<div class="fh"><div class="fico" style="background:' + (FCOL[a.format] || "#555") + '">' + esc((a.format || "").toUpperCase()) + '</div><div class="ft"><b></b><span></span></div></div>' +
         (themed ? '<div class="ochips th">' + Object.keys(THEMES).map(function (k) { return '<button class="ochip' + (k === (a.theme || "laranja") ? " on" : "") + '" data-t="' + k + '"><span class="sw" style="background:#' + THEMES[k].a + '"></span>' + THEMES[k].name + "</button>"; }).join("") + "</div>" : "") +
         '<div class="fb" style="padding-top:10px"><button class="btn" data-a="view">Visualizar</button>' + (a.format === "zip" ? "" : '<button class="btn" data-a="edit">Editar</button>') + '<button class="btn" data-a="copy">Copiar texto</button><span style="flex:1"></span><button class="btn pri" data-a="dl">Baixar</button></div>' +
-        (blob && a.format === "html" ? '<div class="thumb"><iframe tabindex="-1"></iframe></div>' : blob && /^(pdf|docx|md)$/.test(a.format) ? '<div class="thumb"></div>' : "");
+        (blob && a.format === "html" ? '<div class="fthumb"><iframe tabindex="-1"></iframe></div>' : blob && /^(pdf|docx|md)$/.test(a.format) ? '<div class="fthumb"></div>' : "");
       fc.querySelector(".ft b").textContent = a.name; fc.querySelector(".ft span").textContent = info;
       if (blob && /^(pdf|docx|md)$/.test(a.format)) {
         var tc = THEMES[a.theme] || THEMES.laranja, mini = document.createElement("div"); mini.className = "mini";
@@ -2399,11 +2399,11 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
         mini.querySelector("h1").textContent = a.title || a.name; mini.querySelector("p").textContent = a.subtitle || "";
         Array.prototype.forEach.call(mini.querySelectorAll("h1:not(.band h1),h2,h3"), function (h) { h.style.color = "#" + tc.d; });
         Array.prototype.forEach.call(mini.querySelectorAll("th"), function (h) { h.style.background = "#" + tc.a; });
-        fc.querySelector(".thumb").appendChild(mini);
+        fc.querySelector(".fthumb").appendChild(mini);
       }
-      if (blob && a.format === "html") fc.querySelector(".thumb iframe").srcdoc = a.content;
+      if (blob && a.format === "html") fc.querySelector(".fthumb iframe").srcdoc = a.content;
       Array.prototype.forEach.call(fc.querySelectorAll(".th .ochip"), function (c) { c.onclick = function () { a.theme = c.dataset.t; saveHist(); render(); }; });
-      var th = fc.querySelector(".thumb"); if (th) th.onclick = function () { view(); };
+      var th = fc.querySelector(".fthumb"); if (th) th.onclick = function () { view(); };
       fc.querySelector('[data-a="view"]').onclick = view;
       var eb = fc.querySelector('[data-a="edit"]'); if (eb) eb.onclick = edit;
       fc.querySelector('[data-a="copy"]').onclick = function () { copy(a.format === "zip" ? a.files.map(function (f) { return "// " + f.name + "\n" + f.content; }).join("\n\n") : a.content, "Conteúdo copiado"); };
