@@ -10,6 +10,8 @@ globalThis.fetch = async (url, init = {}) => {
   const u = String(url);
   if (u.includes("generativelanguage") && u.includes("/models?"))
     return new Response(JSON.stringify({ models: [{ name: "models/gemini-3.8-flash", supportedGenerationMethods: ["generateContent"] }, { name: "models/gemini-9-flash-tts", supportedGenerationMethods: ["generateContent"] }] }), { status: 200 });
+  if (u.includes("geocoding-api.open-meteo")) return new Response(JSON.stringify({ results: [{ name: "Curitiba", admin1: "Paraná", country: "Brasil", latitude: -25.4, longitude: -49.3 }] }), { status: 200 });
+  if (u.includes("api.open-meteo.com")) return new Response(JSON.stringify({ current: { temperature_2m: 17.2, apparent_temperature: 16, relative_humidity_2m: 80, precipitation: 0, weather_code: 3, wind_speed_10m: 9 }, daily: { temperature_2m_min: [12, 11], temperature_2m_max: [21, 23], precipitation_probability_max: [40, 10], weather_code: [3, 1] } }), { status: 200 });
   if (u.endsWith("/models"))
     return new Response(JSON.stringify({ data: [{ id: "whisper-large-v3" }, { id: "llama-guard-4" }, { id: "qwen/qwen3.8-27b" }, { id: "openai/gpt-oss-120b-new" }, { id: "x/y:free" }] }), { status: 200 });
   const body = JSON.parse(init.body);
@@ -153,6 +155,19 @@ await t("auto: pergunta longa vai direto ao conselho sem chamar IA", async () =>
   const r = await run({ stage: "start", prompt: "Quero abrir uma loja online de roupas, qual plataforma usar e por quê, considerando custo?", mode: "auto" });
   assert.equal(r.json.mode, "council");
   assert.equal(calls.length, 0);
+});
+await t("pergunta simples (hora/data): só o presidente, com a hora do usuário, sem classificador", async () => {
+  const r = await run({ stage: "start", prompt: "que horas são?", mode: "auto", leader: "OpenRouter", now: "14/11/2026, 14:30:00", tz: "America/Sao_Paulo" });
+  assert.equal(r.json.mode, "chat");
+  assert.equal(r.json.judge, "OpenRouter");
+  assert.equal(calls.length, 1);
+  assert.ok(calls[0].body.messages[0].content.includes("14/11/2026, 14:30:00"));
+});
+await t("temperatura: busca o clima real da cidade citada", async () => {
+  const r = await run({ stage: "start", prompt: "qual a temperatura em Curitiba agora?", mode: "auto", leader: "Groq", now: "x", tz: "America/Sao_Paulo" });
+  assert.equal(r.json.mode, "chat");
+  const sys = calls.find((c) => c.name === "Groq").body.messages[0].content;
+  assert.ok(sys.includes("Curitiba, Paraná, Brasil: 17.2°C") && sys.includes("Open-Meteo"));
 });
 await t("rápido: o presidente escolhido responde sozinho", async () => {
   const r = await run({ stage: "start", prompt: "Explique DNS", mode: "quick", leader: "OpenRouter" });

@@ -283,6 +283,43 @@ async function ask(p, system, user, deadline, eff, maxTokens, images = [], depth
 // ---------- roteamento: conversa x conselho ----------
 const CASUAL = /^\s*(oi+|ol[aá]+|opa+|e a[ií]|eai|hey|hi|hello|bom dia|boa tarde|boa noite|tudo (bem|bom|certo)\??|como vai\??|obrigad[oa]s?|valeu+|vlw|blz|beleza|ok+|okay|show|top|legal|massa|teste|testando|kk+|haha+|rs+|tchau|at[eé] mais|quem [eé] voc[eê]s?\??|o que voc[eê]s? (faz|fazem)\??)[\s!.?,\p{Extended_Pictographic}]*$/iu;
 
+// Perguntas simples do dia a dia: o presidente responde sozinho, com dados reais (hora, data, clima)
+const QUICK = new RegExp([
+  "que horas?", "quantas horas", "horas s[aã]o", "hora (atual|certa|agora)", "que dia (é|e) hoje", "hoje (é|e) que dia", "data de hoje", "qual (é |e )?a data",
+  "dia da semana", "em que (ano|m[eê]s) (estamos|a gente)", "que m[eê]s", "que ano", "temperatura", "clima", "previs[aã]o do tempo", "vai chover", "t[aá] (chovendo|frio|calor)",
+  "est[aá] (chovendo|frio|calor|fazendo)", "tempo (hoje|agora|amanh[aã]|l[aá] fora)", "quantos graus", "faz frio", "faz calor", "umidade",
+  "quanto (é|e) \\d", "^\\s*\\d+[\\d\\s+\\-*/x×÷.,()]*[+\\-*/x×÷]\\s*\\d", "quantos dias (faltam|tem)", "(bom dia|boa tarde|boa noite).{0,20}(tudo|como)",
+].join("|"), "i");
+const WEATHER = /temperatura|clima|previs[aã]o|chov|frio|calor|graus|umidade|tempo (hoje|agora|amanh|l[aá])/i;
+const WCODE = { 0: "céu limpo", 1: "quase limpo", 2: "parcialmente nublado", 3: "nublado", 45: "neblina", 48: "neblina", 51: "garoa fraca", 53: "garoa", 55: "garoa forte",
+  61: "chuva fraca", 63: "chuva", 65: "chuva forte", 66: "chuva congelante", 67: "chuva congelante", 71: "neve fraca", 73: "neve", 75: "neve forte", 80: "pancadas de chuva fracas",
+  81: "pancadas de chuva", 82: "pancadas de chuva fortes", 95: "trovoadas", 96: "trovoadas com granizo", 99: "trovoadas com granizo" };
+
+function cityFrom(prompt, tz) {
+  const m = /\b(?:em|no|na|de|para|pra)\s+((?:[A-ZÁÂÃÉÊÍÓÔÕÚÇ][\wÀ-ú'.-]*)(?:\s+(?:de|do|da|dos|das|del)?\s*[A-ZÁÂÃÉÊÍÓÔÕÚÇ][\wÀ-ú'.-]*){0,3})/.exec(prompt);
+  if (m && !/^(Hoje|Amanhã|Agora)$/i.test(m[1])) return { name: m[1].trim(), fromTz: false };
+  const t = String(tz || "America/Sao_Paulo").split("/").pop().replace(/_/g, " ");
+  return { name: t, fromTz: true };
+}
+export async function weatherFacts(prompt, tz, deadline) {
+  const ms = () => Math.max(1500, Math.min(6000, deadline - Date.now()));
+  const city = cityFrom(prompt, tz);
+  const g = await timedFetch(`https://geocoding-api.open-meteo.com/v1/search?count=1&language=pt&name=${encodeURIComponent(city.name)}`, {}, ms());
+  const gj = await g.json();
+  const loc = gj && gj.results && gj.results[0];
+  if (!loc) return `Não encontrei a cidade "${city.name}" para buscar o clima.`;
+  const u = `https://api.open-meteo.com/v1/forecast?latitude=${loc.latitude}&longitude=${loc.longitude}&timezone=auto&forecast_days=2` +
+    "&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m" +
+    "&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weather_code";
+  const w = await (await timedFetch(u, {}, ms())).json();
+  const c = w.current || {}, d = w.daily || {};
+  const place = [loc.name, loc.admin1, loc.country].filter(Boolean).join(", ");
+  return `CLIMA AGORA em ${place}${city.fromTz ? " (cidade estimada pelo fuso horário do usuário)" : ""}: ${c.temperature_2m}°C, sensação ${c.apparent_temperature}°C, ` +
+    `${WCODE[c.weather_code] || "condição " + c.weather_code}, umidade ${c.relative_humidity_2m}%, vento ${c.wind_speed_10m} km/h, chuva agora ${c.precipitation} mm. ` +
+    `HOJE: mín ${d.temperature_2m_min && d.temperature_2m_min[0]}°C / máx ${d.temperature_2m_max && d.temperature_2m_max[0]}°C, chance de chuva ${d.precipitation_probability_max && d.precipitation_probability_max[0]}%. ` +
+    `AMANHÃ: mín ${d.temperature_2m_min && d.temperature_2m_min[1]}°C / máx ${d.temperature_2m_max && d.temperature_2m_max[1]}°C, ${WCODE[d.weather_code && d.weather_code[1]] || ""}, chance de chuva ${d.precipitation_probability_max && d.precipitation_probability_max[1]}%. (Fonte: Open-Meteo)`;
+}
+
 async function classify(fast, prompt, deadline) {
   try {
     const out = await ask(fast,
@@ -386,22 +423,30 @@ export default async function handler(req, res) {
       const mode = ["auto", "council", "quick"].includes(body.mode) ? body.mode : "auto";
       const fastest = providers.find((p) => p.name === "Groq") || providers.find((p) => p.kind !== "gemini") || providers[0];
       let route = mode === "quick" ? "chat" : mode === "council" ? "council" : null;
+      const quickFact = !images.length && prompt.length <= 160 && QUICK.test(prompt);
       if (!route) {
         if (images.length) route = "council";
-        else if (CASUAL.test(prompt)) route = "chat";
+        else if (CASUAL.test(prompt) || quickFact) route = "chat";
         else if (prompt.length <= 60) route = await classify(fastest, prompt, deadline);
         else route = "council";
       }
       if (route === "chat") {
-        const first = mode === "quick" ? leader : fastest;
+        const first = mode === "quick" || quickFact ? leader : fastest; // perguntas simples: só o presidente
+        const now = typeof body.now === "string" ? body.now.slice(0, 80) : "";
+        const tz = typeof body.tz === "string" ? body.tz.slice(0, 60) : "";
+        let facts = now ? `DATA E HORA ATUAIS DO USUÁRIO: ${now}${tz ? " (fuso " + tz + ")" : ""}.` : "";
+        if (WEATHER.test(prompt) && !images.length) {
+          try { facts += "\n" + await weatherFacts(prompt, tz, Math.min(deadline, Date.now() + 9000)); }
+          catch (e) { facts += "\n(Não consegui buscar o clima agora: " + e.message + ".)"; }
+        }
         const order = [first, ...providers.filter((p) => p !== first)];
         const team = providers.map((p) => `${p.name} (${modelLabel(p.model)})`).join(", ");
         for (const p of order) {
           if (images.length && p.kind !== "gemini") continue;
           try {
             const text = await ask(p,
-              `Você é o IA Council, um assistente formado por um conselho de IAs (${team}). Responda SEMPRE em português do Brasil, de forma natural, cordial e direta, como um assistente de conversa. Para saudações e papo casual, responda em 1 ou 2 frases e ofereça ajuda. Não use títulos nem listas a menos que ajudem. Não invente fatos. Se a pessoa pedir algo que mereça análise profunda, responda o essencial e sugira mandar a pergunta completa para o conselho debater.`,
-              prompt, deadline, mode === "quick" ? eff : EFFORTS.low, mode === "quick" ? eff.tokens : 1200, images);
+              `Você é o IA Council, um assistente formado por um conselho de IAs (${team}). Responda SEMPRE em português do Brasil, de forma natural, cordial e direta, como um assistente de conversa. Para saudações, papo casual e perguntas simples (hora, data, clima, contas), responda em 1 ou 2 frases. Não use títulos nem listas a menos que ajudem. Não invente fatos: para hora, data e clima use SOMENTE os dados reais abaixo. Se a pessoa pedir algo que mereça análise profunda, responda o essencial e sugira mandar a pergunta completa para o conselho debater.${facts ? "\n\n" + facts : ""}`,
+              prompt, deadline, mode === "quick" ? eff : EFFORTS.low, mode === "quick" ? eff.tokens : 1500, images);
             return send(200, { ...info, mode: "chat", final: text, judge: p.name, judgeModel: p.lastUsed || p.model, errors });
           } catch (e) {
             errors.push({ name: p.name, stage: "Resposta", error: e.message });

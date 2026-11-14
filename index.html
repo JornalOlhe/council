@@ -241,6 +241,14 @@ body.collapsed #openSide{display:grid}
 .acard.col .row1{display:flex;align-items:center;gap:12px}
 
 .mbox.auto{height:auto;max-height:92vh;overflow:auto}
+.camwrap{position:relative;margin:16px 20px 0;border-radius:12px;overflow:hidden;background:#000;aspect-ratio:16/10;display:grid;place-items:center}
+.camwrap video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+.camwrap video.back{transform:none}
+.camst{position:absolute;inset:auto 0 12px;text-align:center;color:#ddd;font-size:13.5px;text-shadow:0 1px 4px #000}
+.camflash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .25s}
+.camflash.on{opacity:.85;transition:none}
+.camrow{display:flex;align-items:center;gap:8px;padding:14px 20px 18px}
+.camrow .sp{flex:1}
 .pcbody{padding:20px 24px 24px;display:flex;flex-direction:column;gap:16px;font-size:14.5px}
 .pcstep{display:flex;gap:14px;align-items:flex-start}
 .pcstep .n{width:26px;height:26px;border-radius:50%;background:#ffffff14;display:grid;place-items:center;font-weight:600;font-size:13px;flex:none}
@@ -559,6 +567,13 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
       <div class="pcstep"><span class="n">3</span><div class="c"><b>Carregue a pasta</b><p>Clique em <b>Carregar sem compactação</b> e escolha a pasta <b>IA Council</b>. Depois recarregue esta página (F5).</p></div></div>
       <div class="pcsafe">🔒 Ela só aceita comandos deste site, trabalha só nas abas do grupo Council, não digita senhas e pede confirmação antes de comprar ou enviar. Enquanto trabalha, o navegador mostra o aviso de que a extensão está “depurando” a aba — é assim que ela clica e digita sem mexer no seu mouse.</div>
     </div>
+  </div>
+</div>
+<div class="modal hidden" id="camModal" role="dialog" aria-modal="true" aria-labelledby="camTitle">
+  <div class="mbox auto" style="width:min(720px,100%)">
+    <div class="mhead"><span id="camTitle">Tirar foto</span><button class="ib" id="camClose" aria-label="Fechar"><svg class="ico"><use href="#i-x"/></svg></button></div>
+    <div class="camwrap"><video id="camVideo" autoplay playsinline muted></video><div class="camflash" id="camFlash"></div><div class="camst" id="camStat">Abrindo a câmera…</div></div>
+    <div class="camrow"><button class="btn hidden" id="camSwitch">Trocar câmera</button><span class="sp"></span><button class="btn" id="camFile">Escolher arquivo</button><button class="btn pri" id="camSnap" disabled>📸 Tirar foto</button></div>
   </div>
 </div>
 <div class="modal hidden" id="upModal" role="dialog" aria-modal="true" aria-labelledby="upTitle">
@@ -924,6 +939,43 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
   }
   function pick() { $("upModal").classList.remove("hidden"); $("upPick").focus(); }
   function closeUp() { $("upModal").classList.add("hidden"); }
+  // ----- câmera: mostra a imagem ao vivo e tira a foto -----
+  var camStream = null, camFacing = "user", camCount = 0;
+  function stopCam() { if (camStream) { camStream.getTracks().forEach(function (t) { t.stop(); }); camStream = null; } }
+  function closeCam() { stopCam(); $("camModal").classList.add("hidden"); }
+  function startCam() {
+    stopCam(); $("camSnap").disabled = true; $("camStat").textContent = "Abrindo a câmera…"; $("camStat").style.display = "";
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { $("camStat").textContent = "Este navegador não dá acesso à câmera. Use “Escolher arquivo”."; return; }
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: camFacing, width: { ideal: 1280 }, height: { ideal: 800 } }, audio: false }).then(function (st) {
+      camStream = st; var v = $("camVideo"); v.srcObject = st; v.classList.toggle("back", camFacing === "environment");
+      v.onloadedmetadata = function () { v.play().catch(function () {}); $("camSnap").disabled = false; $("camStat").style.display = "none"; };
+      navigator.mediaDevices.enumerateDevices().then(function (ds) { camCount = ds.filter(function (d) { return d.kind === "videoinput"; }).length; $("camSwitch").classList.toggle("hidden", camCount < 2); });
+    }, function (e) {
+      $("camStat").textContent = e && e.name === "NotAllowedError" ? "Permita o acesso à câmera (ícone na barra de endereço) e tente de novo."
+        : e && (e.name === "NotFoundError" || e.name === "OverconstrainedError") ? "Nenhuma câmera encontrada neste computador. Use “Escolher arquivo”."
+        : "Não consegui abrir a câmera: " + ((e && e.message) || "erro");
+    });
+  }
+  function openCam() {
+    if (images.length >= MAX_IMG) { toast("Máximo de " + MAX_IMG + " fotos"); return; }
+    $("camModal").classList.remove("hidden"); startCam();
+  }
+  $("camClose").onclick = closeCam;
+  $("camModal").addEventListener("click", function (e) { if (e.target === $("camModal")) closeCam(); });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !$("camModal").classList.contains("hidden")) closeCam(); });
+  $("camSwitch").onclick = function () { camFacing = camFacing === "user" ? "environment" : "user"; startCam(); };
+  $("camFile").onclick = function () { closeCam(); $("cam").click(); };
+  $("camSnap").onclick = function () {
+    var v = $("camVideo"); if (!v.videoWidth) return;
+    var s = Math.min(1, 1280 / Math.max(v.videoWidth, v.videoHeight)), c = document.createElement("canvas");
+    c.width = Math.round(v.videoWidth * s); c.height = Math.round(v.videoHeight * s);
+    var x = c.getContext("2d");
+    if (camFacing === "user") { x.translate(c.width, 0); x.scale(-1, 1); } // mesma imagem que você viu (espelhada)
+    x.drawImage(v, 0, 0, c.width, c.height);
+    var f = $("camFlash"); f.classList.add("on"); setTimeout(function () { f.classList.remove("on"); }, 60);
+    images.push(c.toDataURL("image/jpeg", 0.85)); renderThumbs();
+    setTimeout(function () { closeCam(); toast("Foto anexada"); ta.focus(); }, 280);
+  };
   $("upClose").onclick = closeUp;
   $("upModal").addEventListener("click", function (e) { if (e.target === $("upModal")) closeUp(); });
   document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeUp(); });
@@ -941,17 +993,11 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
     var p = popover($("plus"),
       '<button class="it" data-a="up">' + ic("clip") + 'Fazer upload ou adicionar arquivos<span class="r">Ctrl+U</span></button>' +
       '<button class="it" data-a="cam">' + ic("cam") + "Tirar foto</button>" +
-      (appMode === "copilot" ? '<div class="note">No copiloto, uma foto anexada vira pergunta sobre a imagem.</div>' : "<hr>" +
-      '<button class="it" data-a="rounds">' + ic("users") + 'Debates<span class="r">' + RN[prefs.rounds] + "</span>" + ic("right") + "</button>" +
-      '<button class="it" data-a="effort">' + ic("gear") + 'Esforço<span class="r">' + EFF[prefs.effort][0] + "</span>" + ic("right") + "</button>" +
-      '<button class="it" data-a="mode">' + ic("chat") + 'Modo de resposta<span class="r">' + MODES[prefs.mode][0] + "</span>" + ic("right") + "</button>" +
-      '<div class="note">Dica: cole uma imagem com Ctrl+V ou arraste para a caixa.</div>'));
+      (appMode === "copilot" ? '<div class="note">No copiloto, uma foto anexada vira pergunta sobre a imagem.</div>' : "") +
+      '<hr><div class="note">Dica: cole uma imagem com Ctrl+V ou arraste para a caixa.</div>');
     p.querySelector('[data-a="up"]').onclick = function () { closePop(); pick(); };
-    p.querySelector('[data-a="cam"]').onclick = function () { closePop(); $("cam").click(); };
-    if (appMode === "copilot") return;
-    p.querySelector('[data-a="rounds"]').onclick = function () { openPicker($("modelPick"), "rounds"); };
-    p.querySelector('[data-a="effort"]').onclick = function () { openPicker($("modelPick"), "effort"); };
-    p.querySelector('[data-a="mode"]').onclick = function () { openModes($("modePick")); };
+    p.querySelector('[data-a="cam"]').onclick = function () { closePop(); openCam(); };
+
   };
   var comp = $("composer");
   ["dragenter", "dragover"].forEach(function (ev) { comp.addEventListener(ev, function (e) { e.preventDefault(); comp.classList.add("over"); }); });
@@ -1080,15 +1126,10 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
     e.stopPropagation();
     var p = popover($("meBtn"),
       '<div class="hd">' + esc(location.host) + "</div>" +
-      '<button class="it" data-a="members">' + ic("users") + 'Membros do conselho<span class="r">' + members.length + "</span></button>" +
-      '<button class="it" data-a="clear">' + ic("trash") + "Limpar histórico</button>" +
-      "<hr>" +
       '<button class="it" data-a="src">' + ic("code") + "Código-fonte no GitHub</button>" +
       '<button class="it" data-a="about">' + ic("info") + "Como funciona</button>" +
       (D ? "<hr>" + '<button class="it" data-a="upd">' + ic("retry") + 'Procurar atualizações<span class="r">' + esc(pc.version ? "app " + pc.version : "") + "</span></button>" +
         (sget(PERMK) === "always" ? '<button class="it" data-a="perm">' + ic("monitor") + "Pedir permissão antes de mexer no PC</button>" : "") : ""));
-    p.querySelector('[data-a="members"]').onclick = function () { openPicker($("meBtn")); };
-    p.querySelector('[data-a="clear"]').onclick = function () { history = []; saveHist(); closePop(); goHome(); toast("Histórico apagado"); };
     p.querySelector('[data-a="src"]').onclick = function () { closePop(); window.open("https://github.com/JornalOlhe/council", "_blank", "noopener"); };
     p.querySelector('[data-a="about"]').onclick = function () { closePop(); goHome(); ta.value = "Como funciona o IA Council?"; autosize(); updSend(); };
     var bu = p.querySelector('[data-a="upd"]');
@@ -1270,7 +1311,9 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
     var L = leaderMember();
     var full = withFiles(prompt, fl);
     var ctxPrompt = cur() && cur().kind !== "copilot" ? withContext(full) : full;
-    var base = { prompt: ctxPrompt, effort: prefs.effort, mode: mode, leader: L ? L.name : "", models: prefs.models };
+    var base = { prompt: ctxPrompt, effort: prefs.effort, mode: mode, leader: L ? L.name : "", models: prefs.models,
+      now: new Date().toLocaleString("pt-BR", { weekday: "long", year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" }),
+      tz: (Intl.DateTimeFormat().resolvedOptions().timeZone || "") };
     var fnames = fl.map(function (f) { return f.name; });
     var T = beginTurn("council", prompt, sent, fnames), h = T.h, k = T.k;
     var job = jobs[h.id + ":" + k] = { done: [], now: [mode === "quick" ? "Pensando…" : sent.length ? "O olho do conselho está lendo as fotos…" : "Lendo sua mensagem…", ""] };
