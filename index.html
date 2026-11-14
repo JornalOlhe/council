@@ -234,10 +234,10 @@ body.collapsed #openSide{display:grid}
 .cnote{color:var(--mut);font-size:12.5px;margin-top:14px;text-align:center;max-width:560px}
 .acards{display:flex;flex-direction:column;gap:8px;margin:4px 0 12px}
 .acard{display:flex;align-items:center;gap:12px;border:1px solid var(--line);background:#ffffff06;border-radius:12px;padding:10px 12px;font-size:14.5px}
-.chips{display:flex;flex-wrap:wrap;gap:6px;padding:8px 10px 0}
-.chip{border:1px solid var(--line2);background:#ffffff08;color:#d6d3cb;border-radius:999px;padding:4px 11px;font-size:12.5px;cursor:pointer;transition:background .15s,border-color .15s}
-.chip:hover{background:#ffffff14}.chip.on{background:var(--ac);border-color:var(--ac);color:#fff}
-.chip .sw{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:0}
+.ochips{display:flex;flex-wrap:wrap;gap:6px;padding:8px 10px 0}
+.ochip{border:1px solid var(--line2);background:#ffffff08;color:#d6d3cb;border-radius:999px;padding:4px 11px;font-size:12.5px;cursor:pointer;transition:background .15s,border-color .15s}
+.ochip:hover{background:#ffffff14}.ochip.on{background:var(--ac);border-color:var(--ac);color:#fff}
+.ochip .sw{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:0}
 .genimg .gi img{cursor:zoom-in}
 .lbox{position:fixed;inset:0;z-index:80;background:#000e;display:grid;place-items:center;padding:24px;cursor:zoom-out}
 .lbox img{max-width:100%;max-height:100%;border-radius:10px;box-shadow:0 20px 70px #000}
@@ -249,6 +249,9 @@ body.collapsed #openSide{display:grid}
 .fcard .fb{display:flex;gap:6px;flex-wrap:wrap;padding:0 12px 12px}
 .fcard .thumb{height:150px;overflow:hidden;position:relative;border-top:1px solid var(--line);background:#fff;cursor:pointer}
 .fcard .thumb iframe{border:0;width:200%;height:300px;transform:scale(.5);transform-origin:0 0;pointer-events:none;background:#fff}
+.fcard .mini{width:200%;transform:scale(.5);transform-origin:0 0;pointer-events:none;color:#2b2a28;font:15px/1.55 Calibri,"Segoe UI",system-ui,sans-serif}
+.fcard .mini .band{color:#fff;padding:26px 34px 20px}.fcard .mini .band h1{margin:0;font:700 30px/1.15 system-ui,sans-serif;color:#fff}.fcard .mini .band p{margin:6px 0 0;opacity:.92}
+.fcard .mini .bd{padding:18px 34px}.fcard .mini h2,.fcard .mini h3{margin:.8em 0 .3em}.fcard .mini table{border-collapse:collapse;width:100%}.fcard .mini th{color:#fff;text-align:left}.fcard .mini th,.fcard .mini td{padding:5px 8px;border:1px solid #e3e0d9}
 .fcard .thumb:after{content:"";position:absolute;inset:auto 0 0;height:50px;background:linear-gradient(transparent,#26262470)}
 .viewer .mbox{width:min(900px,100%);height:92vh}
 .viewer .vbody{flex:1;min-height:0;overflow:auto;background:#fff;color:#222;border-radius:0 0 16px 16px}
@@ -2386,13 +2389,20 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
       try { blob = MAKE.build(a); } catch (e) { err = e.message; }
       var info = err ? "Não consegui montar: " + err : (a.format || "").toUpperCase() + " · " + fmtSize(blob.size) + (a.format === "zip" ? " · " + a.files.length + " arquivo" + (a.files.length > 1 ? "s" : "") : "") + (a.title ? " · " + a.title : "");
       fc.innerHTML = '<div class="fh"><div class="fico" style="background:' + (FCOL[a.format] || "#555") + '">' + esc((a.format || "").toUpperCase()) + '</div><div class="ft"><b></b><span></span></div></div>' +
-        (themed ? '<div class="chips th">' + Object.keys(THEMES).map(function (k) { return '<button class="chip' + (k === (a.theme || "laranja") ? " on" : "") + '" data-t="' + k + '"><span class="sw" style="background:#' + THEMES[k].a + '"></span>' + THEMES[k].name + "</button>"; }).join("") + "</div>" : "") +
+        (themed ? '<div class="ochips th">' + Object.keys(THEMES).map(function (k) { return '<button class="ochip' + (k === (a.theme || "laranja") ? " on" : "") + '" data-t="' + k + '"><span class="sw" style="background:#' + THEMES[k].a + '"></span>' + THEMES[k].name + "</button>"; }).join("") + "</div>" : "") +
         '<div class="fb" style="padding-top:10px"><button class="btn" data-a="view">Visualizar</button>' + (a.format === "zip" ? "" : '<button class="btn" data-a="edit">Editar</button>') + '<button class="btn" data-a="copy">Copiar texto</button><span style="flex:1"></span><button class="btn pri" data-a="dl">Baixar</button></div>' +
-        (blob && (a.format === "pdf" || a.format === "html") ? '<div class="thumb"><iframe tabindex="-1"></iframe></div>' : "");
+        (blob && a.format === "html" ? '<div class="thumb"><iframe tabindex="-1"></iframe></div>' : blob && /^(pdf|docx|md)$/.test(a.format) ? '<div class="thumb"></div>' : "");
       fc.querySelector(".ft b").textContent = a.name; fc.querySelector(".ft span").textContent = info;
-      if (blob && a.format === "pdf") { var u = URL.createObjectURL(blob); fc.querySelector(".thumb iframe").src = u + "#toolbar=0&navpanes=0&view=FitH"; }
+      if (blob && /^(pdf|docx|md)$/.test(a.format)) {
+        var tc = THEMES[a.theme] || THEMES.laranja, mini = document.createElement("div"); mini.className = "mini";
+        mini.innerHTML = '<div class="band" style="background:#' + tc.a + '"><h1></h1><p></p></div><div class="bd md">' + md(String(a.content).slice(0, 2500)) + "</div>";
+        mini.querySelector("h1").textContent = a.title || a.name; mini.querySelector("p").textContent = a.subtitle || "";
+        Array.prototype.forEach.call(mini.querySelectorAll("h1:not(.band h1),h2,h3"), function (h) { h.style.color = "#" + tc.d; });
+        Array.prototype.forEach.call(mini.querySelectorAll("th"), function (h) { h.style.background = "#" + tc.a; });
+        fc.querySelector(".thumb").appendChild(mini);
+      }
       if (blob && a.format === "html") fc.querySelector(".thumb iframe").srcdoc = a.content;
-      Array.prototype.forEach.call(fc.querySelectorAll(".th .chip"), function (c) { c.onclick = function () { a.theme = c.dataset.t; saveHist(); render(); }; });
+      Array.prototype.forEach.call(fc.querySelectorAll(".th .ochip"), function (c) { c.onclick = function () { a.theme = c.dataset.t; saveHist(); render(); }; });
       var th = fc.querySelector(".thumb"); if (th) th.onclick = function () { view(); };
       fc.querySelector('[data-a="view"]').onclick = view;
       var eb = fc.querySelector('[data-a="edit"]'); if (eb) eb.onclick = edit;
@@ -2471,8 +2481,8 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
         var gi = document.createElement("div"); gi.className = "genimg";
         var sizeKey = a.width > a.height ? "paisagem" : a.height > a.width ? "retrato" : "quadrado";
         gi.innerHTML = '<div class="gi"><div class="gl"></div><img alt="" style="opacity:0"></div>' +
-          '<div class="chips st">' + Object.keys(IMG_STYLES).map(function (k) { return '<button class="chip' + (k === a.style ? " on" : "") + '" data-s="' + k + '">' + IMG_STYLES[k][0] + "</button>"; }).join("") + "</div>" +
-          '<div class="chips sz">' + Object.keys(IMG_SIZES).map(function (k) { return '<button class="chip' + (k === sizeKey ? " on" : "") + '" data-z="' + k + '">' + IMG_SIZES[k][0] + "</button>"; }).join("") + "</div>" +
+          '<div class="ochips st">' + Object.keys(IMG_STYLES).map(function (k) { return '<button class="ochip' + (k === a.style ? " on" : "") + '" data-s="' + k + '">' + IMG_STYLES[k][0] + "</button>"; }).join("") + "</div>" +
+          '<div class="ochips sz">' + Object.keys(IMG_SIZES).map(function (k) { return '<button class="ochip' + (k === sizeKey ? " on" : "") + '" data-z="' + k + '">' + IMG_SIZES[k][0] + "</button>"; }).join("") + "</div>" +
           '<div class="gb"><span></span><button class="btn">↻ Outra versão</button><button class="btn pri">Baixar</button></div>';
         var im = gi.querySelector("img"), gl = gi.querySelector(".gl"), gbs = gi.querySelectorAll(".gb button");
         gi.querySelector(".gb span").textContent = a.prompt; gi.querySelector(".gb span").title = a.prompt;
@@ -2483,9 +2493,9 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
           im.onerror = function () { gl.innerHTML = '<span>O gerador gratuito está ocupado.<br><button class="btn" style="margin-top:8px">Tentar de novo</button></span>'; gl.querySelector("button").onclick = function () { a.seed++; loadImg(); }; };
           im.src = imageURL(a, a.seed); im.alt = a.prompt; void ratio;
         };
-        Array.prototype.forEach.call(gi.querySelectorAll(".st .chip"), function (c) { c.onclick = function () {
+        Array.prototype.forEach.call(gi.querySelectorAll(".st .ochip"), function (c) { c.onclick = function () {
           gi.querySelector(".st .on").classList.remove("on"); c.classList.add("on"); a.style = c.dataset.s; saveHist(); loadImg(); }; });
-        Array.prototype.forEach.call(gi.querySelectorAll(".sz .chip"), function (c) { c.onclick = function () {
+        Array.prototype.forEach.call(gi.querySelectorAll(".sz .ochip"), function (c) { c.onclick = function () {
           gi.querySelector(".sz .on").classList.remove("on"); c.classList.add("on"); var z = IMG_SIZES[c.dataset.z]; a.width = z[1]; a.height = z[2]; saveHist(); loadImg(); }; });
         im.onclick = function () { var lb = document.createElement("div"); lb.className = "lbox"; lb.innerHTML = "<img>"; lb.querySelector("img").src = im.src; lb.onclick = function () { lb.remove(); }; document.body.appendChild(lb); };
         gbs[0].onclick = function () { a.seed = Math.floor(Math.random() * 1e9); saveHist(); loadImg(); };
