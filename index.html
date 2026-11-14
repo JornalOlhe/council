@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IA Council</title>
+<style>
+:root{--bg:#0b0d12;--card:#141823;--card2:#1b2130;--line:#262d3f;--tx:#e8ebf3;--mut:#8b94ab;--ac:#7c8cff;--ac2:#b07cff;--ok:#3ddc97;--warn:#ffb454;--err:#ff6b6b}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(1200px 600px at 50% -200px,#1a2040,var(--bg));color:var(--tx);font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;min-height:100vh}
+main{max-width:860px;margin:0 auto;padding:28px 16px 80px}
+h1{margin:0;font-size:2rem;letter-spacing:-.02em;background:linear-gradient(90deg,var(--ac),var(--ac2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{color:var(--mut);margin:4px 0 24px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:16px}
+label{display:block;font-size:.85rem;color:var(--mut);margin-bottom:6px}
+textarea,input,select{width:100%;background:var(--card2);color:var(--tx);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font:inherit}
+textarea{min-height:140px;resize:vertical}
+textarea:focus,input:focus,select:focus{outline:2px solid var(--ac);border-color:transparent}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+@media(max-width:560px){.row{grid-template-columns:1fr}}
+.drop{border:2px dashed var(--line);border-radius:12px;padding:16px;text-align:center;color:var(--mut);cursor:pointer;margin-top:14px;transition:.15s}
+.drop:hover,.drop.over{border-color:var(--ac);color:var(--tx);background:#1b2140}
+.thumbs{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+.thumb{position:relative;width:84px;height:84px;border-radius:10px;overflow:hidden;border:1px solid var(--line)}
+.thumb img{width:100%;height:100%;object-fit:cover}
+.thumb button{position:absolute;top:3px;right:3px;width:22px;height:22px;border:0;border-radius:50%;background:#000a;color:#fff;cursor:pointer;line-height:1}
+.go{width:100%;margin-top:16px;padding:14px;border:0;border-radius:12px;font:600 1rem inherit;color:#fff;cursor:pointer;background:linear-gradient(90deg,var(--ac),var(--ac2))}
+.go:disabled{opacity:.6;cursor:wait}
+.status{margin-top:12px;color:var(--mut);display:none;align-items:center;gap:10px}
+.spin{width:16px;height:16px;border:2px solid var(--line);border-top-color:var(--ac);border-radius:50%;animation:s 1s linear infinite}
+@keyframes s{to{transform:rotate(360deg)}}
+.error{background:#3a1820;border:1px solid var(--err);color:#ffc9c9;border-radius:12px;padding:12px;margin-top:14px;display:none}
+.warn{background:#3a2d14;border:1px solid var(--warn);color:#ffe0b0;border-radius:12px;padding:12px;margin-top:12px;font-size:.9rem}
+.final{border-color:var(--ac);box-shadow:0 0 0 1px var(--ac) inset,0 10px 40px #7c8cff22}
+.tags{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px}
+.tag{font-size:.8rem;padding:3px 10px;border-radius:999px;background:var(--card2);border:1px solid var(--line)}
+.tag.j{border-color:var(--ok);color:var(--ok)}
+.md h2{font-size:1.1rem;margin:18px 0 6px;color:var(--ac)}
+.md p{margin:6px 0}.md ul{padding-left:20px;margin:6px 0}
+details{background:var(--card);border:1px solid var(--line);border-radius:12px;margin-bottom:10px}
+summary{cursor:pointer;padding:12px 16px;font-weight:600}
+.ans{padding:0 16px 14px}.ans h4{margin:12px 0 4px;color:var(--ac2)}
+#result{display:none}
+</style>
+</head>
+<body>
+<main>
+  <h1>IA Council</h1>
+  <p class="sub">Várias IAs respondem, debatem entre si e um presidente decide.</p>
+
+  <div class="card">
+    <label for="prompt">Seu prompt</label>
+    <textarea id="prompt" maxlength="6000" placeholder="Digite sua pergunta ou cole um texto… (você também pode colar imagens com Ctrl+V)"></textarea>
+
+    <div class="drop" id="drop">📷 Clique, arraste ou cole (Ctrl+V) até 4 fotos</div>
+    <input type="file" id="file" accept="image/*" multiple hidden>
+    <div class="thumbs" id="thumbs"></div>
+
+    <div class="row">
+      <div>
+        <label for="rounds">Rodadas de debate</label>
+        <select id="rounds"><option value="0">0 — sem debate</option><option value="1" selected>1 rodada</option><option value="2">2 rodadas</option></select>
+      </div>
+      <div>
+        <label for="code">Código de acesso (se exigido)</label>
+        <input id="code" type="password" autocomplete="off" placeholder="opcional">
+      </div>
+    </div>
+
+    <button class="go" id="go">Convocar o conselho</button>
+    <div class="status" id="status"><div class="spin"></div><span>O conselho está deliberando… pode levar até 1 minuto.</span></div>
+    <div class="error" id="error" role="alert"></div>
+  </div>
+
+  <div id="result">
+    <div class="card final">
+      <div class="tags" id="tags"></div>
+      <div class="md" id="final"></div>
+      <div id="warns"></div>
+    </div>
+    <div id="details"></div>
+  </div>
+</main>
+
+<script>
+(function () {
+  var MAX_IMG = 4, images = [];
+  var $ = function (id) { return document.getElementById(id); };
+
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  // Markdown mínimo: títulos, negrito, listas. Sempre escapa antes.
+  function md(src) {
+    var out = [], inList = false;
+    String(src || "").split("\n").forEach(function (raw) {
+      var l = esc(raw).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+      var h = /^#{1,6}\s+(.*)$/.exec(l), li = /^\s*[-*•]\s+(.*)$/.exec(l);
+      if (li) { if (!inList) { out.push("<ul>"); inList = true; } out.push("<li>" + li[1] + "</li>"); return; }
+      if (inList) { out.push("</ul>"); inList = false; }
+      if (h) out.push("<h2>" + h[1] + "</h2>");
+      else if (l.trim()) out.push("<p>" + l + "</p>");
+    });
+    if (inList) out.push("</ul>");
+    return out.join("");
+  }
+
+  try { $("code").value = localStorage.getItem("iacouncil_code") || ""; } catch (e) {}
+
+  function renderThumbs() {
+    var box = $("thumbs"); box.innerHTML = "";
+    images.forEach(function (src, i) {
+      var d = document.createElement("div"); d.className = "thumb";
+      var im = document.createElement("img"); im.src = src; im.alt = "foto " + (i + 1);
+      var b = document.createElement("button"); b.type = "button"; b.textContent = "×"; b.title = "Remover";
+      b.onclick = function () { images.splice(i, 1); renderThumbs(); };
+      d.appendChild(im); d.appendChild(b); box.appendChild(d);
+    });
+  }
+
+  function resize(file) {
+    return new Promise(function (resolve, reject) {
+      var url = URL.createObjectURL(file), img = new Image();
+      img.onload = function () {
+        var s = Math.min(1, 1280 / Math.max(img.width, img.height));
+        var c = document.createElement("canvas");
+        c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+        var x = c.getContext("2d"); x.fillStyle = "#fff"; x.fillRect(0, 0, c.width, c.height);
+        x.drawImage(img, 0, 0, c.width, c.height);
+        URL.revokeObjectURL(url);
+        resolve(c.toDataURL("image/jpeg", 0.8));
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error("imagem inválida")); };
+      img.src = url;
+    });
+  }
+
+  function addFiles(files) {
+    var list = Array.prototype.slice.call(files).filter(function (f) { return /^image\//.test(f.type); });
+    if (!list.length) return;
+    var room = MAX_IMG - images.length;
+    if (list.length > room) showError("Máximo de " + MAX_IMG + " fotos; as extras foram ignoradas.");
+    list.slice(0, Math.max(0, room)).reduce(function (p, f) {
+      return p.then(function () {
+        return resize(f).then(function (d) { images.push(d); renderThumbs(); }, function () { showError("Não consegui ler uma das imagens."); });
+      });
+    }, Promise.resolve());
+  }
+
+  $("drop").onclick = function () { $("file").click(); };
+  $("file").onchange = function (e) { addFiles(e.target.files); e.target.value = ""; };
+  ["dragenter", "dragover"].forEach(function (ev) { $("drop").addEventListener(ev, function (e) { e.preventDefault(); $("drop").classList.add("over"); }); });
+  ["dragleave", "drop"].forEach(function (ev) { $("drop").addEventListener(ev, function (e) { e.preventDefault(); $("drop").classList.remove("over"); }); });
+  $("drop").addEventListener("drop", function (e) { addFiles(e.dataTransfer.files); });
+  document.addEventListener("paste", function (e) {
+    var fs = []; var items = (e.clipboardData && e.clipboardData.items) || [];
+    for (var i = 0; i < items.length; i++) if (items[i].kind === "file") { var f = items[i].getAsFile(); if (f) fs.push(f); }
+    if (fs.length) addFiles(fs);
+  });
+
+  function showError(m) { var e = $("error"); e.textContent = m; e.style.display = "block"; }
+  function clearError() { $("error").style.display = "none"; }
+
+  $("go").onclick = function () {
+    clearError();
+    var prompt = $("prompt").value.trim();
+    if (!prompt) return showError("Escreva um prompt primeiro.");
+    var code = $("code").value;
+    try { localStorage.setItem("iacouncil_code", code); } catch (e) {}
+    $("go").disabled = true; $("status").style.display = "flex"; $("result").style.display = "none";
+
+    var headers = { "Content-Type": "application/json" };
+    if (code) headers["x-access-code"] = code;
+    fetch("/api/council", {
+      method: "POST", headers: headers,
+      body: JSON.stringify({ prompt: prompt, images: images, debateRounds: parseInt($("rounds").value, 10) })
+    }).then(function (r) {
+      return r.text().then(function (t) {
+        var j; try { j = JSON.parse(t); } catch (e) { j = { error: r.status === 413 ? "Fotos grandes demais (limite de 4,5 MB)." : "Resposta inesperada do servidor (HTTP " + r.status + ")." }; }
+        if (!r.ok) {
+          var msg = j.error || ("Erro HTTP " + r.status);
+          if (j.errors && j.errors.length) msg += " — " + j.errors.map(function (x) { return x.name + ": " + x.error; }).join("; ");
+          throw new Error(msg);
+        }
+        return j;
+      });
+    }).then(render).catch(function (e) { showError(e.message || "Falha de rede."); })
+      .then(function () { $("go").disabled = false; $("status").style.display = "none"; });
+  };
+
+  function render(d) {
+    var tags = $("tags"); tags.innerHTML = "";
+    (d.members || []).forEach(function (m) {
+      var s = document.createElement("span"); s.className = "tag" + (m === d.judge ? " j" : "");
+      s.textContent = m === d.judge ? m + " (presidente)" : m; tags.appendChild(s);
+    });
+    $("final").innerHTML = md(d.final);
+    $("warns").innerHTML = (d.errors || []).map(function (x) {
+      return '<div class="warn">⚠ ' + esc(x.name) + " — " + esc(x.stage) + ": " + esc(x.error) + "</div>";
+    }).join("");
+    var html = "";
+    if (d.description) html += "<details><summary>O que o olho viu nas fotos</summary><div class='ans md'>" + md(d.description) + "</div></details>";
+    (d.rounds || []).forEach(function (r) {
+      html += "<details><summary>" + esc(r.title) + "</summary><div class='ans'>" +
+        r.answers.map(function (a) { return "<h4>" + esc(a.name) + "</h4><div class='md'>" + md(a.text) + "</div>"; }).join("") + "</div></details>";
+    });
+    $("details").innerHTML = html;
+    $("result").style.display = "block";
+    $("result").scrollIntoView({ behavior: "smooth" });
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "name": "ia-council",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "IA Council: várias IAs respondem, debatem e um presidente decide.",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "check": "node --check api/council.js",
+    "test": "node tests/council.test.mjs"
+  }
+}
