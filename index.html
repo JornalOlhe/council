@@ -611,7 +611,8 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
     <div class="mhead"><svg class="helm" style="width:24px;height:20px"><use href="#i-helmet"/></svg><span id="extTitle">Extensão IA Council</span><span class="beta">Beta</span><button class="ib" id="extClose" aria-label="Fechar"><svg class="ico"><use href="#i-x"/></svg></button></div>
     <div class="pcbody">
       <p style="margin:0;color:var(--tx2)">Igual ao Claude in Chrome: o Copiloto abre um <b>grupo de abas laranja “Council”</b> no seu navegador (Brave, Chrome ou Edge) e faz a tarefa sozinho — <b>continua mesmo se você sair desta aba</b>.</p>
-      <div class="pcstep"><span class="n">1</span><div class="c"><b>Baixe e extraia</b><p>Extraia o .zip numa pasta que você não vai apagar.</p><a class="btn pri" href="/extension/ia-council-extension.zip" download>⬇ Baixar extensão</a></div></div>
+      <div class="pcstep" id="extAuto"><span class="n">★</span><div class="c"><b>Atualização automática</b><p id="extAutoTxt">Com o <b>app IA Council para Windows</b> instalado, ele guarda a extensão numa pasta fixa e baixa cada versão nova sozinho (fica pertinho do relógio, na bandeja). A extensão percebe e se recarrega — você nunca mais precisa baixar zip.</p><span id="extAutoBtns"><button class="btn pri" id="extGetApp">Baixar o app</button></span></div></div>
+      <div class="pcstep"><span class="n">1</span><div class="c"><b id="extStep1">Baixe e extraia</b><p id="extStep1Txt">Extraia o .zip numa pasta que você não vai apagar.</p><a class="btn" id="extZip" href="/extension/ia-council-extension.zip" download>⬇ Baixar extensão</a></div></div>
       <div class="pcstep"><span class="n">2</span><div class="c"><b>Abra a página de extensões</b><p>Cole na barra de endereço: <code>brave://extensions</code> (no Chrome: <code>chrome://extensions</code>) e ative o <b>Modo do desenvolvedor</b> (canto superior direito).</p><button class="btn" id="extCopy">Copiar endereço</button></div></div>
       <div class="pcstep"><span class="n">3</span><div class="c"><b>Carregue a pasta</b><p>Clique em <b>Carregar sem compactação</b> e escolha a pasta extraída (a que tem o <b>manifest.json</b> dentro). Depois recarregue esta página (F5).</p></div></div>
       <div class="pcsafe">🔒 Ela só aceita comandos deste site, trabalha só nas abas do grupo Council, não digita senhas e pede confirmação antes de comprar ou enviar. Enquanto trabalha, o navegador mostra o aviso de que a extensão está “depurando” a aba — é assim que ela clica e digita sem mexer no seu mouse.</div>
@@ -1965,7 +1966,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
   window.addEventListener("message", function (e) {
     if (e.source !== window || !e.data || typeof e.data !== "object") return;
     var d = e.data;
-    if (d.__iac === "ready") { if (!EXT.ready) { EXT.ready = true; EXT.version = d.version; pcSetState(pc.connected, pc.os); setTimeout(extResume, 300); } }
+    if (d.__iac === "ready") { if (!EXT.ready) { EXT.ready = true; EXT.version = d.version; pcSetState(pc.connected, pc.os); setTimeout(extResume, 300); setTimeout(extOutdated, 2500); } }
     else if (d.__iac === "fromExt") { var cb = EXT.calls[d.id]; if (cb) { delete EXT.calls[d.id]; cb(d.resp || {}); } }
     else if (d.__iac === "event") EXT.listeners.slice().forEach(function (f) { f(d.ev); });
   });
@@ -2059,7 +2060,30 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
       saveHist(); if (curId) showEntry(curId);
     }, function () {});
   }
-  function openExt() { $("extModal").classList.remove("hidden"); }
+  function extOutdated() {
+    fetch("/extension/version.json?t=" + Date.now()).then(function (r) { return r.json(); }).then(function (j) {
+      var a = String(j.version).split(".").map(Number), b = String(EXT.version).split(".").map(Number), newer = false;
+      for (var i = 0; i < 3; i++) { if ((a[i] || 0) !== (b[i] || 0)) { newer = (a[i] || 0) > (b[i] || 0); break; } }
+      if (!newer) return;
+      extCall({ type: "update" }).catch(function () {}); // se a pasta já foi atualizada pelo app, ela se recarrega agora
+      if (!(D && D.ext)) toast("Extensão " + EXT.version + " desatualizada (nova: " + j.version + "). Instale o app para ela se atualizar sozinha.", openExt);
+    }, function () {});
+  }
+  function openExt() {
+    $("extModal").classList.remove("hidden");
+    if (D && D.ext) { // no app: a pasta já existe e se atualiza sozinha
+      $("extStep1").textContent = "Pasta pronta (se atualiza sozinha)";
+      $("extZip").classList.add("hidden");
+      D.ext.info().then(function (i) {
+        $("extAutoTxt").innerHTML = "✓ Ligada. O app mantém a extensão <b>" + esc(i.version || "") + "</b> atualizada nesta pasta e ela se recarrega sozinha no navegador.";
+        $("extStep1Txt").innerHTML = "Use esta pasta em <b>Carregar sem compactação</b>: <code>" + esc(i.dir) + "</code>";
+        $("extAutoBtns").innerHTML = '<button class="btn pri" id="extOpenDir">Abrir pasta</button> <button class="btn" id="extCopyDir">Copiar caminho</button> <button class="btn" id="extSyncNow">Atualizar agora</button>';
+        $("extOpenDir").onclick = function () { D.ext.open(); };
+        $("extCopyDir").onclick = function () { copy(i.dir, "Caminho copiado"); };
+        $("extSyncNow").onclick = function () { D.ext.sync().then(function (s) { toast(s.updated ? "Extensão atualizada para " + s.version : "Já está na versão mais nova (" + s.version + ")"); extCall({ type: "update" }).catch(function () {}); }, function (e) { toast(e.message); }); };
+      }, function () {});
+    } else $("extGetApp").onclick = function () { $("extModal").classList.add("hidden"); openPC(); };
+  }
   $("extClose").onclick = function () { $("extModal").classList.add("hidden"); };
   $("extModal").addEventListener("click", function (e) { if (e.target === $("extModal")) $("extModal").classList.add("hidden"); });
   $("extCopy").onclick = function () { copy(/Brave/.test(navigator.userAgent) || navigator.brave ? "brave://extensions" : "chrome://extensions", "Endereço copiado: cole na barra de endereço"); };

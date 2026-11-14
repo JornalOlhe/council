@@ -409,13 +409,34 @@ async function runTask(t) {
     return finish("error", (e && e.message) || "Falha inesperada.", "err");
   }
 }
-chrome.alarms.onAlarm.addListener(() => { /* mantém a extensão acordada durante a tarefa */ });
+// ---------- atualização automática ----------
+// O app IA Council (Windows) grava a versão nova na pasta da extensão; aqui ela percebe e se recarrega sozinha.
+const newerV = (a, b) => { const x = String(a || "0").split(".").map(Number), y = String(b || "0").split(".").map(Number); for (let i = 0; i < Math.max(x.length, y.length); i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return d > 0; } return false; };
+async function checkSelfUpdate() {
+  try {
+    if (task && task.status === "running") return;
+    // pasta "sem compactação": os arquivos no disco podem já ser de uma versão nova (gravada pelo app)
+    const r = await fetch(chrome.runtime.getURL("manifest.json") + "?t=" + Date.now(), { cache: "no-store" });
+    const disk = (await r.json()).version, mine = chrome.runtime.getManifest().version;
+    if (newerV(disk, mine)) chrome.runtime.reload();
+  } catch {}
+}
+// depois de recarregar, reconecta as abas do site que já estavam abertas
+async function reinject() {
+  const tabs = await chrome.tabs.query({ url: SITE }).catch(() => []);
+  for (const t of tabs) chrome.scripting.executeScript({ target: { tabId: t.id }, files: ["content.js"] }).catch(() => {});
+}
+chrome.alarms.create("iac-update", { periodInMinutes: 1 });
+chrome.runtime.onStartup.addListener(checkSelfUpdate);
+chrome.runtime.onInstalled.addListener(() => { reinject(); });
+chrome.alarms.onAlarm.addListener((a) => { if (a.name === "iac-update") checkSelfUpdate(); /* iac-keepalive mantém a extensão acordada durante a tarefa */ });
 
 // ---------- mensagens do site ----------
 chrome.runtime.onMessage.addListener((msg, sender, reply) => {
   if (!sender.url || !sender.url.startsWith("https://council-one-sigma.vercel.app/")) return; // só o site oficial
   (async () => {
     if (msg.type === "hello") return { ok: true, version: chrome.runtime.getManifest().version };
+    if (msg.type === "update") { const v = chrome.runtime.getManifest().version; setTimeout(checkSelfUpdate, 50); return { ok: true, version: v }; }
     if (msg.type === "status") {
       if (task) return { task: publicState() };
       const s = await chrome.storage.session.get("lastTask").catch(() => ({}));

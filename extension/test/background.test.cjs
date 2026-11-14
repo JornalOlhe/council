@@ -2,10 +2,10 @@
 const assert = require("assert");
 const fs = require("fs"), path = require("path"), vm = require("vm");
 const cmds = [], events = [], listeners = {};
-let lastErr = null, plans = [], groupTitle = null, page = { url: "about:blank" };
+let reloads = 0, remoteV = "1.0.0", lastErr = null, plans = [], groupTitle = null, page = { url: "about:blank" };
 const ev = (name) => ({ addListener: (f) => (listeners[name] = f) });
 const chrome = {
-  runtime: { onMessage: ev("msg"), getManifest: () => ({ version: "1.0.0" }), get lastError() { return lastErr; } },
+  runtime: { onMessage: ev("msg"), onStartup: ev("startup"), onInstalled: ev("installed"), reload() { reloads++; }, getURL: (p) => "chrome-extension://x/" + p, getManifest: () => ({ version: "1.0.0" }), get lastError() { return lastErr; } },
   storage: { session: { _d: {}, async get(k) { return this._d; }, async set(o) { Object.assign(this._d, o); } }, local: { _d: {}, async get(k) { return this._d; }, async set(o) { Object.assign(this._d, o); } } },
   tabs: {
     async query() { return [{ id: 99 }]; }, async sendMessage(id, m) { events.push(m.ev.task); },
@@ -38,6 +38,7 @@ const chrome = {
   },
 };
 global.fetch = async (url, init) => {
+  if (String(url).includes("manifest.json")) return { ok: true, json: async () => ({ version: remoteV }) };
   const body = JSON.parse(init.body);
   assert.equal(body.stage, "web");
   const p = plans.shift();
@@ -103,4 +104,9 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const s = await send({ type: "status" });
   assert.equal(s.task.id, "t4");
   console.log("✓ o site recupera o estado da tarefa ao voltar");
+  await listeners.alarm({ name: "iac-update" }); await wait(20);
+  assert.equal(reloads, 0, "mesma versão: não recarrega");
+  remoteV = "1.0.9"; await listeners.alarm({ name: "iac-update" }); await wait(20);
+  assert.equal(reloads, 1, "arquivos novos no disco: recarrega");
+  console.log("✓ extensão se recarrega sozinha quando sai versão nova");
 })().catch((e) => { console.error(e); process.exit(1); });

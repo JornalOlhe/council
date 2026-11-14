@@ -26,7 +26,8 @@
       "control.js",
       "input.ps1",
       "icon.png",
-      "web.js"
+      "web.js",
+      "extsync.js"
     ],
     "asarUnpack": [
       "input.ps1"

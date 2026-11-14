@@ -7,3 +7,7 @@ with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
     for f in files:
         z.write(os.path.join(here, f), f)
 print("ok:", out)
+import json
+v = json.load(open(os.path.join(here, "manifest.json")))["version"]
+json.dump({"version": v}, open(os.path.join(here, "version.json"), "w"))
+print("version.json:", v)

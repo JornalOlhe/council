@@ -1,7 +1,8 @@
 // IA Council para Windows — abre o IA Council numa janela própria e deixa o Copiloto
 // ver a tela, mover o mouse e digitar no PC (só para o site oficial, dentro deste app).
 "use strict";
-const { app, BrowserWindow, ipcMain, desktopCapturer, screen, clipboard, globalShortcut, shell, session, Menu, dialog, Notification } = require("electron");
+const { app, BrowserWindow, ipcMain, desktopCapturer, screen, clipboard, globalShortcut, shell, session, Menu, dialog, Notification, Tray, nativeImage } = require("electron");
+const extsync = require("./extsync.js");
 const { spawn } = require("child_process");
 const path = require("path");
 const control = require("./control.js");
@@ -20,7 +21,39 @@ let stopFlag = false;
 
 if (!app.requestSingleInstanceLock()) app.quit();
 if (process.platform === "win32") app.setAppUserModelId("com.jornalolhe.iacouncil"); // notificações aparecem como "IA Council"
-app.on("second-instance", () => { if (win) { if (win.isMinimized()) win.restore(); win.focus(); } });
+app.on("second-instance", () => { openWindow(); });
+function openWindow() { if (!win || win.isDestroyed()) { createWindow(); return; } if (win.isMinimized()) win.restore(); win.show(); win.focus(); }
+
+// ---------- extensão sempre atualizada (pasta fixa + o app baixa as versões novas) ----------
+const EXT_DIR = path.join(app.getPath("home"), "IA-Council-Extensao");
+let extState = { dir: EXT_DIR, version: extsync.localVersion(EXT_DIR), last: 0, error: "" };
+async function syncExt(manual) {
+  try {
+    const r = await extsync.sync(EXT_DIR);
+    extState = { dir: EXT_DIR, version: r.version, last: Date.now(), error: "", updated: r.updated };
+    if (r.updated && r.from && Notification.isSupported()) new Notification({ title: "IA Council", body: `Extensão atualizada para ${r.version}. Ela se recarrega sozinha no navegador.`, icon: path.join(__dirname, "icon.png") }).show();
+  } catch (e) { extState.error = e.message; if (manual) throw e; }
+  return extState;
+}
+ipcMain.handle("ext:info", (e) => { guard(e); return extState; });
+ipcMain.handle("ext:sync", async (e) => { guard(e); return syncExt(true); });
+ipcMain.handle("ext:open", (e) => { guard(e); shell.openPath(EXT_DIR); return true; });
+
+// fica na bandeja (perto do relógio) para manter a extensão atualizada mesmo com a janela fechada
+let tray = null;
+function makeTray() {
+  if (tray || process.platform !== "win32") return;
+  tray = new Tray(nativeImage.createFromPath(path.join(__dirname, "icon.png")).resize({ width: 16, height: 16 }));
+  tray.setToolTip("IA Council");
+  tray.setContextMenu(Menu.buildFromTemplate([
+    { label: "Abrir IA Council", click: openWindow },
+    { label: "Atualizar extensão agora", click: () => syncExt(true).then((s) => new Notification({ title: "IA Council", body: s.updated ? "Extensão atualizada para " + s.version : "A extensão já está na versão mais nova (" + s.version + ")." }).show(), (err) => dialog.showErrorBox("IA Council", "Não consegui atualizar a extensão: " + err.message)) },
+    { label: "Abrir pasta da extensão", click: () => shell.openPath(EXT_DIR) },
+    { type: "separator" },
+    { label: "Sair", click: () => { app.isQuitting = true; app.quit(); } },
+  ]));
+  tray.on("click", openWindow);
+}
 
 // ---------- PowerShell persistente que move o mouse e aperta teclas (Windows) ----------
 let ps = null, psBuf = "", psQueue = [], psSize = null;
@@ -272,9 +305,14 @@ app.whenReady().then(() => {
     stopFlag = true;
     if (win) win.webContents.send("pc:stop");
   });
-  createWindow();
+  const background = process.argv.includes("--background");
+  if (!background) createWindow();
   if (process.platform === "win32") startPS();
   setupUpdates();
+  makeTray();
+  // inicia junto com o Windows (escondido na bandeja) só para manter a extensão e o app atualizados
+  if (app.isPackaged && process.platform === "win32") app.setLoginItemSettings({ openAtLogin: true, args: ["--background"] });
+  syncExt(); setInterval(syncExt, 10 * 60 * 1000);
 });
 app.on("will-quit", () => { globalShortcut.unregisterAll(); hideGlow(); if (ps) ps.kill(); });
-app.on("window-all-closed", () => app.quit());
+app.on("window-all-closed", () => { if (process.platform !== "win32" || !tray) app.quit(); }); // no Windows continua na bandeja

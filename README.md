@@ -25,6 +25,7 @@ Você pede em português e ele faz:
 Igual ao Claude in Chrome: o Copiloto abre um **grupo de abas laranja "Council"** no navegador do usuário e controla as abas por depuração (`chrome.debugger`), sem mexer no mouse. A tarefa roda no service worker da extensão, então **continua mesmo se você sair da aba do site**; ao voltar, o site mostra o andamento/resultado.
 - Instalação: baixar `/extension/ia-council-extension.zip` → extrair → `brave://extensions` (ou `chrome://extensions`) → Modo do desenvolvedor → Carregar sem compactação.
 - **Permissão por site** (como o Claude in Chrome): antes de agir num site novo, pergunta "Permitir sempre / Só desta vez / Não permitir". As escolhas ficam em `chrome.storage.local`.
+- **Atualização automática**: o app para Windows guarda a extensão em `%USERPROFILE%\IA-Council-Extensao`, fica na bandeja (inicia com o Windows) e baixa cada versão nova do site (`/extension/version.json`). A extensão confere o `manifest.json` do disco a cada minuto e se recarrega sozinha (`chrome.runtime.reload`), reconectando as abas do site.
 - **Cursor laranja da IA**: um cursor animado mostra onde ela vai clicar (com onda no clique) e onde está digitando.
 - **A aba só abre depois da permissão** e abre em segundo plano (você não é levado para ela; use "Ver aba").
 - **Visual de depuração**: borda laranja pulsando + pílula "Council · passo atual · Parar" na própria aba (o Parar usa `Runtime.addBinding`).
