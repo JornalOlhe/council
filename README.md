@@ -40,6 +40,10 @@ O microfone grava e transcreve com o Whisper do Groq (`/api/transcribe`), com o 
 
 Os modelos podem ser trocados por `GEMINI_MODEL`, `GROQ_MODEL`, `OPENROUTER_MODEL`, `CEREBRAS_MODEL`, `GITHUB_MODELS_MODEL`.
 
+## Atualizações
+- **Site:** cada push na `main` publica na Vercel; quem estiver com o site ou o app aberto vê a faixa **“Nova versão disponível · Atualizar”** (o site confere a cada 3 min e ao voltar para a aba).
+- **App do Windows:** cada mudança em `desktop/` gera a versão `1.0.<número do build>`; o app confere a cada 15 min, baixa em segundo plano e mostra **“Reiniciar e atualizar”**.
+
 ## Desenvolvimento
 ```
 npm run check   # node --check
