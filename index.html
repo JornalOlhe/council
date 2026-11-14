@@ -502,16 +502,6 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
     <section class="home" id="home">
       <h1 class="greet"><svg class="star" id="greetStar"><use href="#i-star"/></svg><svg class="helm hidden" id="greetHelm"><use href="#i-helmet"/></svg><span id="greet"></span></h1>
       <div class="cw" id="homeSlot"></div>
-      <div class="chips hidden" id="copChips">
-        <button data-p="Pesquise o preço do PlayStation 5 em 3 lojas e me diga qual é o mais barato"><svg><use href="#i-globe"/></svg>Comparar preços</button>
-        <button data-p="Pesquise no YouTube música lo-fi para estudar"><svg><use href="#i-globe"/></svg>Lo-fi no YouTube</button>
-        <button data-p="Abra o Bloco de Notas no meu PC e escreva uma lista de compras com arroz, feijão e café"><svg><use href="#i-monitor"/></svg>Usar meu PC</button>
-        <button data-p="Olhe minha tela e me diga o que está aberto"><svg><use href="#i-monitor"/></svg>Olhar minha tela</button>
-        <button data-p="Me lembre em 10 minutos de tirar o bolo do forno"><svg><use href="#i-alarm"/></svg>Lembrete em 10 min</button>
-        <button data-p="Qual o caminho daqui até a Avenida Paulista?"><svg><use href="#i-route"/></svg>Rota no Maps</button>
-        <button data-p="Escreva um e-mail pedindo orçamento de 50 camisetas personalizadas"><svg><use href="#i-mail"/></svg>Escrever e-mail</button>
-      </div>
-      <div class="cnote hidden" id="copNote">O copiloto abre abas e pesquisa, cria lembretes, copia textos e prepara e-mails e WhatsApp. No <b>app IA Council para Windows</b>, ele também vê sua tela, identifica cada coisa nela, troca de apps, move o mouse e digita por você.</div>
     </section>
     <section class="chat hidden" id="chat"></section>
   </div>
@@ -1058,7 +1048,6 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
     var cop = mode === "copilot";
     $("segChat").classList.toggle("on", !cop); $("segCopilot").classList.toggle("on", cop);
     $("greetStar").classList.toggle("hidden", cop); $("greetHelm").classList.toggle("hidden", !cop);
-    $("copChips").classList.toggle("hidden", !cop); $("copNote").classList.toggle("hidden", !cop);
     $("modelPick").classList.toggle("hidden", cop); $("modePick").classList.toggle("hidden", cop); $("pcPill").classList.toggle("hidden", !cop);
     $("disc").textContent = cop ? "O copiloto age no seu navegador. Confira antes de enviar e-mails e mensagens." : "O IA Council é uma IA e pode cometer erros. Confira informações importantes.";
     setGreet();
@@ -1066,9 +1055,6 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
   }
   $("segChat").onclick = function () { if (appMode !== "council") setApp("council"); };
   $("segCopilot").onclick = function () { if (appMode !== "copilot") setApp("copilot"); };
-  Array.prototype.forEach.call($("copChips").querySelectorAll("button"), function (b) {
-    b.onclick = function () { ta.value = b.getAttribute("data-p"); autosize(); updSend(); send(); };
-  });
   $("recentToggle").onclick = function () { $("recentToggle").classList.toggle("closed"); $("recent").classList.toggle("hidden"); };
   $("searchBtn").onclick = function () {
     var b = $("searchBox"); b.classList.toggle("hidden");
