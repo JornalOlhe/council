@@ -1,10 +1,11 @@
 // Teste com fetch simulado: node tests/council.test.mjs
 import assert from "node:assert/strict";
 process.env.HEDGE_AFTER_MS = "50";
+process.env.RETRY_WAIT_MS = "5";
 const { default: handler } = await import("../api/council.js");
 
 const calls = [];
-let failProvider = null, goneModel = null, slowModel = null, rejectReasoning = false;
+let failProvider = null, goneModel = null, slowModel = null, rejectReasoning = false, busyOnce = 0;
 globalThis.fetch = async (url, init = {}) => {
   const u = String(url);
   if (u.includes("generativelanguage") && u.includes("/models?"))
@@ -15,6 +16,7 @@ globalThis.fetch = async (url, init = {}) => {
   const name = u.includes("googleapis") ? "Gemini" : u.includes("groq") ? "Groq" : u.includes("openrouter") ? "OpenRouter" : "Other";
   calls.push({ name, url: u, headers: init.headers, body });
   if (name === failProvider) return new Response("rate limit", { status: 429 });
+  if (busyOnce && name === "Groq") { busyOnce--; return new Response("high demand", { status: 503 }); }
   if (slowModel && u.includes(slowModel)) await new Promise((r) => setTimeout(r, 400));
   if (goneModel && body.model === goneModel)
     return new Response(JSON.stringify({ error: { message: `The model \`${goneModel}\` does not exist`, code: "model_not_found" } }), { status: 404 });
@@ -36,7 +38,7 @@ const run = async (body, headers = {}, method = "POST", url = "/api/council") =>
   await handler({ method, headers, body, url }, { status(c) { r.code = c; return this; }, json(o) { r.json = o; return this; } });
   return r;
 };
-const reset = () => { calls.length = 0; failProvider = null; goneModel = null; slowModel = null; rejectReasoning = false; };
+const reset = () => { calls.length = 0; failProvider = null; goneModel = null; slowModel = null; rejectReasoning = false; busyOnce = 0; };
 Object.assign(process.env, { GEMINI_API_KEY: "g", GROQ_API_KEY: "q", OPENROUTER_API_KEY: "o" });
 delete process.env.ACCESS_CODE;
 const img = "data:image/jpeg;base64,AAAA";
@@ -190,6 +192,12 @@ await t("principal rápido: reserva nem é chamada", async () => {
   const r = await run({ stage: "open", prompt: "x" });
   assert.equal(r.json.answers.find((x) => x.name === "Gemini").model, "gemini-3.8-flash");
   assert.ok(!calls.some((c) => c.url.includes("flash-lite")));
+});
+await t("503 passageiro: tenta de novo e responde", async () => {
+  busyOnce = 1;
+  const r = await run({ stage: "open", prompt: "x" });
+  assert.equal(r.json.answers.length, 3);
+  assert.equal(r.json.errors.length, 0);
 });
 await t("todos falham = 502", async () => {
   const f = globalThis.fetch;

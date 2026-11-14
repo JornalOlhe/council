@@ -250,6 +250,12 @@ async function ask(p, system, user, deadline, eff, maxTokens, images = [], depth
       p.noEffort = true;
       return ask(p, system, user, deadline, eff, maxTokens, images, depth + 1);
     }
+    // servidor do provedor sobrecarregado (500/502/503): espera um pouco e tenta de novo uma vez
+    if ([500, 502, 503].includes(e.status) && !p.retried5xx && deadline - Date.now() > 12000) {
+      p.retried5xx = true;
+      await new Promise((r) => setTimeout(r, Number(process.env.RETRY_WAIT_MS) || 1500));
+      return ask(p, system, user, deadline, eff, maxTokens, images, depth + 1);
+    }
     // modelo grátis congestionado: troca por outro grátis
     if (p.name === "OpenRouter" && e.status === 429) {
       const alt = await discoverModel(p, e, deadline, p.model).catch(() => null);
