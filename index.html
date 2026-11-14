@@ -687,7 +687,7 @@ body.collapsed #openSide{display:grid}
     if (!id) return "";
     for (var i = 0; i < members.length; i++) {
       if (members[i].model === id) return members[i].label;
-      if (members[i].fallback === id) return members[i].fallbackLabel + " (reserva)";
+      if (members[i].fallback === id) return members[i].fallbackLabel + " · reserva";
     }
     return id.split("/").pop().replace(/:free$/, "").split(/[-_]/).map(function (w) { return /^\d/.test(w) ? w.toUpperCase() : w.charAt(0).toUpperCase() + w.slice(1); }).join(" ");
   }
