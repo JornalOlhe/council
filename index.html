@@ -1974,7 +1974,10 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
     stopBtn.onclick = function () { stopped = true; finish("stopped", "Parado por você.", "err"); };
     function tmo(p, ms, what) { return Promise.race([p, new Promise(function (_, rej) { setTimeout(function () { rej(new Error(what + " demorou demais")); }, ms); })]); }
     if (W.onStop && !W.__stopHooked) { W.__stopHooked = true; W.onStop(function () { if (webBusy) { var sb = webBusy.querySelector(".stop"); if (sb && !sb.disabled) sb.click(); } }); }
-    showBtn.onclick = function () { W.show(true); };
+    showBtn.onclick = function () {
+      if (!W.onPanel) { toast("Atualize o app para a versão 1.0.11 para ver o painel do navegador."); return; }
+      W.show(true).catch(function (e) { toast("Não consegui abrir o painel: " + e.message); });
+    };
     function loop() {
       if (stopped) return finish("stopped", "Parado por você.", "err");
       if (step >= MAX) return finish("max", "Parei depois de " + MAX + " passos. Peça para continuar se precisar.", "err");

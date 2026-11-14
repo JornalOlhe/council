@@ -55,6 +55,7 @@ const READ_PAGE = `(() => {
   const sel = 'a[href],button,input:not([type=hidden]),textarea,select,[role=button],[role=link],[role=tab],[role=menuitem],[role=checkbox],[role=radio],[role=option],[role=switch],[role=combobox],[role=searchbox],[role=textbox],[contenteditable=""],[contenteditable=true],summary,[onclick],label[for]';
   let n = 0;
   for (const el of document.querySelectorAll(sel)) {
+    if (el.closest("#iac-pill")) continue;
     const r = el.getBoundingClientRect();
     if (r.width < 4 || r.height < 4 || r.bottom < 0 || r.top > vh || r.right < 0 || r.left > vw) continue;
     const st = getComputedStyle(el);
@@ -95,8 +96,14 @@ class CopilotBrowser {
     const st = () => this.emit();
     wc.on("page-title-updated", st); wc.on("did-navigate", st); wc.on("did-navigate-in-page", st); wc.on("did-start-loading", st); wc.on("did-stop-loading", st);
     wc.on("console-message", (e, level, message) => { const m = typeof message === "string" ? message : e && e.message; if (m === "__iacStop__" && this.onStop) this.onStop(); });
+    wc.loadURL("about:blank").catch(() => {}); // sem isso, scripts numa aba nunca carregada ficam esperando para sempre
     this.attach();
     return this.win;
+  }
+  // executa JS na página com tempo limite (nunca trava a tarefa)
+  js(code, ms = 6000) {
+    const wc = this.wc; if (!wc || wc.isDestroyed()) return Promise.reject(new Error("painel fechado"));
+    return Promise.race([wc.executeJavaScript(code, true), new Promise((_, rej) => setTimeout(() => rej(new Error("a página não respondeu")), ms))]);
   }
   attach() {
     const p = this.getParent(); if (!p || p.isDestroyed()) throw new Error("janela do app fechada");
@@ -123,7 +130,8 @@ class CopilotBrowser {
 
   async applyGlow() {
     const wc = this.wc; if (!wc || wc.isDestroyed()) return;
-    try { await wc.executeJavaScript(this.working ? GLOW + ";" + pillText(this.status) : UNGLOW, true); } catch {}
+    const u = wc.getURL();
+    if (u && /^https?:/.test(u)) { try { await this.js(this.working ? GLOW + ";" + pillText(this.status) : UNGLOW, 3000); } catch {} }
     this.emit();
   }
 
@@ -138,10 +146,10 @@ class CopilotBrowser {
 
   async pointTo(x, y, mode) {
     const wc = this.wc;
-    await wc.executeJavaScript(moveCursor(x, y, ""), true).catch(() => {});
+    await this.js(moveCursor(x, y, ""), 2000).catch(() => {});
     await new Promise((r) => setTimeout(r, 430)); // dá para ver o cursor indo até o alvo
-    if (mode) await wc.executeJavaScript(moveCursor(null, null, mode), true).catch(() => {});
-    const [vw, vh] = await wc.executeJavaScript("[innerWidth, innerHeight]", true).catch(() => [1280, 800]);
+    if (mode) await this.js(moveCursor(null, null, mode), 2000).catch(() => {});
+    const [vw, vh] = await this.js("[innerWidth, innerHeight]", 2000).catch(() => [1280, 800]);
     this.cur = { x: x / vw, y: y / vh, mode: mode || "" };
   }
 
@@ -170,7 +178,7 @@ class CopilotBrowser {
     if (!this.attached) this.attach();
     const wc = this.view.webContents;
     if (!wc.getURL() || wc.getURL() === "about:blank") return { url: "about:blank", title: "", elements: [], text: "", image: null, empty: true };
-    const page = await wc.executeJavaScript(READ_PAGE, true).catch(() => ({ url: wc.getURL(), title: wc.getTitle(), elements: [], text: "" }));
+    const page = await this.js(READ_PAGE, 8000).catch(() => ({ url: wc.getURL(), title: wc.getTitle(), elements: [], text: "" }));
     const cap = () => Promise.race([wc.capturePage(), new Promise((r) => setTimeout(() => r(null), 4000))]);
     let img = await cap();
     if (!img || img.isEmpty()) { await new Promise((r) => setTimeout(r, 300)); img = await cap(); }
@@ -183,13 +191,13 @@ class CopilotBrowser {
 
   async elementCenter(id) {
     const wc = this.win.webContents;
-    const r = await wc.executeJavaScript(`(() => {
+    const r = await this.js(`(() => {
       const el = document.querySelector('[data-iac="${Number(id)}"]');
       if (!el) return null;
       el.scrollIntoView({ block: "center", inline: "center" });
       const r = el.getBoundingClientRect();
       return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2), password: (el.getAttribute("type") || "").toLowerCase() === "password" };
-    })()`, true);
+    })()`);
     if (!r) throw new Error("elemento " + id + " não está mais na página (ela mudou); vou olhar de novo");
     return r;
   }
@@ -219,18 +227,18 @@ class CopilotBrowser {
     if (t === "forward") { (wc.navigationHistory || wc).goForward(); await this.waitLoad(); return { done: "avançou" }; }
     if (t === "wait") { await new Promise((r) => setTimeout(r, Math.max(200, Math.min(5000, (Number(a.seconds) || 1) * 1000)))); return { done: "esperou" }; }
     if (t === "media") {
-      const r = await wc.executeJavaScript(`(() => { const v = [...document.querySelectorAll("video,audio")].sort((a, b) => (b.duration || 0) - (a.duration || 0))[0]; if (!v) return "sem vídeo na página";
+      const r = await this.js(`(() => { const v = [...document.querySelectorAll("video,audio")].sort((a, b) => (b.duration || 0) - (a.duration || 0))[0]; if (!v) return "sem vídeo na página";
   const d = ${JSON.stringify(a.do)};
   if (d === "seek") { if (v.duration && ${Number(a.seconds) || 0} > v.duration) return "o vídeo tem só " + Math.floor(v.duration / 60) + " min"; v.currentTime = ${Number(a.seconds) || 0}; }
   else if (d === "pause") v.pause(); else if (d === "play") v.play(); else if (d === "mute") v.muted = true; else if (d === "unmute") v.muted = false; else if (d === "speed") v.playbackRate = ${Number(a.rate) || 1};
   const t = Math.floor(v.currentTime), f = (n) => String(n).padStart(2, "0");
-  return "ok " + Math.floor(t / 3600) + ":" + f(Math.floor(t % 3600 / 60)) + ":" + f(t % 60) + (v.paused ? " (pausado)" : " (tocando)"); })()`, true);
+  return "ok " + Math.floor(t / 3600) + ":" + f(Math.floor(t % 3600 / 60)) + ":" + f(t % 60) + (v.paused ? " (pausado)" : " (tocando)"); })()`);
       if (!String(r).startsWith("ok")) throw new Error(r);
       return { done: "vídeo: " + a.do + " → " + String(r).slice(3) };
     }
     if (t === "scroll") {
       const amt = Math.max(-25, Math.min(25, Math.round(Number(a.amount) || -5)));
-      await wc.executeJavaScript(`window.scrollBy({ top: ${-amt * 120}, behavior: "instant" })`, true);
+      await this.js(`window.scrollBy({ top: ${-amt * 120}, behavior: "instant" })`);
       await new Promise((r) => setTimeout(r, 250));
       return { done: "rolou" };
     }
@@ -238,7 +246,7 @@ class CopilotBrowser {
     else if (t === "click") {
       let x, y;
       if (a.id != null) ({ x, y } = await this.elementCenter(a.id));
-      else if (Array.isArray(a.point)) { const [vw, vh] = await wc.executeJavaScript("[innerWidth, innerHeight]", true); y = Math.round(a.point[0] / 1000 * vh); x = Math.round(a.point[1] / 1000 * vw); }
+      else if (Array.isArray(a.point)) { const [vw, vh] = await this.js("[innerWidth, innerHeight]"); y = Math.round(a.point[0] / 1000 * vh); x = Math.round(a.point[1] / 1000 * vw); }
       else throw new Error("clique sem alvo");
       await this.pointTo(x, y, "click");
       await this.clickAt(x, y);
@@ -248,23 +256,23 @@ class CopilotBrowser {
       const c = await this.elementCenter(a.id);
       if (c.password) throw new Error("é um campo de senha: por segurança eu não digito senhas — peça para o usuário");
       if (t === "select") {
-        const ok = await wc.executeJavaScript(`(() => { const el = document.querySelector('[data-iac="${Number(a.id)}"]'); if (!el || el.tagName !== "SELECT") return false;
+        const ok = await this.js(`(() => { const el = document.querySelector('[data-iac="${Number(a.id)}"]'); if (!el || el.tagName !== "SELECT") return false;
           const v = ${JSON.stringify(String(a.value || ""))}.toLowerCase(); const o = [...el.options].find((o) => o.text.toLowerCase().includes(v) || o.value.toLowerCase() === v);
-          if (!o) return false; el.value = o.value; el.dispatchEvent(new Event("input", { bubbles: true })); el.dispatchEvent(new Event("change", { bubbles: true })); return true; })()`, true);
+          if (!o) return false; el.value = o.value; el.dispatchEvent(new Event("input", { bubbles: true })); el.dispatchEvent(new Event("change", { bubbles: true })); return true; })()`);
         if (!ok) throw new Error("não achei essa opção na lista");
         done = "escolheu " + a.value;
       } else {
         await this.pointTo(c.x, c.y, "click");
         await this.clickAt(c.x, c.y);
-        await wc.executeJavaScript(moveCursor(null, null, "type"), true).catch(() => {});
+        await this.js(moveCursor(null, null, "type"), 2000).catch(() => {});
         await new Promise((r) => setTimeout(r, 100));
         if (a.clear !== false) {
-          await wc.executeJavaScript(`(() => { const el = document.querySelector('[data-iac="${Number(a.id)}"]'); if (!el) return; el.focus();
-            if ("value" in el && el.select) el.select(); else { const s = getSelection(); const r = document.createRange(); r.selectNodeContents(el); s.removeAllRanges(); s.addRange(r); } })()`, true);
+          await this.js(`(() => { const el = document.querySelector('[data-iac="${Number(a.id)}"]'); if (!el) return; el.focus();
+            if ("value" in el && el.select) el.select(); else { const s = getSelection(); const r = document.createRange(); r.selectNodeContents(el); s.removeAllRanges(); s.addRange(r); } })()`);
         }
         await wc.insertText(String(a.text || "").slice(0, 3000));
         if (a.enter) { await new Promise((r) => setTimeout(r, 150)); this.pressKey("Enter"); }
-        await wc.executeJavaScript(moveCursor(null, null, ""), true).catch(() => {});
+        await this.js(moveCursor(null, null, ""), 2000).catch(() => {});
         done = "digitou";
       }
     } else throw new Error("ação desconhecida no navegador: " + t);
