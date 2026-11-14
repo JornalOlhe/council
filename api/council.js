@@ -14,7 +14,8 @@ const stripThink = (t) =>
 export function buildProviders(env) {
   const list = [];
   if (env.GEMINI_API_KEY)
-    list.push({ name: "Gemini", kind: "gemini", key: env.GEMINI_API_KEY, model: env.GEMINI_MODEL || "gemini-3.8-flash" });
+    list.push({ name: "Gemini", kind: "gemini", key: env.GEMINI_API_KEY, model: env.GEMINI_MODEL || "gemini-3.8-flash",
+      fallback: env.GEMINI_FALLBACK_MODEL ?? "gemini-3.5-flash-lite" });
   if (env.GROQ_API_KEY)
     list.push({ name: "Groq", kind: "openai", url: "https://api.groq.com/openai/v1/chat/completions", key: env.GROQ_API_KEY, model: env.GROQ_MODEL || "openai/gpt-oss-120b" });
   if (env.OPENROUTER_API_KEY)
@@ -155,12 +156,40 @@ async function discoverModel(p, err, deadline, exclude = null) {
   return rank(ids, [/gpt-oss-120b/, /gemma-4-31b|llama-3\.3-70b|70b|120b|large|ultra/i, /llama|qwen|gpt-oss|gemma|deepseek|kimi|mistral|nemotron/i]);
 }
 
-function callOnce(p, system, user, deadline, maxTokens, images) {
+function callRaw(p, system, user, deadline, maxTokens, images) {
   const ms = Math.min(CALL_TIMEOUT, deadline - Date.now());
   if (ms < 2000) return Promise.reject(new Error("sem tempo restante"));
   return p.kind === "gemini"
     ? callGemini(p, system, user, ms, maxTokens, images)
     : callOpenAI(p, system, user, ms, maxTokens);
+}
+
+// Corrida de segurança: o modelo principal (o mais forte) sempre tenta; se demorar
+// mais que HEDGE_AFTER, um modelo reserva mais rápido começa em paralelo e vale o primeiro que responder.
+const HEDGE_AFTER = Number(process.env.HEDGE_AFTER_MS) || 14000;
+function callOnce(p, system, user, deadline, maxTokens, images) {
+  p.lastUsed = p.model;
+  if (!p.fallback || p.fallback === p.model) return callRaw(p, system, user, deadline, maxTokens, images);
+  return new Promise((resolve, reject) => {
+    let settled = false, backupStarted = false, primaryErr = null, backupErr = null, timer;
+    const win = (text, model) => { if (settled) return; settled = true; clearTimeout(timer); p.lastUsed = model; resolve(text); };
+    const lose = () => { if (settled) return; if (primaryErr && (backupErr || !backupStarted)) { settled = true; clearTimeout(timer); reject(primaryErr); } };
+    const startBackup = () => {
+      if (backupStarted || settled || deadline - Date.now() < 4000) return;
+      backupStarted = true;
+      const b = { ...p, model: p.fallback, fallback: null, thinkIdx: 0, noThinkCfg: false };
+      callRaw(b, system, user, deadline, maxTokens, images)
+        .then((t) => win(t, b.model), (e) => { backupErr = e; if (primaryErr) lose(); });
+    };
+    callRaw(p, system, user, deadline, maxTokens, images).then((t) => win(t, p.model), (e) => {
+      primaryErr = e;
+      // erro de "modelo sumiu"/parâmetro: devolve logo para o ask() tratar; outros erros: usa a reserva
+      if ((e.status === 400 || e.status === 404) && !backupStarted) return lose();
+      if (!backupStarted) startBackup();
+      if (!backupStarted || backupErr) lose();
+    });
+    timer = setTimeout(startBackup, HEDGE_AFTER);
+  });
 }
 
 const geminiThink = new Map(); // modelo -> índice do nível aceito
@@ -211,7 +240,7 @@ export default async function handler(req, res) {
   try {
     if (req.method === "GET") {
       const ps = buildProviders(process.env);
-      return send(200, { members: ps.map((p) => ({ name: p.name, model: p.model, label: modelLabel(p.model) })), locked: !!process.env.ACCESS_CODE });
+      return send(200, { members: ps.map((p) => ({ name: p.name, model: p.model, label: modelLabel(p.model), ...(p.fallback ? { fallback: p.fallback, fallbackLabel: modelLabel(p.fallback) } : {}) })), locked: !!process.env.ACCESS_CODE });
     }
     if (req.method !== "POST") return send(405, { error: "Use o método POST." });
 
@@ -263,7 +292,7 @@ export default async function handler(req, res) {
           const text = await ask(p,
             `Você é o IA Council, um assistente formado por um conselho de IAs (${team}). Responda SEMPRE em português do Brasil, de forma natural, cordial e direta, como um assistente de conversa. Para saudações e papo casual, responda em 1 ou 2 frases e ofereça ajuda. Não use títulos nem listas a menos que ajudem. Não invente fatos. Se a pessoa pedir algo que mereça análise profunda, responda o essencial e sugira mandar a pergunta completa para o conselho debater.`,
             prompt, Math.min(deadline, Date.now() + CALL_TIMEOUT), 900, images);
-          return send(200, { mode: "chat", members: providers.map((x) => x.name), models: Object.fromEntries(providers.map((x) => [x.name, x.model])), description: "", rounds: [], final: text, judge: p.name, errors: errs });
+          return send(200, { mode: "chat", members: providers.map((x) => x.name), models: Object.fromEntries(providers.map((x) => [x.name, x.model])), description: "", rounds: [], final: text, judge: p.name, judgeModel: p.lastUsed || p.model, errors: errs });
         } catch (e) {
           errs.push({ name: p.name, stage: "Resposta", error: e.message });
         }
@@ -295,12 +324,12 @@ export default async function handler(req, res) {
       ask(p, SYSTEM, `${context}\n\nDê sua análise independente em até 300 palavras.`, r1Deadline, 700)));
     let positions = [];
     r1.forEach((r, i) => {
-      if (r.status === "fulfilled") positions.push({ p: providers[i], name: providers[i].name, text: r.value });
+      if (r.status === "fulfilled") positions.push({ p: providers[i], name: providers[i].name, model: providers[i].lastUsed, text: r.value });
       else errors.push({ name: providers[i].name, stage: "Rodada 1", error: r.reason.message });
     });
     if (!positions.length)
       return send(502, { error: "Todas as IAs falharam.", errors });
-    rounds.push({ title: "Rodada 1 — análises independentes", answers: positions.map(({ name, text }) => ({ name, text })) });
+    rounds.push({ title: "Rodada 1 — análises independentes", answers: positions.map(({ name, model, text }) => ({ name, model, text })) });
 
     // 2. DEBATE
     for (let d = 1; d <= debateRounds; d++) {
@@ -320,7 +349,7 @@ export default async function handler(req, res) {
       }));
       const next = [];
       res2.forEach((r, i) => {
-        if (r.status === "fulfilled") next.push({ p: prev[i].p, name: prev[i].name, text: r.value });
+        if (r.status === "fulfilled") next.push({ p: prev[i].p, name: prev[i].name, model: prev[i].p.lastUsed, text: r.value });
         else {
           errors.push({ name: prev[i].name, stage: `Debate ${d}`, error: r.reason.message });
           next.push(prev[i]); // mantém a posição anterior
@@ -330,18 +359,19 @@ export default async function handler(req, res) {
       positions = next;
       if (revised)
         rounds.push({ title: `Debate ${d} — posições revisadas`, answers: res2
-          .map((r, i) => r.status === "fulfilled" ? { name: prev[i].name, text: r.value } : null).filter(Boolean) });
+          .map((r, i) => r.status === "fulfilled" ? { name: prev[i].name, model: next[i].model, text: r.value } : null).filter(Boolean) });
     }
 
     // 3. DECISÃO FINAL
     const finalPrompt = `${context}\n\nPOSIÇÕES FINAIS DOS MEMBROS:\n${positions.map((o) => `### ${o.name}\n${o.text}`).join("\n\n")}\n\nVocê é o PRESIDENTE do conselho. Pese a qualidade dos argumentos (não o número de votos), corrija erros, não esconda divergências reais e responda em markdown, neste formato exato:\n\n## Decisão\n## Confiança\n(0–100% e por quê)\n## Onde o conselho concorda\n## Onde divergiu e como resolvi\n## Próximos passos\n## Limitações e alertas`;
-    let final = "", judge = "";
+    let final = "", judge = "", judgeModel = "";
     const order = [...positions.map((x) => x.p), ...providers.filter((p) => !positions.some((x) => x.p === p))];
     for (const p of order) {
       try {
         const fd = Math.max(deadline, Date.now() + 8000);
         final = await ask(p, SYSTEM, finalPrompt, Math.min(fd, start + 59000), 1500);
         judge = p.name;
+        judgeModel = p.lastUsed || p.model;
         break;
       } catch (e) {
         errors.push({ name: p.name, stage: "Decisão final", error: e.message });
@@ -349,7 +379,7 @@ export default async function handler(req, res) {
     }
     if (!final) return send(502, { error: "Ninguém conseguiu emitir a decisão final.", errors, rounds, description });
 
-    return send(200, { mode: "council", members: providers.map((p) => p.name), models: Object.fromEntries(providers.map((p) => [p.name, p.model])), description, rounds, final, judge, errors });
+    return send(200, { mode: "council", members: providers.map((p) => p.name), models: Object.fromEntries(providers.map((p) => [p.name, p.model])), description, rounds, final, judge, judgeModel, errors });
   } catch (e) {
     return send(500, { error: "Erro interno no conselho." });
   }

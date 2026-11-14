@@ -398,7 +398,8 @@ body.collapsed #openSide{display:grid}
     var h = '<div class="hd">Membros do conselho</div>';
     if (!members.length) h += '<div class="note">Nenhuma chave de API configurada no servidor.</div>';
     members.forEach(function (m) {
-      h += '<div class="it"><span class="dot"></span><span style="min-width:0">' + esc(m.label) + '<span class="sub">' + esc(m.name) + " · " + esc(m.model) + "</span></span></div>";
+      h += '<div class="it"><span class="dot"></span><span style="min-width:0">' + esc(m.label) + '<span class="sub">' + esc(m.name) + " · " + esc(m.model) +
+        (m.fallback ? "<br>reserva rápida: " + esc(m.fallbackLabel) : "") + "</span></span></div>";
     });
     h += '<hr><div class="hd">Rodadas de debate</div>';
     [0, 1, 2].forEach(function (n) {
@@ -682,11 +683,15 @@ body.collapsed #openSide{display:grid}
   }
   $("go").onclick = send;
 
-  function labelOf(name, d) {
-    var id = (d.models || {})[name]; if (!id) return "";
-    var m = members.filter(function (x) { return x.model === id; })[0];
-    return m ? m.label : id.split("/").pop().replace(/:free$/, "");
+  function pretty(id) {
+    if (!id) return "";
+    for (var i = 0; i < members.length; i++) {
+      if (members[i].model === id) return members[i].label;
+      if (members[i].fallback === id) return members[i].fallbackLabel + " (reserva)";
+    }
+    return id.split("/").pop().replace(/:free$/, "").split(/[-_]/).map(function (w) { return /^\d/.test(w) ? w.toUpperCase() : w.charAt(0).toUpperCase() + w.slice(1); }).join(" ");
   }
+  function labelOf(name, d, id) { return pretty(id || (d.models || {})[name]); }
   function render(body, d, prompt) {
     var h = "", chatMode = d.mode === "chat";
     if (!chatMode) {
@@ -696,7 +701,7 @@ body.collapsed #openSide{display:grid}
         steps.push({
           t: r.title + " · " + r.answers.length + (r.answers.length > 1 ? " IAs" : " IA"),
           b: r.answers.map(function (a) {
-            return '<div class="who">' + esc(a.name) + " <span>" + esc(labelOf(a.name, d)) + '</span></div><div class="md">' + md(a.text) + "</div>";
+            return '<div class="who">' + esc(a.name) + " <span>" + esc(labelOf(a.name, d, a.model)) + '</span></div><div class="md">' + md(a.text) + "</div>";
           }).join("")
         });
       });
@@ -706,7 +711,7 @@ body.collapsed #openSide{display:grid}
     }
     h += '<div class="md">' + md(d.final) + "</div>";
     h += (d.errors || []).map(function (x) { return '<div class="warn">⚠ ' + esc(x.name) + " — " + esc(x.stage) + ": " + esc(x.error) + "</div>"; }).join("");
-    var jl = labelOf(d.judge, d);
+    var jl = labelOf(d.judge, d, d.judgeModel);
     var who = chatMode ? esc(d.judge) + (jl ? " · " + esc(jl) : "")
       : "Conselho de " + (d.members || []).length + " IAs · presidente: " + esc(d.judge) + (jl ? " (" + esc(jl) + ")" : "");
     h += '<div class="meta"><svg class="star"><use href="#i-star"/></svg><span>' + who + '</span><span class="acts">' +
