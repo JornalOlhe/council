@@ -1,0 +1,329 @@
+// IA Council — Navegador do Copiloto como extensão (igual ao Claude in Chrome):
+// abas num grupo laranja "Council", controladas por depuração (chrome.debugger).
+// A tarefa roda AQUI, em segundo plano: continua mesmo se você sair da aba do site.
+"use strict";
+const API = "https://council-one-sigma.vercel.app/api/copilot";
+const SITE = "https://council-one-sigma.vercel.app/*";
+const MAX_STEPS = 30;
+
+const READ_PAGE = `(() => {
+  const vw = innerWidth, vh = innerHeight, out = [];
+  document.querySelectorAll("[data-iac]").forEach((e) => e.removeAttribute("data-iac"));
+  const sel = 'a[href],button,input:not([type=hidden]),textarea,select,[role=button],[role=link],[role=tab],[role=menuitem],[role=checkbox],[role=radio],[role=option],[role=switch],[role=combobox],[role=searchbox],[role=textbox],[contenteditable=""],[contenteditable=true],summary,[onclick],label[for]';
+  let n = 0;
+  for (const el of document.querySelectorAll(sel)) {
+    const r = el.getBoundingClientRect();
+    if (r.width < 4 || r.height < 4 || r.bottom < 0 || r.top > vh || r.right < 0 || r.left > vw) continue;
+    const st = getComputedStyle(el);
+    if (st.visibility === "hidden" || st.display === "none" || (st.opacity !== "" && +st.opacity === 0)) continue;
+    const cx = Math.min(vw - 1, Math.max(0, r.left + r.width / 2)), cy = Math.min(vh - 1, Math.max(0, r.top + r.height / 2));
+    const top = document.elementFromPoint(cx, cy);
+    if (top && top !== el && !el.contains(top) && !top.contains(el)) continue; // coberto por outra coisa
+    const id = ++n;
+    el.setAttribute("data-iac", id);
+    const tag = el.tagName.toLowerCase(), type = (el.getAttribute("type") || "").toLowerCase();
+    let label = (el.getAttribute("aria-label") || el.innerText || (type === "password" ? "" : el.value) || el.placeholder || el.title || el.alt || el.name || "").replace(/\\s+/g, " ").trim().slice(0, 80);
+    if (type === "password") label = "[CAMPO DE SENHA] " + label;
+    const kind = tag === "a" ? "link" : tag === "input" ? "campo:" + (type || "text") : tag === "textarea" ? "campo:texto" : tag === "select" ? "lista" : el.getAttribute("role") || tag;
+    out.push({ id, kind, label, href: tag === "a" ? (el.getAttribute("href") || "").slice(0, 120) : undefined, point: [Math.round(cy / vh * 1000), Math.round(cx / vw * 1000)] });
+    if (n >= 140) break;
+  }
+  const text = ((document.body && document.body.innerText) || "").replace(/\\n{3,}/g, "\\n\\n").slice(0, 7000);
+  return { url: location.href, title: document.title, scrollY: Math.round(scrollY), scrollMax: Math.max(0, document.documentElement.scrollHeight - vh), elements: out, text };
+})()`;
+
+const KEYS = {
+  enter: { key: "Enter", code: "Enter", keyCode: 13, text: "\r" }, tab: { key: "Tab", code: "Tab", keyCode: 9 },
+  escape: { key: "Escape", code: "Escape", keyCode: 27 }, backspace: { key: "Backspace", code: "Backspace", keyCode: 8 },
+  delete: { key: "Delete", code: "Delete", keyCode: 46 }, space: { key: " ", code: "Space", keyCode: 32, text: " " },
+  arrowdown: { key: "ArrowDown", code: "ArrowDown", keyCode: 40 }, arrowup: { key: "ArrowUp", code: "ArrowUp", keyCode: 38 },
+  arrowleft: { key: "ArrowLeft", code: "ArrowLeft", keyCode: 37 }, arrowright: { key: "ArrowRight", code: "ArrowRight", keyCode: 39 },
+  pagedown: { key: "PageDown", code: "PageDown", keyCode: 34 }, pageup: { key: "PageUp", code: "PageUp", keyCode: 33 },
+  home: { key: "Home", code: "Home", keyCode: 36 }, end: { key: "End", code: "End", keyCode: 35 },
+};
+const GLOW = `(() => { if (document.getElementById("iac-glow")) return; const s = document.createElement("style"); s.id = "iac-glow";
+  s.textContent = 'html::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:2147483647;box-shadow:inset 0 0 0 3px #d97757,inset 0 0 28px 4px rgba(217,119,87,.55)}';
+  (document.head || document.documentElement).appendChild(s); })()`;
+const UNGLOW = `(() => { const s = document.getElementById("iac-glow"); if (s) s.remove(); })()`;
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+let task = null; // tarefa atual (uma de cada vez)
+
+// ---------- eventos para o site (todas as abas do IA Council) ----------
+function publicState() {
+  if (!task) return null;
+  const { id, goal, steps, lines, status, now, waiting, answer, plan, shot, url, title } = task;
+  return { id, goal, steps, lines, status, now, waiting, answer, plan, shot, url, title };
+}
+async function emit() {
+  const st = publicState();
+  try { await chrome.storage.session.set({ lastTask: st }); } catch {}
+  const tabs = await chrome.tabs.query({ url: SITE }).catch(() => []);
+  for (const t of tabs) chrome.tabs.sendMessage(t.id, { __iacEvent: true, ev: { type: "task", task: st } }).catch(() => {});
+  chrome.action.setBadgeText({ text: task && task.status === "running" ? "●" : "" }).catch(() => {});
+  chrome.action.setBadgeBackgroundColor({ color: "#d97757" }).catch(() => {});
+}
+function setNow(t) { if (task) { task.now = t; emit(); } }
+function addLine(t, kind) { if (task) { task.lines.push({ t, kind: kind || "" }); if (task.lines.length > 80) task.lines.shift(); emit(); } }
+
+// ---------- aba no grupo "Council" ----------
+async function ensureTab() {
+  if (task.tabId != null) {
+    const t = await chrome.tabs.get(task.tabId).catch(() => null);
+    if (t) return t.id;
+  }
+  const st = await chrome.storage.session.get(["groupId", "windowId"]).catch(() => ({}));
+  let windowId = st.windowId;
+  if (windowId != null && !(await chrome.windows.get(windowId).catch(() => null))) windowId = null;
+  const tab = await chrome.tabs.create({ url: "about:blank", active: false, ...(windowId != null ? { windowId } : {}) });
+  let groupId = st.groupId;
+  const g = groupId != null ? await chrome.tabGroups.get(groupId).catch(() => null) : null;
+  if (g && g.windowId === tab.windowId) await chrome.tabs.group({ groupId, tabIds: [tab.id] });
+  else groupId = await chrome.tabs.group({ tabIds: [tab.id], createProperties: { windowId: tab.windowId } });
+  await chrome.tabGroups.update(groupId, { title: "Council", color: "orange", collapsed: false }).catch(() => {});
+  await chrome.storage.session.set({ groupId, windowId: tab.windowId });
+  task.tabId = tab.id;
+  return tab.id;
+}
+
+// ---------- depuração (CDP) ----------
+async function attach(tabId) {
+  const targets = await chrome.debugger.getTargets();
+  if (targets.some((t) => t.tabId === tabId && t.attached)) return;
+  await chrome.debugger.attach({ tabId }, "1.3");
+  await cdp(tabId, "Page.enable").catch(() => {});
+  await cdp(tabId, "Emulation.setFocusEmulationEnabled", { enabled: true }).catch(() => {}); // funciona com a aba em segundo plano
+}
+function cdp(tabId, method, params) {
+  return new Promise((resolve, reject) => {
+    chrome.debugger.sendCommand({ tabId }, method, params || {}, (res) => {
+      const e = chrome.runtime.lastError;
+      if (e) reject(new Error(e.message)); else resolve(res);
+    });
+  });
+}
+async function evaluate(tabId, expr) {
+  const r = await cdp(tabId, "Runtime.evaluate", { expression: expr, returnByValue: true, awaitPromise: true, userGesture: true });
+  if (r.exceptionDetails) throw new Error("erro na página: " + (r.exceptionDetails.exception && r.exceptionDetails.exception.description || r.exceptionDetails.text || "").slice(0, 120));
+  return r.result ? r.result.value : undefined;
+}
+chrome.debugger.onDetach.addListener((src, reason) => {
+  if (task && src.tabId === task.tabId && task.status === "running") { task.detached = reason; }
+});
+chrome.tabs.onRemoved.addListener((tabId) => { if (task && tabId === task.tabId) task.tabId = null; });
+
+async function waitReady(tabId, ms = 10000) {
+  const end = Date.now() + ms;
+  await sleep(300);
+  while (Date.now() < end) {
+    const st = await evaluate(tabId, "document.readyState").catch(() => "loading");
+    if (st === "complete" || st === "interactive") break;
+    await sleep(300);
+  }
+  await sleep(400);
+  await evaluate(tabId, GLOW).catch(() => {});
+}
+
+async function snapshot(tabId) {
+  const page = await evaluate(tabId, READ_PAGE).catch(() => ({ url: "", title: "", elements: [], text: "" }));
+  let image = null;
+  try {
+    const m = await cdp(tabId, "Page.getLayoutMetrics");
+    const vp = m.cssVisualViewport || m.visualViewport;
+    const scale = Math.min(1, 1280 / Math.max(1, vp.clientWidth));
+    const shot = await Promise.race([
+      cdp(tabId, "Page.captureScreenshot", { format: "jpeg", quality: 60, clip: { x: vp.pageX, y: vp.pageY, width: vp.clientWidth, height: vp.clientHeight, scale } }),
+      sleep(6000).then(() => null),
+    ]);
+    if (shot && shot.data) image = "data:image/jpeg;base64," + shot.data;
+  } catch {}
+  page.image = image; // em segundo plano o print pode falhar: segue só com o texto e os elementos
+  return page;
+}
+
+async function center(tabId, id) {
+  const r = await evaluate(tabId, `(() => { const el = document.querySelector('[data-iac="${Number(id)}"]'); if (!el) return null;
+    el.scrollIntoView({ block: "center", inline: "center" }); const r = el.getBoundingClientRect();
+    return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2), password: (el.getAttribute("type") || "").toLowerCase() === "password" }; })()`);
+  if (!r) throw new Error("o elemento " + id + " não está mais na página (ela mudou)");
+  return r;
+}
+async function click(tabId, x, y) {
+  await cdp(tabId, "Input.dispatchMouseEvent", { type: "mouseMoved", x, y });
+  await cdp(tabId, "Input.dispatchMouseEvent", { type: "mousePressed", x, y, button: "left", clickCount: 1 });
+  await cdp(tabId, "Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button: "left", clickCount: 1 });
+}
+async function key(tabId, name) {
+  const k = KEYS[String(name || "").toLowerCase()];
+  if (!k) throw new Error("tecla não permitida: " + name);
+  const base = { key: k.key, code: k.code, windowsVirtualKeyCode: k.keyCode, nativeVirtualKeyCode: k.keyCode };
+  await cdp(tabId, "Input.dispatchKeyEvent", { type: k.text ? "keyDown" : "rawKeyDown", ...base, ...(k.text ? { text: k.text, unmodifiedText: k.text } : {}) });
+  await cdp(tabId, "Input.dispatchKeyEvent", { type: "keyUp", ...base });
+}
+
+async function act(tabId, a) {
+  const before = await evaluate(tabId, "location.href").catch(() => "");
+  const t = a.type;
+  if (t === "navigate") {
+    await cdp(tabId, "Page.navigate", { url: a.url });
+    await waitReady(tabId);
+    return "abriu " + a.url.replace(/^https?:\/\/(www\.)?/, "").slice(0, 60);
+  }
+  if (t === "back" || t === "forward") { await evaluate(tabId, t === "back" ? "history.back()" : "history.forward()"); await waitReady(tabId); return t === "back" ? "voltou" : "avançou"; }
+  if (t === "wait") { await sleep(Math.max(300, Math.min(5000, (Number(a.seconds) || 1) * 1000))); return ""; }
+  if (t === "scroll") { await evaluate(tabId, `window.scrollBy({ top: ${-(Math.max(-25, Math.min(25, Number(a.amount) || -5))) * 120} })`); await sleep(350); return "rolou a página"; }
+  let done = "";
+  if (t === "key") { await key(tabId, a.key); done = "apertou " + a.key; }
+  else if (t === "click") {
+    let x, y;
+    if (a.id != null) ({ x, y } = await center(tabId, a.id));
+    else if (Array.isArray(a.point)) { const [vw, vh] = await evaluate(tabId, "[innerWidth, innerHeight]"); y = Math.round(a.point[0] / 1000 * vh); x = Math.round(a.point[1] / 1000 * vw); }
+    else throw new Error("clique sem alvo");
+    await sleep(120); await click(tabId, x, y); done = "clicou";
+  } else if (t === "type" || t === "select") {
+    const c = await center(tabId, a.id);
+    if (c.password) throw new Error("é um campo de senha: por segurança eu não digito senhas");
+    if (t === "select") {
+      const ok = await evaluate(tabId, `(() => { const el = document.querySelector('[data-iac="${Number(a.id)}"]'); if (!el || el.tagName !== "SELECT") return false;
+        const v = ${JSON.stringify(String(a.value || ""))}.toLowerCase(); const o = [...el.options].find((o) => o.text.toLowerCase().includes(v) || o.value.toLowerCase() === v);
+        if (!o) return false; el.value = o.value; el.dispatchEvent(new Event("input", { bubbles: true })); el.dispatchEvent(new Event("change", { bubbles: true })); return true; })()`);
+      if (!ok) throw new Error("não achei essa opção na lista");
+      done = "escolheu “" + a.value + "”";
+    } else {
+      await click(tabId, c.x, c.y); await sleep(120);
+      if (a.clear !== false) await evaluate(tabId, `(() => { const el = document.querySelector('[data-iac="${Number(a.id)}"]'); if (!el) return; el.focus();
+        if ("value" in el && el.select) el.select(); else { const s = getSelection(), r = document.createRange(); r.selectNodeContents(el); s.removeAllRanges(); s.addRange(r); } })()`);
+      await cdp(tabId, "Input.insertText", { text: String(a.text || "").slice(0, 3000) });
+      if (a.enter) { await sleep(150); await key(tabId, "enter"); }
+      done = "digitou “" + String(a.text || "").slice(0, 50) + "”" + (a.enter ? " + Enter" : "");
+    }
+  } else throw new Error("ação desconhecida: " + t);
+  await sleep(450);
+  const after = await evaluate(tabId, "location.href").catch(() => before);
+  if (after !== before) await waitReady(tabId);
+  return done;
+}
+
+// ---------- perguntas ao usuário (login, confirmação) ----------
+const waiters = new Map();
+function askUser(kind, msg) {
+  task.waiting = { kind, msg }; task.now = ""; emit();
+  return new Promise((resolve) => waiters.set(task.id, resolve)).then((v) => { if (task) { task.waiting = null; emit(); } return v; });
+}
+
+// ---------- o loop da tarefa ----------
+async function runTask(t) {
+  task = { ...t, steps: [], lines: [], status: "running", now: "Abrindo a aba no grupo Council…", waiting: null, answer: "", plan: "", tabId: null, stop: false };
+  emit();
+  chrome.alarms.create("iac-keepalive", { periodInMinutes: 0.5 });
+  let step = 0;
+  const finish = async (status, msg, kind, answer) => {
+    if (!task) return;
+    task.status = status; task.now = ""; task.waiting = null; if (answer) task.answer = answer;
+    addLine(msg, kind);
+    if (task.tabId != null) {
+      await evaluate(task.tabId, UNGLOW).catch(() => {});
+      await chrome.debugger.detach({ tabId: task.tabId }).catch(() => {});
+    }
+    chrome.alarms.clear("iac-keepalive");
+    emit();
+  };
+  try {
+    const tabId = await ensureTab();
+    await attach(tabId);
+    while (true) {
+      if (task.stop) return finish("stopped", "Parado por você.", "err");
+      if (step >= MAX_STEPS) return finish("max", "Parei depois de " + MAX_STEPS + " passos. Peça para continuar se precisar.", "err");
+      if (task.tabId == null) return finish("stopped", "A aba do Council foi fechada.", "err");
+      if (task.detached) { task.detached = null; await attach(task.tabId).catch(() => {}); }
+      step++;
+      setNow(step === 1 ? "Abrindo o navegador…" : "Lendo a página… (passo " + step + ")");
+      const page = await snapshot(task.tabId);
+      task.shot = page.image; task.url = page.url; task.title = page.title;
+      setNow("Entendendo a página e decidindo o próximo passo…");
+      const r = await fetch(API, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
+        stage: "web", goal: task.goal, request: task.request || task.goal, context: task.context || "", plan: task.plan, steps: task.steps,
+        page: { url: page.url, title: page.title, elements: page.elements, text: page.text, scrollY: page.scrollY, scrollMax: page.scrollMax }, image: page.image }) });
+      const plan = await r.json().catch(() => ({ error: "resposta inválida do servidor" }));
+      if (!r.ok) throw new Error(plan.error || "Erro " + r.status);
+      if (task.stop) return finish("stopped", "Parado por você.", "err");
+      if (plan.plan && !task.plan) { task.plan = plan.plan; addLine("Plano: " + plan.plan); }
+      task.target = null;
+      const a = plan.action;
+      if (a.type === "done") { task.steps.push(plan.say); return finish("done", "✓ " + plan.say, "", plan.answer); }
+      if (a.type === "ask_user") {
+        task.steps.push("Pediu ajuda: " + plan.say);
+        await chrome.tabs.update(task.tabId, { active: true }).catch(() => {});
+        const tab = await chrome.tabs.get(task.tabId).catch(() => null);
+        if (tab) chrome.windows.update(tab.windowId, { focused: true }).catch(() => {});
+        const go = await askUser("help", plan.say);
+        if (!go || task.stop) return finish("stopped", "Encerrado.", "err");
+        task.steps.push("O usuário resolveu na aba e pediu para continuar.");
+        continue;
+      }
+      if (plan.confirm) {
+        const ok = await askUser("confirm", plan.confirm);
+        if (task.stop) return finish("stopped", "Parado por você.", "err");
+        if (!ok) { task.steps.push("Usuário NÃO autorizou: " + plan.say); return finish("stopped", "Cancelado: você não autorizou.", "err"); }
+      }
+      setNow(plan.say);
+      const did = [];
+      try {
+        for (const x of [a, ...(plan.then || [])]) {
+          if (task.stop) break;
+          const d = await act(task.tabId, x);
+          if (d) did.push(d);
+        }
+        const line = plan.say + (did.length ? " (" + did.join(", ") + ")" : "");
+        addLine(line); task.steps.push(line);
+      } catch (e) {
+        addLine("Não deu certo: " + e.message, "err");
+        task.steps.push("FALHOU (" + (did.length ? "fez " + did.join(", ") + "; depois " : "") + a.type + "): " + e.message);
+      }
+      await sleep(200);
+    }
+  } catch (e) {
+    return finish("error", (e && e.message) || "Falha inesperada.", "err");
+  }
+}
+chrome.alarms.onAlarm.addListener(() => { /* mantém a extensão acordada durante a tarefa */ });
+
+// ---------- mensagens do site ----------
+chrome.runtime.onMessage.addListener((msg, sender, reply) => {
+  if (!sender.url || !sender.url.startsWith("https://council-one-sigma.vercel.app/")) return; // só o site oficial
+  (async () => {
+    if (msg.type === "hello") return { ok: true, version: chrome.runtime.getManifest().version };
+    if (msg.type === "status") {
+      if (task) return { task: publicState() };
+      const s = await chrome.storage.session.get("lastTask").catch(() => ({}));
+      return { task: s.lastTask || null };
+    }
+    if (msg.type === "start") {
+      if (task && task.status === "running") return { error: "Já existe uma tarefa no Council. Espere ou clique em Parar." };
+      const goal = String(msg.goal || "").slice(0, 1200);
+      if (!goal) return { error: "objetivo vazio" };
+      const id = String(msg.id || Date.now());
+      runTask({ id, goal, request: String(msg.request || "").slice(0, 2000), context: String(msg.context || "").slice(0, 2000) });
+      return { ok: true, id };
+    }
+    if (msg.type === "stop") { if (task && task.status === "running") { task.stop = true; const w = waiters.get(task.id); if (w) { waiters.delete(task.id); w(false); } } return { ok: true }; }
+    if (msg.type === "answer") { if (task) { const w = waiters.get(task.id); if (w) { waiters.delete(task.id); w(!!msg.yes); } } return { ok: true }; }
+    if (msg.type === "show") {
+      if (task && task.tabId != null) {
+        await chrome.tabs.update(task.tabId, { active: true }).catch(() => {});
+        const tab = await chrome.tabs.get(task.tabId).catch(() => null);
+        if (tab) await chrome.windows.update(tab.windowId, { focused: true }).catch(() => {});
+      }
+      return { ok: true };
+    }
+    return { error: "mensagem desconhecida" };
+  })().then(reply, (e) => reply({ error: e.message }));
+  return true;
+});
+
+// clicar no ícone da extensão abre o IA Council
+chrome.action.onClicked.addListener(async () => {
+  const [t] = await chrome.tabs.query({ url: SITE });
+  if (t) { chrome.tabs.update(t.id, { active: true }); chrome.windows.update(t.windowId, { focused: true }); }
+  else chrome.tabs.create({ url: "https://council-one-sigma.vercel.app/" });
+});

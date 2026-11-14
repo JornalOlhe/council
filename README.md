@@ -14,6 +14,12 @@ Você pede em português e ele faz:
 - **No site (qualquer navegador):** abre abas e pesquisa (Google, YouTube, Maps, Mercado Livre, Spotify…), abre sites, cria lembretes com alarme, copia textos e prepara e-mails e WhatsApp.
 - **No app IA Council para Windows:** além disso, vê a tela, **identifica cada elemento** (botões, campos, ícones), **troca de apps e abas, move o mouse e digita** até cumprir o pedido — como os apps de desktop do Claude e do ChatGPT. Sem código de pareamento.
 
+### Extensão IA Council (Brave/Chrome/Edge) — `extension/`
+Igual ao Claude in Chrome: o Copiloto abre um **grupo de abas laranja "Council"** no navegador do usuário e controla as abas por depuração (`chrome.debugger`), sem mexer no mouse. A tarefa roda no service worker da extensão, então **continua mesmo se você sair da aba do site**; ao voltar, o site mostra o andamento/resultado.
+- Instalação: baixar `/extension/ia-council-extension.zip` → extrair → `brave://extensions` (ou `chrome://extensions`) → Modo do desenvolvedor → Carregar sem compactação.
+- O site fala com a extensão por `content.js` (só no domínio oficial); a extensão só aceita mensagens desse domínio.
+- Gerar o zip depois de mudar a extensão: `npm run build:ext`.
+
 ### Navegador do Copiloto (no app)
 Como o Claude in Chrome: o Copiloto ganha uma **janela de navegador só dele** e faz tarefas em sites (pesquisar e trazer a resposta, comparar preços, preencher formulários) **sem mexer no seu mouse/teclado** — você assiste ou continua usando o PC.
 - O app controla a janela por dentro (`desktop/web.js`): lê a página (lista numerada de botões/links/campos + texto) e tira print; `/api/copilot` (estágio `web`) escolhe a ação; o app clica/digita com eventos internos do navegador.

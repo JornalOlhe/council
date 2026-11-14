@@ -549,6 +549,18 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
     </div>
   </div>
 </div>
+<div class="modal hidden" id="extModal" role="dialog" aria-modal="true" aria-labelledby="extTitle">
+  <div class="mbox auto" style="width:min(560px,100%)">
+    <div class="mhead"><svg class="helm" style="width:24px;height:20px"><use href="#i-helmet"/></svg><span id="extTitle">Extensão IA Council</span><span class="beta">Beta</span><button class="ib" id="extClose" aria-label="Fechar"><svg class="ico"><use href="#i-x"/></svg></button></div>
+    <div class="pcbody">
+      <p style="margin:0;color:var(--tx2)">Igual ao Claude in Chrome: o Copiloto abre um <b>grupo de abas laranja “Council”</b> no seu navegador (Brave, Chrome ou Edge) e faz a tarefa sozinho — <b>continua mesmo se você sair desta aba</b>.</p>
+      <div class="pcstep"><span class="n">1</span><div class="c"><b>Baixe e extraia</b><p>Extraia o .zip numa pasta que você não vai apagar.</p><a class="btn pri" href="/extension/ia-council-extension.zip" download>⬇ Baixar extensão</a></div></div>
+      <div class="pcstep"><span class="n">2</span><div class="c"><b>Abra a página de extensões</b><p>Cole na barra de endereço: <code>brave://extensions</code> (no Chrome: <code>chrome://extensions</code>) e ative o <b>Modo do desenvolvedor</b> (canto superior direito).</p><button class="btn" id="extCopy">Copiar endereço</button></div></div>
+      <div class="pcstep"><span class="n">3</span><div class="c"><b>Carregue a pasta</b><p>Clique em <b>Carregar sem compactação</b> e escolha a pasta <b>IA Council</b>. Depois recarregue esta página (F5).</p></div></div>
+      <div class="pcsafe">🔒 Ela só aceita comandos deste site, trabalha só nas abas do grupo Council, não digita senhas e pede confirmação antes de comprar ou enviar. Enquanto trabalha, o navegador mostra o aviso de que a extensão está “depurando” a aba — é assim que ela clica e digita sem mexer no seu mouse.</div>
+    </div>
+  </div>
+</div>
 <div class="modal hidden" id="upModal" role="dialog" aria-modal="true" aria-labelledby="upTitle">
   <div class="mbox">
     <div class="mhead"><span id="upTitle">Fazer upload ou adicionar arquivos</span><span class="beta">Beta</span><button class="ib" id="upClose" aria-label="Fechar"><svg class="ico"><use href="#i-x"/></svg></button></div>
@@ -1513,7 +1525,8 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
   function pcSetState(ok, os) {
     pc.connected = ok; pc.os = os || pc.os;
     $("pcPill").classList.toggle("on", ok);
-    $("pcPillTxt").textContent = ok ? "PC conectado" : "Usar no meu PC";
+    $("pcPillTxt").textContent = ok ? "PC conectado" : EXT.ready ? "Extensão ativa" : "Usar no meu PC";
+    $("pcPill").classList.toggle("on", ok || EXT.ready);
     $("pcPill").title = ok ? "O copiloto pode ver a tela, mover o mouse e digitar neste computador" : "Baixe o IA Council para Windows";
   }
   function pcCheck() {
@@ -1528,6 +1541,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
   function pcAct(a) { return D.act(a).catch(function (e) { throw pcErr(e); }); }
   function openPC() {
     if (pc.connected) { toast("Já está conectado: é só pedir no Copiloto."); return; }
+    if (EXT.ready && !D) { toast("Extensão ativa: peça algo para fazer num site e acompanhe no grupo Council."); return; }
     $("pcModal").classList.remove("hidden");
   }
   function closePC() { $("pcModal").classList.add("hidden"); }
@@ -1819,12 +1833,101 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
     }
     W.working(true, "começando").then(function () { loop(); }, function () { loop(); });
   }
+  // ----- Extensão IA Council (navegador do usuário, grupo de abas "Council") -----
+  var EXT = { ready: false, version: "", calls: {}, n: 0, listeners: [] };
+  window.addEventListener("message", function (e) {
+    if (e.source !== window || !e.data || typeof e.data !== "object") return;
+    var d = e.data;
+    if (d.__iac === "ready") { if (!EXT.ready) { EXT.ready = true; EXT.version = d.version; pcSetState(pc.connected, pc.os); setTimeout(extResume, 300); } }
+    else if (d.__iac === "fromExt") { var cb = EXT.calls[d.id]; if (cb) { delete EXT.calls[d.id]; cb(d.resp || {}); } }
+    else if (d.__iac === "event") EXT.listeners.slice().forEach(function (f) { f(d.ev); });
+  });
+  function extCall(msg) {
+    return new Promise(function (res, rej) {
+      var id = ++EXT.n;
+      EXT.calls[id] = function (r) { if (r && r.error) rej(new Error(r.error)); else res(r); };
+      window.postMessage({ __iac: "toExt", id: id, msg: msg }, location.origin);
+      setTimeout(function () { if (EXT.calls[id]) { delete EXT.calls[id]; rej(new Error("A extensão não respondeu. Recarregue a página (F5).")); } }, 8000);
+    });
+  }
+  // Mostra (ao vivo) uma tarefa que roda na extensão; se attachId vier, só acompanha uma que já existe
+  function runWebExt(goal, box, data, attachId) {
+    var log = data.webLog = data.webLog || { goal: goal, steps: [], status: "running" };
+    var card = document.createElement("div"); card.className = "agent";
+    card.innerHTML = '<div class="ah"><svg class="ico" style="color:var(--ac)"><use href="#i-globe"/></svg><b>Na aba Council: ' + esc(goal) +
+      '</b><button class="btn show">Ver aba</button><button class="btn stop">Parar</button></div>' +
+      '<div class="shotwrap hidden"><img alt="Aba Council"></div><div class="obs hidden"></div><div class="alog"></div><div class="aqs"></div><div class="ans"></div>';
+    box.appendChild(card);
+    var stopBtn = card.querySelector(".stop"), wrap = card.querySelector(".shotwrap"), img = wrap.querySelector("img"), obs = card.querySelector(".obs"),
+      alog = card.querySelector(".alog"), aqs = card.querySelector(".aqs"), ansBox = card.querySelector(".ans"), myId = attachId || null, closed = false, lastShot = null;
+    stopBtn.onclick = function () { stopBtn.disabled = true; stopBtn.textContent = "Parando…"; extCall({ type: "stop" }).catch(function () {}); };
+    card.querySelector(".show").onclick = function () { extCall({ type: "show" }).catch(function (e) { toast(e.message); }); };
+    function paint(t) {
+      if (!t || closed || (myId && t.id !== myId)) return;
+      if (t.shot && t.shot !== lastShot) { lastShot = t.shot; wrap.classList.remove("hidden"); img.src = t.shot; }
+      if (t.url) { obs.classList.remove("hidden"); obs.textContent = "🌐 " + (t.title ? t.title + " — " : "") + t.url.replace(/^https?:\/\/(www\.)?/, "").slice(0, 90); }
+      alog.innerHTML = (t.lines || []).map(function (l) { return '<div class="ln' + (l.kind ? " " + l.kind : "") + '">' + (l.kind === "err" ? "<span>⚠</span>" : '<svg><use href="#i-check"/></svg>') + "<span>" + esc(l.t) + "</span></div>"; }).join("") +
+        (t.status === "running" && t.now ? '<div class="ln cur"><svg class="star spinstar" style="color:var(--ac)"><use href="#i-star"/></svg><span>' + esc(t.now) + "</span></div>" : "");
+      alog.scrollTop = alog.scrollHeight;
+      aqs.innerHTML = "";
+      if (t.waiting) {
+        var q = document.createElement("div"); q.className = "aq";
+        var help = t.waiting.kind === "help";
+        q.innerHTML = "<span>" + (help ? "✋ " : "⚠ ") + esc(t.waiting.msg) + (help ? " (faça na aba Council)" : "") + '</span><button class="btn pri">' + (help ? "Já fiz, continuar" : "Pode fazer") + '</button><button class="btn">' + (help ? "Encerrar" : "Não") + "</button>";
+        var bs = q.querySelectorAll("button");
+        bs[0].onclick = function () { extCall({ type: "answer", yes: true }); q.remove(); };
+        bs[1].onclick = function () { extCall({ type: "answer", yes: false }); q.remove(); };
+        aqs.appendChild(q);
+      }
+      log.steps = (t.lines || []).map(function (l) { return l.t; });
+      if (t.status !== "running") {
+        closed = true;
+        log.status = t.status; log.result = (t.lines.length ? t.lines[t.lines.length - 1].t : ""); log.answer = t.answer || "";
+        if (stopBtn.parentNode) stopBtn.remove();
+        if (t.answer) ansBox.innerHTML = '<div class="md" style="padding:4px 12px 12px">' + md(t.answer) + "</div>";
+        EXT.listeners = EXT.listeners.filter(function (f) { return f !== onEv; });
+        saveHist(); renderRecent();
+      }
+    }
+    function onEv(ev) { if (ev && ev.type === "task") paint(ev.task); }
+    EXT.listeners.push(onEv);
+    if (attachId) { extCall({ type: "status" }).then(function (r) { paint(r.task); }, function () {}); return; }
+    var alogStart = document.createElement("div"); alogStart.className = "ln cur";
+    alogStart.innerHTML = '<svg class="star spinstar" style="color:var(--ac)"><use href="#i-star"/></svg><span>Abrindo a aba no grupo Council…</span>'; alog.appendChild(alogStart);
+    var id = "t" + Date.now().toString(36);
+    myId = id; log.extId = id; saveHist();
+    extCall({ type: "start", id: id, goal: goal, request: data.request || goal, context: data.ctx || "" }).catch(function (e) {
+      closed = true; log.status = "error"; log.result = e.message; alog.innerHTML = '<div class="ln err"><span>⚠</span><span>' + esc(e.message) + "</span></div>";
+      if (stopBtn.parentNode) stopBtn.remove(); saveHist();
+    });
+  }
+  // Ao abrir/recarregar o site: se uma tarefa da extensão terminou enquanto você estava fora, salva o resultado
+  function extResume() {
+    extCall({ type: "status" }).then(function (r) {
+      var t = r.task; if (!t) return;
+      history.forEach(function (h) {
+        (h.turns || []).forEach(function (tu) {
+          var w = tu.data && tu.data.webLog;
+          if (w && w.extId === t.id && w.status === "running" && t.status !== "running") {
+            w.status = t.status; w.steps = (t.lines || []).map(function (l) { return l.t; });
+            w.result = t.lines && t.lines.length ? t.lines[t.lines.length - 1].t : ""; w.answer = t.answer || "";
+          }
+        });
+      });
+      saveHist(); if (curId) showEntry(curId);
+    }, function () {});
+  }
+  function openExt() { $("extModal").classList.remove("hidden"); }
+  $("extClose").onclick = function () { $("extModal").classList.add("hidden"); };
+  $("extModal").addEventListener("click", function (e) { if (e.target === $("extModal")) $("extModal").classList.add("hidden"); });
+  $("extCopy").onclick = function () { copy(/Brave/.test(navigator.userAgent) || navigator.brave ? "brave://extensions" : "chrome://extensions", "Endereço copiado: cole na barra de endereço"); };
+
   function webNeeded(box, goal) {
     var card = document.createElement("div"); card.className = "acard";
-    card.innerHTML = '<span class="ai">' + ic("globe") + '</span><span class="at"><b>Para eu fazer isso sozinho num site, use o app IA Council</b><span>No app, o Copiloto tem um navegador só dele e faz a tarefa enquanto você assiste.</span></span>';
-    var b = document.createElement("button"); b.className = "btn"; b.textContent = "Abrir pesquisa";
+    card.innerHTML = '<span class="ai">' + ic("globe") + '</span><span class="at"><b>Para eu fazer isso sozinho num site, instale a extensão IA Council</b><span>Ela abre um grupo de abas “Council” e trabalha em segundo plano, mesmo se você sair desta aba.</span></span>';
+    var b = document.createElement("button"); b.className = "btn"; b.textContent = "Só abrir a pesquisa";
     b.onclick = function () { openURL(ENG.google[1](goal)); };
-    var c = document.createElement("button"); c.className = "btn pri"; c.textContent = "Baixar o app"; c.onclick = openPC;
+    var c = document.createElement("button"); c.className = "btn pri"; c.textContent = "Instalar extensão"; c.onclick = openExt;
     card.appendChild(b); card.appendChild(c); box.appendChild(card);
   }
 
@@ -1897,8 +2000,11 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
             (data.webLog.answer ? '<div class="md" style="padding:4px 12px 12px">' + md(data.webLog.answer) + "</div>" : "");
           box.appendChild(pw); return;
         }
+        if (data.webLog && data.webLog.extId && data.webLog.status === "running" && EXT.ready) { runWebExt(a.goal, box, data, data.webLog.extId); return; }
         if (!auto) return;
-        if (D && D.web) runWeb(a.goal, box, data); else webNeeded(box, a.goal);
+        if (D && D.web) runWeb(a.goal, box, data);
+        else if (EXT.ready) runWebExt(a.goal, box, data);
+        else webNeeded(box, a.goal);
       } else if (a.type === "pc") {
         card.remove();
         if (data.pcLog && data.pcLog.status !== "running") {
@@ -1950,7 +2056,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
     var work = sentImgs.length
       ? askAboutImage(text, sentImgs[0]).then(function (j) { return { imageAnswer: j.answer, actions: [], by: "Gemini", model: j.model }; })
       : fetch("/api/copilot", { method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ stage: "plan", text: text, history: hist, pc: pc.connected, app: !!(D && D.web), now: new Date().toLocaleString("pt-BR"), tz: (Intl.DateTimeFormat().resolvedOptions().timeZone || "") }) })
+          body: JSON.stringify({ stage: "plan", text: text, history: hist, pc: pc.connected, app: !!((D && D.web) || EXT.ready), now: new Date().toLocaleString("pt-BR"), tz: (Intl.DateTimeFormat().resolvedOptions().timeZone || "") }) })
           .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || "Erro " + r.status); return j; }); });
     work.then(function (data) { data.request = text; data.ctx = ctxTxt; finishTurn(job, h, k, data); }, function (e) { finishTurn(job, h, k, { error: e.message || "Falha de rede." }); });
   }

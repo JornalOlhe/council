@@ -9,6 +9,7 @@
   },
   "scripts": {
     "check": "node --check api/council.js && node --check api/copilot.js && node --check api/transcribe.js",
-    "test": "node tests/council.test.mjs && node tests/copilot.test.mjs && node desktop/test-control.js"
+    "test": "node tests/council.test.mjs && node tests/copilot.test.mjs && node desktop/test-control.js && node extension/test/background.test.cjs",
+    "build:ext": "python3 extension/build-zip.py"
   }
 }
