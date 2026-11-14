@@ -4,7 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>IA Council</title>
-<meta name="theme-color" content="#262624">
+<meta name="theme-color" content="#1f1e1d">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,500;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
 <meta name="description" content="IA Council: várias IAs respondem, debatem e um presidente decide. Com Copiloto que pesquisa, vê sua tela e mexe no seu PC.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg stroke='%23d97757' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M12 2v20M2 12h20M4.9 4.9l14.2 14.2M19.1 4.9 4.9 19.1'/%3E%3C/g%3E%3C/svg%3E">
 <style>
@@ -293,6 +296,115 @@ body.pc-active::after{content:"";position:fixed;inset:0;pointer-events:none;z-in
   .under .disc{display:none}
   .share span{display:none}
 }
+
+/* ===== Refinamento visual (inspirado no Claude: proporções, tipografia e ritmo) ===== */
+:root{
+  --bg:#1f1e1d;--side:#1b1a19;--card:#30302e;--pop:#2c2b29;--hover:#ffffff0d;--line:#3a3936;--line2:#4a4945;
+  --tx:#f3f1ea;--tx2:#c4c1b8;--mut:#9c998f;--mut2:#6f6d66;
+  --serif:"Source Serif 4","Tiempos Text","Iowan Old Style",Georgia,serif;
+  --sans:system-ui,-apple-system,"Segoe UI Variable Text","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+}
+body{font-size:14px;letter-spacing:-.003em}
+.side{width:260px;background:var(--side);border-right:1px solid #292826}
+.sh{height:48px;padding:8px 8px 4px 10px;gap:6px}
+.wordmark{font:500 21px/1 var(--serif);letter-spacing:-.025em;margin-left:2px}
+.sh .ib{width:28px;height:28px}
+.seg{background:#262523;border-radius:8px;padding:2px}
+.seg .ib{width:28px;height:24px;border-radius:6px}
+.seg .ib.on{background:#3a3936}
+.nav{padding:6px 6px 0}
+.nav>button{height:32px;font-size:14px;gap:10px;padding:0 9px;border-radius:8px}
+.nav>button.first{background:#2d2c2a}
+.nav>button .ico{width:16px;height:16px}
+.kbd{font-size:11.5px;opacity:.85}
+.rhw{display:flex;align-items:center;padding:18px 8px 4px 15px}
+.rh{padding:0;font-size:12px;color:var(--mut)}
+.rhw .rf{margin-left:auto;width:26px;height:26px;color:var(--mut)}
+.recent{padding:0 6px 8px}
+.ri{border-radius:8px}
+.ri>button.t{height:30px;font-size:13.5px;padding:0 9px;color:#e9e6de}
+.ri.on{background:#2d2c2a}
+.empty{padding:6px 9px}
+.sf{border-top:none;padding:6px 8px 8px}
+.me{padding:6px;gap:9px}
+.av{width:22px;height:22px;font-size:11px;background:#6c5ce7}
+.me b{font-size:14px;font-weight:600}
+.top{height:46px;padding:0 10px 0 14px;gap:4px}
+.top.line{border-bottom-color:#2a2927}
+.ttl{font-size:14px;font-weight:500;padding:5px 8px;gap:8px}
+.ttl svg{width:13px;height:13px}
+.share{font-size:14px;height:30px;padding:0 9px;gap:7px}
+.share .ico{width:16px;height:16px}
+.home{padding:24px 16px 13vh}
+.greet{font-size:clamp(30px,3.2vw,39px);font-weight:400;letter-spacing:-.02em;margin:0 0 26px;gap:12px}
+.greet .star{width:34px;height:34px}
+.cw{max-width:620px}
+.composer{border-radius:18px;padding:14px 12px 10px 16px;background:var(--card);border:1px solid #3c3b38;box-shadow:0 2px 16px #00000033}
+.composer:focus-within{border-color:#4a4945}
+.composer textarea{font-size:15px;line-height:1.5;min-height:46px}
+.composer textarea::placeholder{color:#8f8c84}
+.crow{margin-top:4px}
+.cb{height:30px;min-width:30px;border-radius:8px;color:#c9c6bd}
+.cb .ico{width:17px;height:17px}
+.send{width:30px;height:30px;border-radius:9px}
+.send .s-enter{display:none}
+#homeSlot .send:disabled{display:none}
+.under{padding:10px 8px 0;min-height:34px}
+.uleft{display:flex;align-items:center;gap:2px}
+.uleft:empty{display:none}
+.pick{font-size:13.5px;height:28px;padding:0 8px;color:#e8e5dd}
+.pick b{font-weight:500}
+.pick .m{color:#9c998f}
+/* conversa: caixa de uma linha, + e microfone embaixo, Enter discreto à direita */
+body.in-chat .dock{padding:0 16px 8px}
+body.in-chat .dock .cw{max-width:660px}
+body.in-chat .composer{display:flex;flex-wrap:wrap;align-items:center;border-radius:12px;padding:6px 6px 6px 14px;box-shadow:none}
+body.in-chat .composer .thumbs{flex-basis:100%;margin:6px 0 8px}
+body.in-chat .composer textarea{flex:1;min-height:24px;font-size:14.5px;padding:3px 0;width:auto}
+body.in-chat .composer .crow{margin:0}
+body.in-chat .composer .crow .sp{display:none}
+body.in-chat .send{background:transparent;color:#8f8c84}
+body.in-chat .send:disabled{opacity:.55;background:transparent}
+body.in-chat .send:not(:disabled){color:#f3f1ea;background:transparent}
+body.in-chat .send:not(:disabled):hover{background:#ffffff10}
+body.in-chat .send .s-up{display:none}
+body.in-chat .send .s-enter{display:block}
+body.in-chat .under{padding:8px 2px 0}
+body.in-chat .under .uleft .cb{height:28px;min-width:28px;color:#c9c6bd}
+body.in-chat .under .disc{font-size:12px;color:#8f8c84}
+/* mensagens */
+.chat{max-width:680px;padding:22px 24px 40px}
+.umsg{margin:8px 0 18px}
+.umsg>div{background:#2b2a27;border-radius:12px;padding:9px 14px;font-size:14.5px;line-height:1.45;max-width:78%;color:#efece4}
+.amsg{margin-bottom:30px}
+.md{font:16px/1.62 var(--serif);color:#ebe8e0;letter-spacing:-.003em}
+.md p{margin:0 0 12px}
+.md h2{font:600 17.5px/1.35 var(--serif);margin:20px 0 6px;color:#f3f1ea}
+.md strong{font-weight:600;color:#f6f4ee}
+.md ul{padding-left:22px}
+.md li{margin:3px 0}
+.md li::marker{color:#8f8c84}
+.md code{font:12.5px var(--mono);background:#2a2927;border:1px solid #393835;border-radius:5px;padding:1px 5px;color:#e9e6de}
+.md pre{background:#232221;border:1px solid #33322f;border-radius:10px;padding:12px 14px;margin:0 0 14px;overflow:auto}
+.md pre code{background:none;border:0;padding:0;font-size:13px;line-height:1.55;white-space:pre}
+.box .md{font-size:15px}
+.step>summary{font-size:14px;color:#9c998f}
+.who{font-size:12.5px}
+.meta{margin-top:2px;gap:6px;font-size:12.5px}
+.meta .acts{order:-1;margin-left:-6px}
+.meta .star,.meta .helm{width:16px;height:16px;opacity:.85}
+.acts button{width:28px;height:28px;color:#8f8c84}
+.acts .ico{width:15px;height:15px}
+.thinking{font-size:15.5px}
+.prog .ln{font-size:14px}
+.acard{border-radius:10px;background:#262523;border-color:#33322f;font-size:14px}
+.agent{border-radius:12px;background:#232221;border-color:#33322f}
+.chips button{font-size:13px;border-color:#383734;background:#ffffff04}
+.pop{background:#2b2a28;border-color:#3d3c39;border-radius:12px;box-shadow:0 10px 38px #000a,0 0 0 1px #00000040}
+.pop .it{padding:7px 10px;font-size:14px}
+.mbox{background:#262523;border-color:#3d3c39}
+.upd{font-size:13.5px}
+@media(max-width:820px){.side{width:280px}}
 </style>
 </head>
 <body>
@@ -308,6 +420,8 @@ body.pc-active::after{content:"";position:fixed;inset:0;pointer-events:none;z-in
       <path d="M4.5 22.6h23v.4a2 2 0 0 1-2 2h-19a2 2 0 0 1-2-2z" fill="#a9a59b"/>
       <circle cx="6.6" cy="20.5" r="1.1" fill="#8f8b81"/><circle cx="25.4" cy="20.5" r="1.1" fill="#8f8b81"/>
     </symbol>
+    <symbol id="i-enter" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" d="M19 5v7a3 3 0 0 1-3 3H6m4-4-4 4 4 4"/></symbol>
+    <symbol id="i-filter" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" d="M4 5h16l-6.2 7.4V18l-3.6 1.8v-7.4z"/></symbol>
     <symbol id="i-x" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M6 6l12 12M18 6 6 18"/></symbol>
     <symbol id="i-globe" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.4 2.4 3.6 5.2 3.6 8.5s-1.2 6.1-3.6 8.5c-2.4-2.4-3.6-5.2-3.6-8.5S9.6 5.9 12 3.5z"/></g></symbol>
     <symbol id="i-monitor" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="12" rx="1.8"/><path d="M8.5 20h7M12 16.5V20"/></g></symbol>
@@ -358,7 +472,7 @@ body.pc-active::after{content:"";position:fixed;inset:0;pointer-events:none;z-in
     <button id="membersBtn"><svg class="ico"><use href="#i-users"/></svg>Membros do conselho</button>
     <button id="attachNav"><svg class="ico"><use href="#i-clip"/></svg>Anexar fotos</button>
   </nav>
-  <button class="rh" id="recentToggle">Recentes <svg><use href="#i-chev"/></svg></button>
+  <div class="rhw"><button class="rh" id="recentToggle">Recentes <svg><use href="#i-chev"/></svg></button><button class="ib rf" id="recentFilter" title="Procurar" aria-label="Procurar nas conversas"><svg style="width:15px;height:15px"><use href="#i-filter"/></svg></button></div>
   <div class="recent" id="recent"></div>
   <div class="sf">
     <button class="me" id="meBtn">
@@ -415,10 +529,11 @@ body.pc-active::after{content:"";position:fixed;inset:0;pointer-events:none;z-in
       <button class="cb" id="plus" title="Adicionar" aria-label="Adicionar"><svg class="ico"><use href="#i-plus"/></svg></button>
       <button class="cb" id="mic" title="Ditar" aria-label="Ditar por voz"><svg class="ico"><use href="#i-mic"/></svg></button>
       <span class="sp"></span>
-      <button class="send" id="go" disabled title="Enviar (Enter)" aria-label="Enviar"><svg style="width:16px;height:16px"><use href="#i-up"/></svg></button>
+      <button class="send" id="go" disabled title="Enviar (Enter)" aria-label="Enviar"><svg class="s-up" style="width:16px;height:16px"><use href="#i-up"/></svg><svg class="s-enter" style="width:17px;height:17px"><use href="#i-enter"/></svg></button>
     </div>
   </div>
   <div class="under">
+    <span class="uleft" id="uleft"></span>
     <button class="pick" id="photoPick" title="Anexar fotos"><svg style="width:16px;height:16px;color:var(--mut)"><use href="#i-clip"/></svg><span id="photoTxt">Fotos</span><svg style="width:10px;height:10px;color:var(--mut)"><use href="#i-chev"/></svg></button>
     <span class="disc hidden" id="disc">O IA Council é uma IA e pode cometer erros. Confira informações importantes.</span>
     <span class="sp" id="underSp"></span>
@@ -470,8 +585,14 @@ body.pc-active::after{content:"";position:fixed;inset:0;pointer-events:none;z-in
   }
   function inline(l) { return l.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/`([^`]+)`/g, "<code>$1</code>"); }
   function md(src) { // markdown mínimo, sempre escapando antes de formatar
-    var out = [], inList = false;
+    var out = [], inList = false, code = null;
     String(src || "").split("\n").forEach(function (raw) {
+      if (/^\s*```/.test(raw)) {
+        if (code === null) { if (inList) { out.push("</ul>"); inList = false; } code = []; }
+        else { out.push("<pre><code>" + esc(code.join("\n")) + "</code></pre>"); code = null; }
+        return;
+      }
+      if (code !== null) { code.push(raw); return; }
       var l = inline(esc(raw));
       var h = /^#{1,6}\s+(.*)$/.exec(l), li = /^\s*(?:[-*•]|\d+[.)])\s+(.*)$/.exec(l);
       if (li) { if (!inList) { out.push("<ul>"); inList = true; } out.push("<li>" + li[1] + "</li>"); return; }
@@ -479,6 +600,7 @@ body.pc-active::after{content:"";position:fixed;inset:0;pointer-events:none;z-in
       if (h) out.push("<h2>" + h[1] + "</h2>");
       else if (l.trim()) out.push("<p>" + l + "</p>");
     });
+    if (code !== null) out.push("<pre><code>" + esc(code.join("\n")) + "</code></pre>");
     if (inList) out.push("</ul>");
     return out.join("");
   }
@@ -547,10 +669,14 @@ body.pc-active::after{content:"";position:fixed;inset:0;pointer-events:none;z-in
     (where === "home" ? $("homeSlot") : $("dockSlot")).appendChild(wrap);
     $("dock").classList.toggle("hidden", where === "home");
     var chat = where !== "home";
+    document.body.classList.toggle("in-chat", chat);
+    var crow = $("composer").querySelector(".crow");
+    if (chat) { $("uleft").appendChild($("plus")); $("uleft").appendChild($("mic")); }
+    else { crow.insertBefore($("mic"), crow.firstChild); crow.insertBefore($("plus"), crow.firstChild); }
     $("photoPick").classList.toggle("hidden", chat);
     $("disc").classList.toggle("hidden", !chat);
     $("underSp").classList.toggle("hidden", chat);
-    ta.placeholder = appMode === "copilot" ? (chat ? "Peça outra coisa…" : "Ex.: pesquise passagens para Salvador em março") : chat ? "Responder…" : "Como o conselho pode ajudar você hoje?";
+    ta.placeholder = appMode === "copilot" ? (chat ? "Peça outra coisa" : "O que eu faço no seu navegador ou PC?") : chat ? "Responder" : "Como o conselho pode ajudar você hoje?";
   }
   place("home");
   function autosize() { ta.style.height = "auto"; ta.style.height = Math.min(ta.scrollHeight, 260) + "px"; }
@@ -935,6 +1061,7 @@ body.pc-active::after{content:"";position:fixed;inset:0;pointer-events:none;z-in
     var b = $("searchBox"); b.classList.toggle("hidden");
     if (!b.classList.contains("hidden")) $("searchIn").focus(); else { filter = ""; $("searchIn").value = ""; renderRecent(); }
   };
+  $("recentFilter").onclick = function () { $("searchBtn").onclick(); };
   $("searchIn").addEventListener("input", function () { filter = this.value.trim().toLowerCase(); renderRecent(); });
   $("deviceBtn").onclick = function () { copy(location.origin, "Link copiado: abra no celular e use “Adicionar à tela inicial”"); };
 
