@@ -1874,9 +1874,10 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
   }
 
   // ----- Navegador do Copiloto: tarefas em sites numa janela própria (sem mexer no mouse do usuário) -----
-  var webBusy = null;
+  var webBusy = null, webStopHooked = false; // (objetos do app são congelados: nada de propriedades novas neles)
   // ----- painel do navegador embutido no app (você vê tudo ao vivo) -----
   if (D && D.web && D.web.onPanel) {
+    document.body.appendChild($("cpPanel")); // o painel fica na borda direita, depois da conversa
     D.web.onPanel(function (st) {
       var p = $("cpPanel");
       p.classList.toggle("hidden", !st.open); p.style.width = (st.width || 0) + "px"; p.classList.toggle("work", !!st.working);
@@ -1973,7 +1974,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
     // Parar é IMEDIATO (não espera a página responder)
     stopBtn.onclick = function () { stopped = true; finish("stopped", "Parado por você.", "err"); };
     function tmo(p, ms, what) { return Promise.race([p, new Promise(function (_, rej) { setTimeout(function () { rej(new Error(what + " demorou demais")); }, ms); })]); }
-    if (W.onStop && !W.__stopHooked) { W.__stopHooked = true; W.onStop(function () { if (webBusy) { var sb = webBusy.querySelector(".stop"); if (sb && !sb.disabled) sb.click(); } }); }
+    if (W.onStop && !webStopHooked) { webStopHooked = true; W.onStop(function () { if (webBusy) { var sb = webBusy.querySelector(".stop"); if (sb && !sb.disabled) sb.click(); } }); }
     showBtn.onclick = function () {
       if (!W.onPanel) { toast("Atualize o app para a versão 1.0.11 para ver o painel do navegador."); return; }
       W.show(true).catch(function (e) { toast("Não consegui abrir o painel: " + e.message); });
