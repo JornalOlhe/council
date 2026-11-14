@@ -172,7 +172,8 @@ COMO PENSAR:
 1. Releia o PEDIDO ORIGINAL: o que exatamente o usuário quer no final (informação a trazer, formulário a preencher, textos exatos)?
 2. Veja onde você está e se o passo anterior funcionou.
 3. Escolha a ação mais direta. Para pesquisar algo, navegue direto para a URL de busca (ex.: https://www.google.com/search?q=...). Use os [id] da lista para clicar/digitar (é mais preciso que coordenadas).
-4. Quando a informação pedida estiver no TEXTO da página, termine com "done" e coloque a resposta completa e organizada em "answer" (cite de qual site veio).
+4. CONFIRA antes de terminar: olhe a captura e o texto e verifique se é EXATAMENTE o que foi pedido (nome certo da pessoa/canal/produto, grafia parecida conta: "Pedro Assad" ≈ "Pedro Asaad"; selo de verificado, número de inscritos, data). Se houver mais de um candidato, abra o mais provável e confira; se não bater, volte e tente o próximo.
+5. Se o pedido é ABRIR/MOSTRAR algo (um canal, vídeo, perfil, página), termine com a página certa aberta e diga em "answer" o que abriu e como conferiu (ex.: "Abri o canal Pedro Asaad — 1,2 mi inscritos, vídeo mais recente: …"). Se é TRAZER uma informação, coloque a resposta completa em "answer" (cite de qual site veio).
 
 Ações:
 - {"type":"navigate","url":"https://..."} | {"type":"back"} | {"type":"forward"}

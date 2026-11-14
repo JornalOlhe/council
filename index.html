@@ -1897,6 +1897,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
   }
   // ----- Extensão IA Council (navegador do usuário, grupo de abas "Council") -----
   var EXT = { ready: false, version: "", calls: {}, n: 0, listeners: [] };
+  setTimeout(function () { if (!EXT.ready) extProbe(); }, 1500);
   window.addEventListener("message", function (e) {
     if (e.source !== window || !e.data || typeof e.data !== "object") return;
     var d = e.data;
@@ -2093,11 +2094,28 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
     body.appendChild(meta);
     meta.querySelector('[data-a="copy"]').onclick = function () { copy([data.imageAnswer, data.say, data.screenAnswer].filter(Boolean).join("\n\n")); };
   }
+  // plano que só abre site/pesquisa, mas o pedido é achar/ver algo específico → tarefa na aba Council
+  function webish(plan, text) {
+    var acts = (plan && plan.actions) || [];
+    if (!acts.length || !acts.every(function (a) { return a.type === "open" || a.type === "search"; })) return false;
+    var s = text.toLowerCase().trim();
+    if (/^(abr\w*|entr\w*|acess\w*|v[aá] (para|pro|pra|no|na))\s+(o |a )?[\w.-]+[.!]?$/.test(s)) return false; // "abra o youtube" puro
+    return /\b(procur|pesquis|bus[cq]|ach|encontr|canal|v[ií]deo|perfil|p[aá]gina d|conta d|mostr|vej|ver |confir|mais recente|[uú]ltimo|toc|coloc|bot)/.test(s);
+  }
+  function toWeb(text) { return { say: "Vou fazer isso na aba Council e conferir se está certo.", actions: [{ type: "web", goal: text }] }; }
+  function extProbe() {
+    if (EXT.ready) return Promise.resolve(true);
+    return Promise.race([extCall({ type: "status" }).then(function () { EXT.ready = true; pcSetState(pc.connected, pc.os); return true; }, function () { return false; }),
+      new Promise(function (r) { setTimeout(function () { r(false); }, 1200); })]);
+  }
   function sendCop() {
     var text = ta.value.trim(), sentImgs = images.slice();
     if ((!text && !sentImgs.length) || (curId && hasPending(curId))) return;
     if (!text) text = "O que tem nesta imagem?";
+    var agent = !!((D && D.web) || EXT.ready);
     var local = sentImgs.length ? null : parseLocal(text);
+    // Com a extensão (ou o app), pesquisar/abrir algo específico vira tarefa supervisionada: ela navega, confere e responde
+    if (local && agent && webish(local, text)) local = toWeb(text);
     var prev = cur(), hist = [];
     if (prev && prev.kind === "copilot") turnsOf(prev).filter(function (t) { return t.data && !t.data.error; }).slice(-3).forEach(function (t) {
       hist.push({ role: "user", text: t.prompt }); hist.push({ role: "assistant", text: t.data.say || t.data.imageAnswer || "" });
@@ -2120,6 +2138,10 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
       : fetch("/api/copilot", { method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ stage: "plan", text: text, history: hist, pc: pc.connected, app: !!((D && D.web) || EXT.ready), now: new Date().toLocaleString("pt-BR"), tz: (Intl.DateTimeFormat().resolvedOptions().timeZone || "") }) })
           .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || "Erro " + r.status); return j; }); });
+    work = (agent || sentImgs.length ? work : work.then(function (data) {
+      // a extensão pode ter acabado de conectar: confere de novo antes de cair no "só abrir"
+      return extProbe().then(function (ok) { return ok && webish(data, text) ? Object.assign(toWeb(text), { by: data.by, model: data.model }) : data; });
+    })).then(function (data) { if ((EXT.ready || (D && D.web)) && webish(data, text)) data = Object.assign(toWeb(text), { by: data.by, model: data.model }); return data; });
     work.then(function (data) { data.request = text; data.ctx = ctxTxt; finishTurn(job, h, k, data); }, function (e) { finishTurn(job, h, k, { error: e.message || "Falha de rede." }); });
   }
 
