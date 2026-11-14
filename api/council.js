@@ -66,6 +66,14 @@ async function callOpenAI(p, system, user, ms, maxTokens) {
   return text;
 }
 
+// Desliga/reduz o "raciocínio" do Gemini para caber no tempo. Se o modelo recusar o parâmetro, tenta sem ele.
+function thinkingFor(p) {
+  if (p.noThinkCfg) return {};
+  if (/2\.5/.test(p.model)) return { thinkingConfig: { thinkingBudget: 0 } };
+  if (/gemini-[3-9]/.test(p.model)) return { thinkingConfig: { thinkingLevel: "low" } };
+  return {};
+}
+
 async function callGemini(p, system, user, ms, maxTokens, images = []) {
   const parts = [{ text: user }];
   for (const im of images) parts.push({ inlineData: { mimeType: im.mime, data: im.data } });
@@ -77,7 +85,7 @@ async function callGemini(p, system, user, ms, maxTokens, images = []) {
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: system }] },
         contents: [{ role: "user", parts }],
-        generationConfig: { temperature: 0.4, maxOutputTokens: maxTokens, ...(/2\.5/.test(p.model) ? { thinkingConfig: { thinkingBudget: 0 } } : {}) },
+        generationConfig: { temperature: 0.4, maxOutputTokens: maxTokens, ...thinkingFor(p) },
       }),
     }, ms);
   if (!r.ok) throw await httpError(r);
@@ -100,7 +108,7 @@ function rank(ids, prefs) {
   return ids[0] || null;
 }
 
-async function discoverModel(p, err, deadline) {
+async function discoverModel(p, err, deadline, exclude = null) {
   const ms = Math.min(8000, deadline - Date.now());
   if (ms < 1500) return null;
   if (p.kind === "gemini") {
@@ -122,6 +130,7 @@ async function discoverModel(p, err, deadline) {
   const j = await r.json();
   let ids = (j.data || j.models || []).map((m) => m.id || m.name).filter(Boolean).filter((id) => !SKIP.test(id));
   if (p.name === "OpenRouter") ids = ids.filter((id) => id.endsWith(":free"));
+  if (exclude) ids = ids.filter((id) => id !== exclude);
   return rank(ids, [/gpt-oss-120b/, /gemma-4-31b|llama-3\.3-70b|70b|120b|large|ultra/i, /llama|qwen|gpt-oss|gemma|deepseek|kimi|mistral|nemotron/i]);
 }
 
@@ -139,6 +148,17 @@ async function ask(p, system, user, deadline, maxTokens = 1200, images = []) {
   try {
     return await callOnce(p, system, user, deadline, maxTokens, images);
   } catch (e) {
+    if (p.kind === "gemini" && e.status === 400 && /thinking/i.test(e.body || "") && !p.noThinkCfg) {
+      p.noThinkCfg = true;
+      return callOnce(p, system, user, deadline, maxTokens, images);
+    }
+    if (p.name === "OpenRouter" && e.status === 429) {
+      // modelo grátis congestionado: tenta outro grátis uma vez
+      const alt = await discoverModel(p, e, deadline, p.model).catch(() => null);
+      if (!alt) throw e;
+      p.model = alt;
+      return callOnce(p, system, user, deadline, maxTokens, images);
+    }
     const gone = (e.status === 404 || e.status === 400) && MODEL_GONE.test(e.body || e.message);
     if (!gone) throw e;
     if (!discovered.has(p.name)) discovered.set(p.name, discoverModel(p, e, deadline).catch(() => null));
