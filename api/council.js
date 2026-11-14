@@ -14,11 +14,11 @@ const stripThink = (t) =>
 export function buildProviders(env) {
   const list = [];
   if (env.GEMINI_API_KEY)
-    list.push({ name: "Gemini", kind: "gemini", key: env.GEMINI_API_KEY, model: env.GEMINI_MODEL || "gemini-2.5-flash" });
+    list.push({ name: "Gemini", kind: "gemini", key: env.GEMINI_API_KEY, model: env.GEMINI_MODEL || "gemini-3.8-flash" });
   if (env.GROQ_API_KEY)
-    list.push({ name: "Groq", kind: "openai", url: "https://api.groq.com/openai/v1/chat/completions", key: env.GROQ_API_KEY, model: env.GROQ_MODEL || "llama-3.3-70b-versatile" });
+    list.push({ name: "Groq", kind: "openai", url: "https://api.groq.com/openai/v1/chat/completions", key: env.GROQ_API_KEY, model: env.GROQ_MODEL || "openai/gpt-oss-120b" });
   if (env.OPENROUTER_API_KEY)
-    list.push({ name: "OpenRouter", kind: "openai", url: "https://openrouter.ai/api/v1/chat/completions", key: env.OPENROUTER_API_KEY, model: env.OPENROUTER_MODEL || "meta-llama/llama-3.3-70b-instruct:free" });
+    list.push({ name: "OpenRouter", kind: "openai", url: "https://openrouter.ai/api/v1/chat/completions", key: env.OPENROUTER_API_KEY, model: env.OPENROUTER_MODEL || "google/gemma-4-31b-it:free" });
   if (env.CEREBRAS_API_KEY)
     list.push({ name: "Cerebras", kind: "openai", url: "https://api.cerebras.ai/v1/chat/completions", key: env.CEREBRAS_API_KEY, model: env.CEREBRAS_MODEL || "llama3.1-8b" });
   if (env.GITHUB_MODELS_TOKEN)
@@ -39,10 +39,13 @@ async function timedFetch(url, init, ms) {
   }
 }
 
-async function errorDetail(r) {
+async function httpError(r) {
   let body = "";
-  try { body = (await r.text()).slice(0, 200); } catch {}
-  return `HTTP ${r.status}${body ? ": " + body.replace(/\s+/g, " ") : ""}`;
+  try { body = await r.text(); } catch {}
+  const err = new Error(`HTTP ${r.status}${body ? ": " + body.replace(/\s+/g, " ").slice(0, 200) : ""}`);
+  err.status = r.status;
+  err.body = body;
+  return err;
 }
 
 async function callOpenAI(p, system, user, ms, maxTokens) {
@@ -56,7 +59,7 @@ async function callOpenAI(p, system, user, ms, maxTokens) {
       max_tokens: maxTokens,
     }),
   }, ms);
-  if (!r.ok) throw new Error(await errorDetail(r));
+  if (!r.ok) throw await httpError(r);
   const j = await r.json();
   const text = stripThink(j?.choices?.[0]?.message?.content);
   if (!text) throw new Error("resposta vazia");
@@ -74,22 +77,76 @@ async function callGemini(p, system, user, ms, maxTokens, images = []) {
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: system }] },
         contents: [{ role: "user", parts }],
-        generationConfig: { temperature: 0.4, maxOutputTokens: maxTokens, thinkingConfig: { thinkingBudget: 0 } },
+        generationConfig: { temperature: 0.4, maxOutputTokens: maxTokens, ...(/2\.5/.test(p.model) ? { thinkingConfig: { thinkingBudget: 0 } } : {}) },
       }),
     }, ms);
-  if (!r.ok) throw new Error(await errorDetail(r));
+  if (!r.ok) throw await httpError(r);
   const j = await r.json();
   const text = stripThink((j?.candidates?.[0]?.content?.parts || []).map((x) => x.text || "").join(""));
   if (!text) throw new Error("resposta vazia");
   return text;
 }
 
-function ask(p, system, user, deadline, maxTokens = 1200, images = []) {
+// ---------- descoberta automática de modelo (quando o padrão some) ----------
+const MODEL_GONE = /model.?not.?found|does not exist|no longer available|not available|unavailable|not supported|decommissioned|deprecated|is not found/i;
+const discovered = new Map(); // nome do provedor -> Promise<string|null>
+const SKIP = /guard|whisper|tts|orpheus|safeguard|embed|audio|image|vision-only|transcri|moderation|rerank|live|native-audio/i;
+
+function rank(ids, prefs) {
+  for (const re of prefs) {
+    const hit = ids.filter((id) => re.test(id)).sort().reverse();
+    if (hit.length) return hit[0];
+  }
+  return ids[0] || null;
+}
+
+async function discoverModel(p, err, deadline) {
+  const ms = Math.min(8000, deadline - Date.now());
+  if (ms < 1500) return null;
+  if (p.kind === "gemini") {
+    const sug = /use (?:models\/)?([a-z0-9.\-]+)/i.exec(err?.body || "");
+    if (sug && sug[1] !== p.model) return sug[1];
+    const r = await timedFetch("https://generativelanguage.googleapis.com/v1beta/models?pageSize=200",
+      { headers: { "x-goog-api-key": p.key } }, ms);
+    if (!r.ok) return null;
+    const j = await r.json();
+    const ids = (j.models || [])
+      .filter((m) => (m.supportedGenerationMethods || []).includes("generateContent"))
+      .map((m) => String(m.name).replace(/^models\//, ""))
+      .filter((id) => /gemini/.test(id) && !SKIP.test(id) && !/preview|exp/.test(id));
+    return rank(ids, [/flash$/, /flash(?!-lite)/, /flash/, /pro/]);
+  }
+  const base = p.url.replace(/\/chat\/completions$/, "");
+  const r = await timedFetch(`${base}/models`, { headers: { Authorization: `Bearer ${p.key}` } }, ms);
+  if (!r.ok) return null;
+  const j = await r.json();
+  let ids = (j.data || j.models || []).map((m) => m.id || m.name).filter(Boolean).filter((id) => !SKIP.test(id));
+  if (p.name === "OpenRouter") ids = ids.filter((id) => id.endsWith(":free"));
+  return rank(ids, [/gpt-oss-120b/, /gemma-4-31b|llama-3\.3-70b|70b|120b|large|ultra/i, /llama|qwen|gpt-oss|gemma|deepseek|kimi|mistral|nemotron/i]);
+}
+
+function callOnce(p, system, user, deadline, maxTokens, images) {
   const ms = Math.min(CALL_TIMEOUT, deadline - Date.now());
   if (ms < 2000) return Promise.reject(new Error("sem tempo restante"));
   return p.kind === "gemini"
     ? callGemini(p, system, user, ms, maxTokens, images)
     : callOpenAI(p, system, user, ms, maxTokens);
+}
+
+async function ask(p, system, user, deadline, maxTokens = 1200, images = []) {
+  const cached = discovered.get(p.name);
+  if (cached) { const m = await cached; if (m) p.model = m; }
+  try {
+    return await callOnce(p, system, user, deadline, maxTokens, images);
+  } catch (e) {
+    const gone = (e.status === 404 || e.status === 400) && MODEL_GONE.test(e.body || e.message);
+    if (!gone) throw e;
+    if (!discovered.has(p.name)) discovered.set(p.name, discoverModel(p, e, deadline).catch(() => null));
+    const m = await discovered.get(p.name);
+    if (!m || m === p.model) throw e;
+    p.model = m;
+    return callOnce(p, system, user, deadline, maxTokens, images);
+  }
 }
 
 function parseImages(images) {
@@ -213,7 +270,7 @@ export default async function handler(req, res) {
     }
     if (!final) return send(502, { error: "Ninguém conseguiu emitir a decisão final.", errors, rounds, description });
 
-    return send(200, { members: providers.map((p) => p.name), description, rounds, final, judge, errors });
+    return send(200, { members: providers.map((p) => p.name), models: Object.fromEntries(providers.map((p) => [p.name, p.model])), description, rounds, final, judge, errors });
   } catch (e) {
     return send(500, { error: "Erro interno no conselho." });
   }

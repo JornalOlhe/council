@@ -445,7 +445,7 @@ body.collapsed #openSide{display:grid}
 
   function renderResult(body, d, prompt) {
     var html = '<div class="tags">' + (d.members || []).map(function (m) {
-      return '<span class="tag' + (m === d.judge ? " j" : "") + '">' + esc(m) + (m === d.judge ? " · presidente" : "") + "</span>";
+      return '<span class="tag' + (m === d.judge ? " j" : "") + '" title="' + esc((d.models || {})[m] || "") + '">' + esc(m) + (m === d.judge ? " · presidente" : "") + "</span>";
     }).join("") + "</div>";
     html += '<div class="md">' + md(d.final) + "</div>";
     html += (d.errors || []).map(function (x) {

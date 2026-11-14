@@ -4,11 +4,15 @@ import handler from "../api/council.js";
 
 const calls = [];
 let failProvider = null;
-globalThis.fetch = async (url, init) => {
-  const u = String(url), body = JSON.parse(init.body);
+let goneModel = null;
+globalThis.fetch = async (url, init = {}) => {
+  const u = String(url);
+  if (u.endsWith("/models")) return new Response(JSON.stringify({ data: [{ id: "whisper-large-v3" }, { id: "llama-guard-4" }, { id: "qwen/qwen3.8-27b" }, { id: "openai/gpt-oss-120b-new" }] }), { status: 200 });
+  const body = JSON.parse(init.body);
   const name = u.includes("googleapis") ? "Gemini" : u.includes("groq") ? "Groq" : "Other";
   calls.push({ name, url: u, headers: init.headers, body });
   if (name === failProvider) return new Response("rate limit", { status: 429 });
+  if (goneModel && body.model === goneModel) return new Response(JSON.stringify({ error: { message: `The model \`${goneModel}\` does not exist`, code: "model_not_found" } }), { status: 404 });
   const prompt = name === "Gemini" ? body.contents[0].parts[0].text : body.messages[1].content;
   let text = `<think>oculto</think>Resposta de ${name}`;
   if (prompt.includes("PRESIDENTE")) text = "## Decisão\nOk\n## Confiança\n80%";
@@ -23,7 +27,7 @@ const run = async (body, headers = {}, method = "POST") => {
   await handler({ method, headers, body }, { status(c) { r.code = c; return this; }, json(o) { r.json = o; return this; } });
   return r;
 };
-const reset = () => { calls.length = 0; failProvider = null; };
+const reset = () => { calls.length = 0; failProvider = null; goneModel = null; };
 Object.assign(process.env, { GEMINI_API_KEY: "g", GROQ_API_KEY: "q" });
 delete process.env.ACCESS_CODE;
 const img = "data:image/jpeg;base64,AAAA";
@@ -79,6 +83,13 @@ await t("foto sem Gemini = 400", async () => {
   const k = process.env.GEMINI_API_KEY; delete process.env.GEMINI_API_KEY;
   assert.equal((await run({ prompt: "x", images: [img] })).code, 400);
   process.env.GEMINI_API_KEY = k;
+});
+await t("modelo sumiu: descobre outro e segue", async () => {
+  goneModel = "openai/gpt-oss-120b";
+  const r = await run({ prompt: "x", debateRounds: 0 });
+  assert.equal(r.code, 200);
+  assert.equal(r.json.models.Groq, "openai/gpt-oss-120b-new");
+  assert.ok(!r.json.errors.some((e) => e.name === "Groq"));
 });
 await t("todos falham = 502", async () => {
   const f = globalThis.fetch;
