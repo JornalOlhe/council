@@ -14,8 +14,39 @@ function keyCode(k) {
   return c;
 }
 
-const GLOW_CSS = `html::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:2147483647;
-box-shadow:inset 0 0 0 3px #d97757,inset 0 0 28px 4px rgba(217,119,87,.55)}`;
+// Visual igual ao Claude in Chrome / extensão: borda laranja, pílula "Council · passo · Parar" e cursor laranja
+const GLOW = `(() => { if (document.getElementById("iac-glow")) return; const s = document.createElement("style"); s.id = "iac-glow";
+  s.textContent = 'html::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:2147483646;box-shadow:inset 0 0 0 3px #d97757,inset 0 0 34px 6px rgba(217,119,87,.5);animation:iacg 2.4s ease-in-out infinite}' +
+    '@keyframes iacg{50%{box-shadow:inset 0 0 0 2px #d97757,inset 0 0 18px 2px rgba(217,119,87,.35)}}' +
+    '#iac-pill{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:2147483647;display:flex;align-items:center;gap:10px;padding:7px 7px 7px 14px;border-radius:999px;background:#262624;color:#f3f1ea;font:500 13px/1.2 system-ui,Segoe UI,sans-serif;box-shadow:0 8px 28px rgba(0,0,0,.35),0 0 0 1px rgba(217,119,87,.7)}' +
+    '#iac-pill i{flex:none;width:8px;height:8px;border-radius:50%;background:#d97757;animation:iacp 1.1s ease-in-out infinite}@keyframes iacp{50%{opacity:.25}}' +
+    '#iac-pill b{font-weight:650;color:#d97757}#iac-pill span{max-width:44vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#d6d3cb}' +
+    '#iac-pill button{all:unset;cursor:pointer;background:#d97757;color:#fff;border-radius:999px;padding:5px 13px;font-weight:600}' +
+    '#iac-cursor{position:fixed;left:0;top:0;z-index:2147483647;pointer-events:none;transition:transform .42s cubic-bezier(.3,.8,.3,1)}' +
+    '#iac-cursor svg{display:block;filter:drop-shadow(0 2px 5px rgba(0,0,0,.45)) drop-shadow(0 0 7px rgba(217,119,87,.75))}' +
+    '#iac-cursor .rp{position:absolute;left:-14px;top:-14px;width:30px;height:30px;border-radius:50%;border:2.5px solid #d97757;opacity:0}' +
+    '#iac-cursor.clk .rp{animation:iacr .55s ease-out}@keyframes iacr{0%{opacity:1;transform:scale(.3)}100%{opacity:0;transform:scale(1.6)}}' +
+    '#iac-cursor .tg{position:absolute;left:20px;top:18px;background:#d97757;color:#fff;font:600 11px/1 system-ui,sans-serif;padding:4px 7px;border-radius:6px;white-space:nowrap;opacity:0}#iac-cursor.typ .tg{opacity:1}';
+  (document.head || document.documentElement).appendChild(s);
+  const p = document.createElement("div"); p.id = "iac-pill";
+  const dot = document.createElement("i"), b = document.createElement("b"), sp = document.createElement("span"), bt = document.createElement("button");
+  b.textContent = "Council"; sp.textContent = window.__iacNow || "trabalhando nesta janela…"; bt.textContent = "Parar";
+  bt.onclick = () => { console.log("__iacStop__"); sp.textContent = "parando…"; };
+  p.append(dot, b, sp, bt); (document.body || document.documentElement).appendChild(p);
+  const c = document.createElement("div"); c.id = "iac-cursor";
+  const ns = "http://www.w3.org/2000/svg", svg = document.createElementNS(ns, "svg"), pa = document.createElementNS(ns, "path");
+  svg.setAttribute("width", "22"); svg.setAttribute("height", "26"); svg.setAttribute("viewBox", "0 0 22 26");
+  pa.setAttribute("d", "M2 1.5v20.2l5.6-5.2 3.6 8.3 3.7-1.6-3.6-8.1 7.7-.3z"); pa.setAttribute("fill", "#d97757"); pa.setAttribute("stroke", "#fff"); pa.setAttribute("stroke-width", "1.6"); pa.setAttribute("stroke-linejoin", "round");
+  svg.appendChild(pa); const rp = document.createElement("div"); rp.className = "rp"; const tg = document.createElement("div"); tg.className = "tg"; tg.textContent = "digitando…";
+  c.append(rp, svg, tg); (document.body || document.documentElement).appendChild(c);
+  const o = window.__iacXY || [innerWidth / 2, innerHeight / 2]; c.style.transform = "translate(" + o[0] + "px," + o[1] + "px)";
+})()`;
+const UNGLOW = `(() => { ["iac-glow", "iac-pill", "iac-cursor"].forEach((id) => { const e = document.getElementById(id); if (e) e.remove(); }); })()`;
+const pillText = (t) => `(() => { window.__iacNow = ${JSON.stringify(String(t || "").slice(0, 140))}; const s = document.querySelector("#iac-pill span"); if (s) s.textContent = window.__iacNow; })()`;
+const moveCursor = (x, y, mode) => `(() => { const c = document.getElementById("iac-cursor"); if (!c) return;
+  ${x == null ? "" : `window.__iacXY = [${x}, ${y}]; c.style.transform = "translate(${x}px,${y}px)";`}
+  c.classList.toggle("typ", ${JSON.stringify(mode || "")} === "type");
+  if (${JSON.stringify(mode || "")} === "click") { c.classList.remove("clk"); void c.offsetWidth; c.classList.add("clk"); } })()`;
 
 // Lê a página: elementos clicáveis/preenchíveis visíveis (com número), texto e posição
 const READ_PAGE = `(() => {
@@ -45,14 +76,16 @@ const READ_PAGE = `(() => {
 })()`;
 
 class CopilotBrowser {
-  constructor() { this.win = null; this.glowKey = null; this.working = false; }
+  constructor() { this.win = null; this.working = false; this.onStop = null; this.visible = false; }
 
+  // A janela trabalha ESCONDIDA (fora da tela, sem roubar o foco); só aparece quando o usuário pede "Ver janela"
   ensure() {
     if (this.win && !this.win.isDestroyed()) return this.win;
     const wa = screen.getPrimaryDisplay().workArea;
     const w = Math.round(wa.width * 0.55), h = Math.round(wa.height * 0.9);
+    this.bounds = { x: wa.x + wa.width - w - 12, y: wa.y + Math.round((wa.height - h) / 2), width: w, height: h };
     this.win = new BrowserWindow({
-      x: wa.x + wa.width - w - 12, y: wa.y + Math.round((wa.height - h) / 2), width: w, height: h,
+      x: -32000, y: -32000, width: w, height: h, skipTaskbar: true, focusable: true,
       title: "Navegador do Copiloto", show: false, autoHideMenuBar: true, backgroundColor: "#ffffff",
       webPreferences: { partition: "persist:iac-copilot", sandbox: true, contextIsolation: true, nodeIntegration: false, backgroundThrottling: false },
     });
@@ -60,8 +93,12 @@ class CopilotBrowser {
     // pop-ups e "abrir em nova aba" ficam na mesma janela, para o Copiloto continuar no controle
     wc.setWindowOpenHandler(({ url }) => { if (/^https?:/i.test(url)) wc.loadURL(url); return { action: "deny" }; });
     wc.on("did-finish-load", () => this.applyGlow());
+    wc.on("console-message", (e, level, message) => { const m = typeof message === "string" ? message : e && e.message; if (m === "__iacStop__" && this.onStop) this.onStop(); });
+    this.win.showInactive(); // fora da tela: renderiza para os prints, mas você não vê nem perde o foco
+    this.visible = false;
     this.win.on("page-title-updated", (e) => { e.preventDefault(); this.updateTitle(); });
-    this.win.on("closed", () => { this.win = null; this.glowKey = null; });
+    this.win.on("close", (e) => { if (this.working) { e.preventDefault(); this.hide(); } }); // fechar durante a tarefa só esconde
+    this.win.on("closed", () => { this.win = null; });
     return this.win;
   }
 
@@ -75,21 +112,36 @@ class CopilotBrowser {
   async applyGlow() {
     if (!this.win || this.win.isDestroyed()) return;
     const wc = this.win.webContents;
-    if (this.glowKey) { try { await wc.removeInsertedCSS(this.glowKey); } catch {} this.glowKey = null; }
-    if (this.working) { try { this.glowKey = await wc.insertCSS(GLOW_CSS); } catch {} }
+    try { await wc.executeJavaScript(this.working ? GLOW + ";" + pillText(this.status) : UNGLOW, true); } catch {}
     this.updateTitle();
   }
 
   async setWorking(on, status) {
     this.working = !!on;
     this.status = status || "";
-    if (on) { const w = this.ensure(); if (!w.isVisible()) w.showInactive(); }
+    if (!this.win || this.win.isDestroyed()) return; // não cria (nem mostra) a janela antes da hora
     await this.applyGlow();
   }
 
   show(focus) {
     const w = this.ensure();
-    if (focus) { if (w.isMinimized()) w.restore(); w.show(); w.focus(); } else if (!w.isVisible()) w.showInactive();
+    if (!this.visible && this.bounds) { w.setBounds(this.bounds); w.setSkipTaskbar(false); this.visible = true; }
+    if (w.isMinimized()) w.restore();
+    if (focus) { w.show(); w.focus(); } else w.showInactive();
+  }
+
+  hide() {
+    if (!this.win || this.win.isDestroyed()) return;
+    if (this.visible) { this.bounds = this.win.getBounds(); this.win.setBounds({ ...this.bounds, x: -32000, y: -32000 }); this.win.setSkipTaskbar(true); this.visible = false; }
+  }
+
+  async pointTo(x, y, mode) {
+    const wc = this.win.webContents;
+    await wc.executeJavaScript(moveCursor(x, y, ""), true).catch(() => {});
+    await new Promise((r) => setTimeout(r, 430)); // dá para ver o cursor indo até o alvo
+    if (mode) await wc.executeJavaScript(moveCursor(null, null, mode), true).catch(() => {});
+    const [vw, vh] = await wc.executeJavaScript("[innerWidth, innerHeight]", true).catch(() => [1280, 800]);
+    this.cur = { x: x / vw, y: y / vh, mode: mode || "" };
   }
 
   waitLoad(ms = 9000) {
@@ -106,22 +158,21 @@ class CopilotBrowser {
     const u = new URL(url);
     if (!/^https?:$/.test(u.protocol)) throw new Error("só abro endereços http/https");
     const w = this.ensure();
-    if (!w.isVisible()) w.showInactive();
     await w.webContents.loadURL(u.href).catch(() => {});
     await this.waitLoad();
     return { url: w.webContents.getURL() };
   }
 
   async snapshot() {
-    const w = this.ensure();
-    if (!w.isVisible()) w.showInactive();
+    if (!this.win || this.win.isDestroyed()) return { url: "about:blank", title: "", elements: [], text: "", image: null, empty: true };
+    const w = this.win;
     const wc = w.webContents;
     if (!wc.getURL() || wc.getURL() === "about:blank") return { url: "about:blank", title: "", elements: [], text: "", image: null, empty: true };
     const page = await wc.executeJavaScript(READ_PAGE, true).catch(() => ({ url: wc.getURL(), title: wc.getTitle(), elements: [], text: "" }));
     let img = await wc.capturePage();
     if (img.isEmpty()) { await new Promise((r) => setTimeout(r, 300)); img = await wc.capturePage(); }
     const sz = img.getSize();
-    if (sz.width > 1280) img = img.resize({ width: 1280, quality: "good" });
+    if (sz.width > 1100) img = img.resize({ width: 1100, quality: "good" });
     page.image = img.isEmpty() ? null : "data:image/jpeg;base64," + img.toJPEG(68).toString("base64");
     return page;
   }
@@ -166,7 +217,7 @@ class CopilotBrowser {
     if (t === "scroll") {
       const amt = Math.max(-25, Math.min(25, Math.round(Number(a.amount) || -5)));
       await wc.executeJavaScript(`window.scrollBy({ top: ${-amt * 120}, behavior: "instant" })`, true);
-      await new Promise((r) => setTimeout(r, 350));
+      await new Promise((r) => setTimeout(r, 250));
       return { done: "rolou" };
     }
     if (t === "key") { this.pressKey(keyCode(a.key)); done = "tecla " + a.key; }
@@ -175,7 +226,7 @@ class CopilotBrowser {
       if (a.id != null) ({ x, y } = await this.elementCenter(a.id));
       else if (Array.isArray(a.point)) { const [vw, vh] = await wc.executeJavaScript("[innerWidth, innerHeight]", true); y = Math.round(a.point[0] / 1000 * vh); x = Math.round(a.point[1] / 1000 * vw); }
       else throw new Error("clique sem alvo");
-      await new Promise((r) => setTimeout(r, 120));
+      await this.pointTo(x, y, "click");
       await this.clickAt(x, y);
       done = "clicou";
     } else if (t === "type" || t === "select") {
@@ -189,21 +240,25 @@ class CopilotBrowser {
         if (!ok) throw new Error("não achei essa opção na lista");
         done = "escolheu " + a.value;
       } else {
+        await this.pointTo(c.x, c.y, "click");
         await this.clickAt(c.x, c.y);
-        await new Promise((r) => setTimeout(r, 120));
+        await wc.executeJavaScript(moveCursor(null, null, "type"), true).catch(() => {});
+        await new Promise((r) => setTimeout(r, 100));
         if (a.clear !== false) {
           await wc.executeJavaScript(`(() => { const el = document.querySelector('[data-iac="${Number(a.id)}"]'); if (!el) return; el.focus();
             if ("value" in el && el.select) el.select(); else { const s = getSelection(); const r = document.createRange(); r.selectNodeContents(el); s.removeAllRanges(); s.addRange(r); } })()`, true);
         }
         await wc.insertText(String(a.text || "").slice(0, 3000));
         if (a.enter) { await new Promise((r) => setTimeout(r, 150)); this.pressKey("Enter"); }
+        await wc.executeJavaScript(moveCursor(null, null, ""), true).catch(() => {});
         done = "digitou";
       }
     } else throw new Error("ação desconhecida no navegador: " + t);
     // espera a página reagir (e carregar, se navegou)
-    await new Promise((r) => setTimeout(r, 450));
+    await new Promise((r) => setTimeout(r, 300));
     if (wc.isLoading() || wc.getURL() !== before) await this.waitLoad();
-    return { done };
+    const cur = this.cur; this.cur = null;
+    return { done, cur };
   }
 }
 

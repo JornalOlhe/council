@@ -1853,6 +1853,31 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
 
   // ----- Navegador do Copiloto: tarefas em sites numa janela própria (sem mexer no mouse do usuário) -----
   var webBusy = null;
+  // ----- permissão por site (igual à extensão / Claude in Chrome) -----
+  function sitesOK() { try { return JSON.parse(localStorage.getItem("iac-sites") || "{}"); } catch (e) { return {}; } }
+  function hostOf(u) { try { var x = new URL(u); return /^https?:$/.test(x.protocol) ? x.hostname.replace(/^www\./, "") : ""; } catch (e) { return ""; } }
+  function askSitePerm(holder, host, onceSet, stopBtn) {
+    var st = sitesOK();
+    if (!host || st.__all || st[host] || onceSet[host]) return Promise.resolve(true);
+    return new Promise(function (resolve) {
+      var q = document.createElement("div"); q.className = "aq site";
+      q.innerHTML = '<span>🔐 O Council quer usar <b>' + esc(host) + '</b> (ler a página, clicar e digitar). A janela só abre depois que você permitir.</span><button class="btn pri">Permitir sempre</button><button class="btn">Só desta vez</button><button class="btn">Não permitir</button>';
+      holder.appendChild(q);
+      var b = q.querySelectorAll("button"), done = function (v) { if (q.parentNode) q.remove(); resolve(v); };
+      b[0].onclick = function () { var s2 = sitesOK(); s2[host] = 1; try { localStorage.setItem("iac-sites", JSON.stringify(s2)); } catch (e) {} done(true); };
+      b[1].onclick = function () { onceSet[host] = 1; done(true); };
+      b[2].onclick = function () { done(false); };
+      if (stopBtn) stopBtn.addEventListener("click", function () { done(false); }, { once: true });
+    });
+  }
+  function paintCursor(wrap, cur, n) {
+    if (!cur) return;
+    var cu = wrap.querySelector(".acur");
+    if (!cu) { cu = document.createElement("div"); cu.className = "acur"; cu.innerHTML = '<i></i><svg width="20" height="24" viewBox="0 0 22 26"><path d="M2 1.5v20.2l5.6-5.2 3.6 8.3 3.7-1.6-3.6-8.1 7.7-.3z" fill="#d97757" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg><b>digitando…</b>'; wrap.appendChild(cu); }
+    cu.style.left = (cur.x * 100).toFixed(2) + "%"; cu.style.top = (cur.y * 100).toFixed(2) + "%";
+    cu.classList.toggle("typ", cur.mode === "type");
+    if (cur.mode === "click") { cu.classList.remove("clk"); void cu.offsetWidth; cu.classList.add("clk"); }
+  }
   function runWeb(goal, box, data) {
     var MAX = 30, W = D && D.web;
     var log = data.webLog = { goal: goal, steps: [], status: "running" };
@@ -1862,7 +1887,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
       '<div class="shotwrap hidden"><img alt="Navegador do Copiloto"></div><div class="obs hidden"></div><div class="alog"></div>';
     box.appendChild(card);
     var stopBtn = card.querySelector(".stop"), showBtn = card.querySelector(".show"), wrap = card.querySelector(".shotwrap"), img = wrap.querySelector("img"),
-      obs = card.querySelector(".obs"), alog = card.querySelector(".alog"), stopped = false, step = 0, lastUrl = "";
+      obs = card.querySelector(".obs"), alog = card.querySelector(".alog"), stopped = false, step = 0, lastUrl = "", once = {}, rejections = 0, failed = 0;
     function line(t, cls) { var d = document.createElement("div"); d.className = "ln" + (cls ? " " + cls : ""); d.innerHTML = (cls === "err" ? "<span>⚠</span>" : '<svg><use href="#i-check"/></svg>') + "<span>" + esc(t) + "</span>"; alog.appendChild(d); alog.scrollTop = alog.scrollHeight; }
     function nowLine(t) { var d = card.querySelector(".ln.cur"); if (!d) { d = document.createElement("div"); d.className = "ln cur"; alog.appendChild(d); } d.innerHTML = '<svg class="star spinstar" style="color:var(--ac)"><use href="#i-star"/></svg><span>' + esc(t) + "</span>"; alog.scrollTop = alog.scrollHeight; }
     function clearNow() { var d = card.querySelector(".ln.cur"); if (d) d.remove(); }
@@ -1873,6 +1898,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
       line(msg, cls);
       if (answer) { var a = document.createElement("div"); a.className = "md"; a.style.cssText = "padding:4px 12px 12px"; a.innerHTML = md(answer); card.appendChild(a); }
       if (webBusy === card) webBusy = null;
+      var cx = wrap.querySelector(".acur"); if (cx) cx.remove();
       W.working(false).catch(function () {});
       saveHist(); renderRecent();
     }
@@ -1906,27 +1932,29 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
     if (webBusy) { finish("error", "O navegador do Copiloto já está ocupado com outra tarefa. Espere ou clique em Parar nela.", "err"); return; }
     webBusy = card;
     stopBtn.onclick = function () { stopped = true; stopBtn.disabled = true; stopBtn.textContent = "Parando…"; };
+    if (W.onStop && !W.__stopHooked) { W.__stopHooked = true; W.onStop(function () { if (webBusy) { var sb = webBusy.querySelector(".stop"); if (sb && !sb.disabled) sb.click(); } }); }
     showBtn.onclick = function () { W.show(true); };
     function loop() {
       if (stopped) return finish("stopped", "Parado por você.", "err");
       if (step >= MAX) return finish("max", "Parei depois de " + MAX + " passos. Peça para continuar se precisar.", "err");
       step++;
-      nowLine(step === 1 ? "Abrindo o navegador do Copiloto…" : "Lendo a página… (passo " + step + ")");
+      nowLine(step === 1 ? "Planejando… (a janela só abre depois que você permitir)" : "Lendo a página… (passo " + step + ")");
       var page;
       return W.snapshot().then(function (pg) {
         page = pg; showShot(page, null);
         if (stopped) throw { stop: true };
         nowLine("Entendendo a página e decidindo o próximo passo…");
         return fetch("/api/copilot", { method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ stage: "web", goal: goal, request: data.request || goal, context: data.ctx || "", plan: log.plan || "", steps: log.steps,
+          body: JSON.stringify({ stage: "web", rejections: rejections, failed: failed, goal: goal, request: data.request || goal, context: data.ctx || "", plan: log.plan || "", steps: log.steps,
             page: { url: page.url, title: page.title, elements: page.elements, text: page.text, scrollY: page.scrollY, scrollMax: page.scrollMax }, image: page.image }) })
           .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || "Erro " + r.status); return j; }); });
       }).then(function (plan) {
         if (stopped) throw { stop: true };
         showShot(page, plan);
         if (plan.plan && !log.plan) { log.plan = plan.plan; line("Plano: " + plan.plan); }
+        if (plan.rejected) { rejections++; line("🔎 O verificador não aprovou: " + plan.rejected, "err"); log.steps.push("O VERIFICADOR recusou o resultado: " + plan.rejected + " — corrija antes de terminar."); return loop(); }
         var a = plan.action;
-        if (a.type === "done") { log.steps.push(plan.say); return finish("done", "✓ " + plan.say, "", plan.answer); }
+        if (a.type === "done") { log.steps.push(plan.say); if (plan.checker) line("🔎 Conferido por outro modelo"); return finish("done", "✓ " + plan.say, "", plan.answer); }
         if (a.type === "ask_user") {
           clearNow(); log.steps.push("Pediu ajuda: " + plan.say); W.show(true);
           return askUser("✋ " + plan.say + " (faça na janela do navegador do Copiloto)", "Já fiz, continuar", "Encerrar").then(function (go) {
@@ -1935,20 +1963,25 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
             return loop();
           });
         }
-        var ok = plan.confirm ? (clearNow(), W.show(false), askUser("⚠ " + plan.confirm, "Pode fazer", "Não")) : Promise.resolve(true);
+        var host = a.type === "navigate" ? hostOf(a.url) : hostOf(page.url);
+        var ok = askSitePerm(card, host, once, stopBtn).then(function (allowed) {
+          if (!allowed) return "deny";
+          return plan.confirm ? (clearNow(), askUser("⚠ " + plan.confirm, "Pode fazer", "Não")) : true;
+        });
         return ok.then(function (yes) {
+          if (yes === "deny") return finish("stopped", "Você não permitiu o Council em " + host + ".", "err");
           if (stopped) throw { stop: true };
           if (!yes) { log.steps.push("Usuário NÃO autorizou: " + plan.say); return finish("stopped", "Cancelado: você não autorizou.", "err"); }
           nowLine(plan.say); W.working(true, plan.say.slice(0, 60)).catch(function () {});
           var seq = [a].concat(plan.then || []), did = [];
           return seq.reduce(function (p, x) {
-            return p.then(function () { if (stopped) throw { stop: true }; return W.act(x).then(function () { if (x.type !== "wait") did.push(describe(x, page)); }); });
+            return p.then(function () { if (stopped) throw { stop: true }; return W.act(x).then(function (r) { if (r && r.cur) paintCursor(wrap, r.cur); if (x.type !== "wait") did.push(describe(x, page)); }); });
           }, Promise.resolve()).then(function () {
-            clearNow(); var t = plan.say + " (" + did.join(", ") + ")"; line(t); log.steps.push(t);
+            clearNow(); failed = 0; var t = plan.say + " (" + did.join(", ") + ")"; line(t); log.steps.push(t);
             return wait(250).then(loop);
           }, function (e) {
             if (e && e.stop) throw e;
-            clearNow(); line("Não deu certo: " + e.message, "err");
+            clearNow(); failed++; line("Não deu certo: " + e.message, "err");
             log.steps.push("FALHOU (" + (did.length ? "fez " + did.join(", ") + "; depois " : "") + describe(a, page) + "): " + e.message);
             return loop();
           });

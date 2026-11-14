@@ -8,6 +8,7 @@ const path = require("path");
 const control = require("./control.js");
 const { CopilotBrowser } = require("./web.js");
 const browser = new CopilotBrowser();
+browser.onStop = () => { if (win && !win.isDestroyed()) win.webContents.send("web:stop"); }; // botão "Parar" da pílula na janela do Copiloto
 
 const SITE = process.env.IA_COUNCIL_URL || "https://council-one-sigma.vercel.app";
 const ORIGIN = new URL(SITE).origin;

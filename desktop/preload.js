@@ -18,6 +18,7 @@ contextBridge.exposeInMainWorld("iaDesktop", {
     act: (a) => ipcRenderer.invoke("web:act", a).catch(clean),
     working: (on, status) => ipcRenderer.invoke("web:working", !!on, status || "").catch(clean),
     show: (focus) => ipcRenderer.invoke("web:show", !!focus).catch(clean),
+    onStop: (cb) => { ipcRenderer.on("web:stop", () => cb()); },
   },
   ext: {
     info: () => ipcRenderer.invoke("ext:info").catch(clean),
