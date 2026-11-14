@@ -195,6 +195,11 @@ COMO PENSAR:
 4. CONFIRA antes de terminar: olhe a captura e o texto e verifique se é EXATAMENTE o que foi pedido (nome certo da pessoa/canal/produto, grafia parecida conta: "Pedro Assad" ≈ "Pedro Asaad"; selo de verificado, número de inscritos, data). Se houver mais de um candidato, abra o mais provável e confira; se não bater, volte e tente o próximo.
 5. Se o pedido é ABRIR/MOSTRAR algo (um canal, vídeo, perfil, página), termine com a página certa aberta e diga em "answer" o que abriu e como conferiu (ex.: "Abri o canal Pedro Asaad — 1,2 mi inscritos, vídeo mais recente: …"). Se é TRAZER uma informação, coloque a resposta completa em "answer" (cite de qual site veio).
 
+ATALHOS QUE ECONOMIZAM PASSOS (use!):
+- YouTube: pesquisar = https://www.youtube.com/results?search_query=... ; canal = clique no NOME do canal nos resultados (ou https://www.youtube.com/@handle). VÍDEO MAIS RECENTE de um canal = abra https://www.youtube.com/@handle/videos (aba "Vídeos", já vem em "Mais recentes") e clique no PRIMEIRO vídeo; não confunda com lives agendadas, "Shorts" ou recomendados da lateral.
+- Google: https://www.google.com/search?q=... ; Mercado Livre: https://lista.mercadolivre.com.br/... ; Wikipedia: https://pt.wikipedia.org/wiki/...
+- Se um clique falhar porque a página mudou, leia a lista de elementos de novo em vez de repetir o mesmo id.
+
 Ações:
 - {"type":"navigate","url":"https://..."} | {"type":"back"} | {"type":"forward"}
 - {"type":"click","id":12}   (ou "point":[y,x] 0-1000 se o elemento não estiver na lista)
@@ -255,6 +260,7 @@ export function sanitizeWeb(raw) {
 }
 
 const VERIFY_SYSTEM = `Você é o VERIFICADOR do Copiloto. Outro modelo diz que terminou uma tarefa no navegador. Confira com rigor, usando só o PEDIDO, a PÁGINA ATUAL (URL, título, texto) e a RESPOSTA proposta:
+- "Mais recente" de um canal do YouTube = primeiro item da aba /videos do canal (a URL atual mostra onde está). Não reprove só por haver lives/recomendados na lateral.
 - A página/resposta é EXATAMENTE o que foi pedido? (pessoa/canal/produto certo — grafias parecidas valem, ex. "Assad"≈"Assaad"; todas as partes do pedido feitas)
 - A resposta inventa algo que não está na página?
 Responda APENAS com JSON: {"ok":true|false,"reason":"se não, o que falta ou está errado (1 frase, diga o que fazer)"}`;
