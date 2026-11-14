@@ -1,6 +1,6 @@
 // node tests/copilot.test.mjs
 import assert from "node:assert/strict";
-const { default: copilot, sanitizePlan } = await import("../api/copilot.js");
+const { default: copilot, sanitizePlan, sanitizeAct } = await import("../api/copilot.js");
 const { default: transcribe, cleanTranscript } = await import("../api/transcribe.js");
 
 let reply = "", calls = [], groqAudio = { status: 200, text: "olá mundo" };
@@ -64,6 +64,32 @@ await t("descarta silêncio e frases fantasma do Whisper", async () => {
   assert.equal(cleanTranscript("."), "");
   assert.equal(cleanTranscript("Obrigado por assistir!"), "");
   assert.equal(cleanTranscript("  abra o youtube  "), "abra o youtube");
+});
+await t("controle do PC: Gemini decide a próxima ação a partir do print", async () => {
+  const saved = globalThis.fetch;
+  globalThis.fetch = async (url, init) => {
+    const body = JSON.parse(init.body);
+    assert.ok(body.contents[0].parts.some((p) => p.inlineData));
+    return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: '{"observation":"Área de trabalho","elements":[{"label":"Botão Iniciar","point":[985,20]}],"say":"Vou abrir o menu Iniciar.","action":{"type":"click","point":[985,20]},"confirm":""}' }] } }] }), { status: 200 });
+  };
+  const r = await run(copilot, { stage: "act", goal: "abrir o bloco de notas", image: "data:image/jpeg;base64,AAAA", steps: [] });
+  globalThis.fetch = saved;
+  assert.equal(r.code, 200);
+  assert.deepEqual(r.json.action, { type: "click", point: [985, 20] });
+  assert.equal(r.json.elements[0].label, "Botão Iniciar");
+});
+await t("controle do PC: ações perigosas/inválidas viram pedido de ajuda", async () => {
+  assert.equal(sanitizeAct({ action: { type: "rm -rf" } }).action.type, "ask_user");
+  assert.equal(sanitizeAct({ action: { type: "click" } }).action.type, "ask_user");
+  assert.equal(sanitizeAct({ action: { type: "hotkey", keys: ["ctrl", "<script>"] } }).action.type, "ask_user");
+  assert.deepEqual(sanitizeAct({ action: { type: "click", point: [5000, -3] } }).action.point, [1000, 0]);
+  assert.deepEqual(sanitizeAct({ action: { type: "hotkey", keys: ["CTRL", "s"] } }).action.keys, ["ctrl", "s"]);
+  assert.equal(sanitizeAct({ action: { type: "scroll", amount: -999 } }).action.amount, -25);
+});
+await t("plano pode pedir controle do PC", async () => {
+  reply = '{"say":"Vou abrir o Bloco de Notas no seu PC.","actions":[{"type":"pc","goal":"Abrir o Bloco de Notas e escrever lista de compras"}]}';
+  const r = await run(copilot, { stage: "plan", text: "abre o bloco de notas e escreve minha lista", pc: true });
+  assert.equal(r.json.actions[0].type, "pc");
 });
 await t("áudio inválido = 400", async () => {
   assert.equal((await run(transcribe, { audio: "data:text/plain;base64,AAAA" })).code, 400);

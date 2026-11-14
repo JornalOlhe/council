@@ -236,6 +236,44 @@ body.collapsed #openSide{display:grid}
 .acard.col{flex-direction:column;align-items:stretch}
 .acard.col .row1{display:flex;align-items:center;gap:12px}
 
+.mbox.auto{height:auto;max-height:92vh;overflow:auto}
+.pcbody{padding:20px 24px 24px;display:flex;flex-direction:column;gap:16px;font-size:14.5px}
+.pcstep{display:flex;gap:14px;align-items:flex-start}
+.pcstep .n{width:26px;height:26px;border-radius:50%;background:#ffffff14;display:grid;place-items:center;font-weight:600;font-size:13px;flex:none}
+.pcstep .c{flex:1;min-width:0}
+.pcstep .c p{margin:2px 0 8px;color:var(--tx2)}
+.pcstep a.btn{display:inline-flex;align-items:center;gap:8px;text-decoration:none;color:var(--tx)}
+.codein{display:flex;gap:8px;flex-wrap:wrap}
+.codein input{width:150px;background:#1f1e1d;border:1px solid var(--line2);border-radius:8px;padding:8px 12px;font:600 20px var(--mono);letter-spacing:.25em;text-align:center;outline:none;color:var(--tx)}
+.codein input:focus{border-color:var(--ac)}
+.btn.pri{background:var(--ac);color:#fff}.btn.pri:hover{background:var(--ac2)}
+.pcstat{font-size:13.5px;color:var(--mut);display:flex;align-items:center;gap:8px}
+.pcstat .dot{width:8px;height:8px;border-radius:50%;background:var(--mut2);flex:none}
+.pcstat.ok{color:#8fcf9e}.pcstat.ok .dot{background:#3ddc97}
+.pcstat.bad{color:#e3b679}.pcstat.bad .dot{background:#e3b679}
+.pcsafe{font-size:12.5px;color:var(--mut);border-top:1px solid var(--line);padding-top:14px;line-height:1.55}
+.pcpill .dot{width:8px;height:8px;border-radius:50%;background:var(--mut2)}
+.pcpill.on .dot{background:#3ddc97}
+.agent{border:1px solid var(--line);border-radius:14px;background:#ffffff05;overflow:hidden;margin:4px 0 12px}
+.agent .ah{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--line)}
+.agent .ah b{flex:1;min-width:0;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.agent .ah .btn.stop{background:#5a2b26;color:#ffd7d1}
+.agent .ah .btn.stop:hover{background:#6e332c}
+.shotwrap{position:relative;line-height:0;background:#000}
+.shotwrap img{width:100%;display:block}
+.mk{position:absolute;transform:translate(-50%,-50%);width:12px;height:12px;border-radius:50%;background:#3ddc97cc;border:2px solid #fff;box-shadow:0 0 0 1px #0008}
+.mk span{position:absolute;left:14px;top:-6px;white-space:nowrap;font:600 11px/1.6 var(--sans);background:#000c;color:#fff;padding:0 6px;border-radius:5px;pointer-events:none}
+.mk.tg{width:26px;height:26px;background:transparent;border:3px solid var(--ac);box-shadow:0 0 0 3px #d9775755;animation:pulse 1s ease-in-out infinite}
+@keyframes pulse{50%{transform:translate(-50%,-50%) scale(1.25)}}
+.agent .obs{padding:8px 12px;color:var(--mut);font-size:13px;border-bottom:1px solid var(--line)}
+.alog{padding:6px 12px 10px;display:flex;flex-direction:column;gap:3px;font-size:14px;max-height:260px;overflow:auto}
+.alog .ln{display:flex;gap:8px;color:var(--tx2)}
+.alog .ln svg{width:14px;height:14px;margin-top:3px;color:#7fbf8e;flex:none}
+.alog .ln.cur{color:var(--tx)}
+.alog .ln.err{color:#e3b679}
+.aq{padding:10px 12px;border-top:1px solid var(--line);display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#d977570f}
+.aq span{flex:1;min-width:200px}
+
 @media(max-width:820px){
   .side{position:fixed;inset:0 auto 0 0;z-index:40;transform:translateX(-100%);transition:transform .2s}
   body.sopen .side{transform:none}
@@ -338,12 +376,13 @@ body.collapsed #openSide{display:grid}
       <div class="cw" id="homeSlot"></div>
       <div class="chips hidden" id="copChips">
         <button data-p="Pesquise no YouTube música lo-fi para estudar"><svg><use href="#i-globe"/></svg>Lo-fi no YouTube</button>
-        <button data-p="Olhe minha tela e me diga o que está errado"><svg><use href="#i-monitor"/></svg>Olhar minha tela</button>
+        <button data-p="Abra o Bloco de Notas no meu PC e escreva uma lista de compras com arroz, feijão e café"><svg><use href="#i-monitor"/></svg>Usar meu PC</button>
+        <button data-p="Olhe minha tela e me diga o que está aberto"><svg><use href="#i-monitor"/></svg>Olhar minha tela</button>
         <button data-p="Me lembre em 10 minutos de tirar o bolo do forno"><svg><use href="#i-alarm"/></svg>Lembrete em 10 min</button>
         <button data-p="Qual o caminho daqui até a Avenida Paulista?"><svg><use href="#i-route"/></svg>Rota no Maps</button>
         <button data-p="Escreva um e-mail pedindo orçamento de 50 camisetas personalizadas"><svg><use href="#i-mail"/></svg>Escrever e-mail</button>
       </div>
-      <div class="cnote hidden" id="copNote">O copiloto age no seu navegador: abre abas e pesquisa, vê sua tela (só quando você compartilhar), cria lembretes, copia textos e prepara e-mails e WhatsApp. Por segurança, nenhum site consegue mexer no mouse, no teclado ou nos arquivos do seu PC.</div>
+      <div class="cnote hidden" id="copNote">O copiloto abre abas e pesquisa, cria lembretes, copia textos e prepara e-mails e WhatsApp. No <b>app IA Council para Windows</b>, ele também vê sua tela, identifica cada coisa nela, troca de apps, move o mouse e digita por você.</div>
     </section>
     <section class="chat hidden" id="chat"></section>
   </div>
@@ -374,9 +413,22 @@ body.collapsed #openSide{display:grid}
     <span class="sp" id="underSp"></span>
     <button class="pick" id="modelPick"><b id="pickName">Conselho</b><span class="m" id="pickEffort">1 rodada</span></button>
     <button class="pick" id="modePick"><b id="modeTxt">Auto</b></button>
+    <button class="pick pcpill hidden" id="pcPill"><span class="dot"></span><span id="pcPillTxt">Conectar PC</span></button>
   </div>
 </div>
 <input type="file" id="file" accept="image/*,.txt,.md,.markdown,.csv,.tsv,.json,.xml,.html,.htm,.css,.js,.mjs,.ts,.jsx,.tsx,.py,.java,.c,.cpp,.h,.hpp,.cs,.go,.rs,.rb,.php,.sql,.yaml,.yml,.toml,.ini,.log,.sh,.bat,.ps1,.kt,.swift,.vue,.svelte,.lua,.r,.srt,.vtt" multiple hidden>
+<div class="modal hidden" id="pcModal" role="dialog" aria-modal="true" aria-labelledby="pcTitle">
+  <div class="mbox auto" style="width:min(560px,100%)">
+    <div class="mhead"><svg class="helm" style="width:24px;height:20px"><use href="#i-helmet"/></svg><span id="pcTitle">Usar o Copiloto no seu PC</span><span class="beta">Beta</span><button class="ib" id="pcClose" aria-label="Fechar"><svg class="ico"><use href="#i-x"/></svg></button></div>
+    <div class="pcbody">
+      <p style="margin:0;color:var(--tx2)">Para trocar de apps e abas, mover o mouse e digitar em qualquer lugar do computador, use o <b>IA Council para Windows</b> — igual aos apps de desktop do Claude e do ChatGPT. Sem código, sem configuração.</p>
+      <div class="pcstep"><span class="n">1</span><div class="c"><b>Baixe e instale</b><p>Um instalador só. Abre sozinho quando termina.</p><a class="btn pri" id="pcDownload" href="https://github.com/JornalOlhe/council/releases/download/desktop-latest/IA-Council-Setup.exe">⬇ Baixar IA Council para Windows</a></div></div>
+      <div class="pcstep"><span class="n">2</span><div class="c"><b>Se o Windows avisar</b><p>Como o app é novo, pode aparecer “O Windows protegeu o computador”. Clique em <b>Mais informações → Executar assim mesmo</b>.</p></div></div>
+      <div class="pcstep"><span class="n">3</span><div class="c"><b>Peça no Copiloto</b><p>Ex.: “abra o Bloco de Notas e escreva minha lista de compras”, “troque para o Chrome e abra minha aba do YouTube”.</p></div></div>
+      <div class="pcsafe">🔒 O copiloto <b>não digita senhas</b> e <b>pede confirmação</b> antes de enviar, comprar ou apagar. Durante a tarefa o app vira um painel pequeno no canto. <b>Para parar na hora:</b> botão Parar, <b>Ctrl+Shift+Q</b>, ou mouse no <b>canto superior esquerdo</b> da tela.</div>
+    </div>
+  </div>
+</div>
 <div class="modal hidden" id="upModal" role="dialog" aria-modal="true" aria-labelledby="upTitle">
   <div class="mbox">
     <div class="mhead"><span id="upTitle">Fazer upload ou adicionar arquivos</span><span class="beta">Beta</span><button class="ib" id="upClose" aria-label="Fechar"><svg class="ico"><use href="#i-x"/></svg></button></div>
@@ -857,7 +909,7 @@ body.collapsed #openSide{display:grid}
     $("segChat").classList.toggle("on", !cop); $("segCopilot").classList.toggle("on", cop);
     $("greetStar").classList.toggle("hidden", cop); $("greetHelm").classList.toggle("hidden", !cop);
     $("copChips").classList.toggle("hidden", !cop); $("copNote").classList.toggle("hidden", !cop);
-    $("modelPick").classList.toggle("hidden", cop); $("modePick").classList.toggle("hidden", cop);
+    $("modelPick").classList.toggle("hidden", cop); $("modePick").classList.toggle("hidden", cop); $("pcPill").classList.toggle("hidden", !cop);
     $("disc").textContent = cop ? "O copiloto age no seu navegador. Confira antes de enviar e-mails e mensagens." : "O IA Council é uma IA e pode cometer erros. Confira informações importantes.";
     setGreet();
     if (!keep) goHome(); else place($("chat").classList.contains("hidden") ? "home" : "dock");
@@ -1195,8 +1247,11 @@ body.collapsed #openSide{display:grid}
   function parseLocal(t) {
     var s = t.trim().replace(/\s+/g, " "), m;
     // ver a tela
-    if (/\b(minha tela|a tela|na tela|da tela|meu monitor|o que (est[aá]|tem) (aberto|na tela)|print da tela)\b/i.test(s) && /\b(olh|v[eê]|vej|analis|l[eê]|leia|diga|explic|ajud|o que|qual|tem|confer|ach)/i.test(s))
-      return { say: "Vou olhar sua tela. Escolha a janela ou a tela inteira para compartilhar.", actions: [{ type: "screen", question: s }] };
+    if (/\b(minha tela|a tela|na tela|da tela|meu monitor|o que (est[aá]|tem) (aberto|na tela)|print da tela)\b/i.test(s) && /\b(olh|v[eê]|vej|analis|l[eê]|leia|diga|explic|ajud|o que|qual|tem|confer|ach)/i.test(s) && !/\b(cliqu|digit|abr|fech|escrev|mexa|mova|arrast)\w*/i.test(s))
+      return { say: "Vou olhar sua tela.", actions: [{ type: "screen", question: s }] };
+    // tarefas no computador (programas, arquivos, mouse/teclado)
+    if (/\b(meu (pc|computador|notebook)|no (pc|computador|notebook)|use o mouse|mexa? no mouse|cliqu\w* (em|no|na)|bloco de notas|notepad|explorador de arquivos|gerenciador de tarefas|paint|calculadora|configura[cç][oõ]es do windows|painel de controle|área de trabalho|lixeira|minha pasta|meus documentos|downloads|word|excel|powerpoint|prompt de comando|terminal)\b/i.test(s) && !/^(pesquis|procur|bus[cq]|googl|me mostr|mostr)\w*/i.test(s))
+      return { say: "Vou fazer isso no seu PC.", actions: [{ type: "pc", goal: s }] };
     // lembrete / timer
     m = /\b(lembr\w*|lembrete|alarme|timer|temporizador|cron[oô]metro|avis\w*)\b.*?\b(\d+(?:[.,]\d+)?)\s*(segundos?|seg|s|minutos?|mins?|m|horas?|hrs?|h)\b/i.exec(s);
     if (m) {
@@ -1252,10 +1307,12 @@ body.collapsed #openSide{display:grid}
     if (a.type === "copy") return ["copy", "Copiar texto", a.text.slice(0, 120)];
     if (a.type === "timer") return ["alarm", "Lembrete em " + fmtDur(a.seconds), a.label];
     if (a.type === "screen") return ["monitor", "Ver sua tela", a.question];
+    if (a.type === "pc") return ["monitor", "No seu PC", a.goal];
     return ["globe", a.type, ""];
   }
   function openURL(url) {
     if (/^mailto:/i.test(url)) { var l = document.createElement("a"); l.href = url; document.body.appendChild(l); l.click(); l.remove(); return true; }
+    if (D) { window.open(url, "_blank"); return true; } // no app, o link abre no navegador padrão
     var w = null; try { w = window.open(url, "_blank"); } catch (e) {}
     if (w) { try { w.opener = null; } catch (e) {} return true; }
     return false;
@@ -1290,26 +1347,154 @@ body.collapsed #openSide{display:grid}
     }, 1000);
   }
 
-  // ----- ver a tela -----
-  function captureScreen() {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) return Promise.reject(new Error("Seu navegador não permite compartilhar a tela (use o Chrome ou o Edge no computador)."));
-    return navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 5 }, audio: false }).then(function (stream) {
-      return new Promise(function (resolve, reject) {
-        var v = document.createElement("video"); v.muted = true; v.playsInline = true; v.srcObject = stream;
-        var stop = function () { stream.getTracks().forEach(function (t) { t.stop(); }); };
-        v.onloadedmetadata = function () {
-          v.play().then(function () {
-            setTimeout(function () {
-              var s = Math.min(1, 1600 / Math.max(v.videoWidth, v.videoHeight)), c = document.createElement("canvas");
-              c.width = Math.round(v.videoWidth * s); c.height = Math.round(v.videoHeight * s);
-              c.getContext("2d").drawImage(v, 0, 0, c.width, c.height); stop();
-              resolve(c.toDataURL("image/jpeg", 0.82));
-            }, 450);
-          }, function (e) { stop(); reject(e); });
-        };
-      });
-    });
+  // ----- Copiloto no PC: dentro do app IA Council para Windows (window.iaDesktop) -----
+  var D = window.iaDesktop || null;
+  var pc = { connected: false, os: "", running: null, stopHook: null };
+  function pcSetState(ok, os) {
+    pc.connected = ok; pc.os = os || pc.os;
+    $("pcPill").classList.toggle("on", ok);
+    $("pcPillTxt").textContent = ok ? "PC conectado" : "Usar no meu PC";
+    $("pcPill").title = ok ? "O copiloto pode ver a tela, mover o mouse e digitar neste computador" : "Baixe o IA Council para Windows";
   }
+  function pcCheck() {
+    if (!D) { pcSetState(false); return Promise.resolve(false); }
+    return D.info().then(function (j) { pcSetState(!!j.ok, j.os); return !!j.ok; }, function () { pcSetState(false); return false; });
+  }
+  function pcErr(e) {
+    var m = String((e && e.message) || e || "falha");
+    var er = new Error(m.replace(/^EMERGENCIA:\s*/, "")); if (/^EMERGENCIA/.test(m)) er.emergency = true; return er;
+  }
+  function pcScreenshot() { return D ? D.screenshot().catch(function (e) { throw pcErr(e); }) : Promise.reject(new Error("Abra pelo app IA Council para Windows.")); }
+  function pcAct(a) { return D.act(a).catch(function (e) { throw pcErr(e); }); }
+  function openPC() {
+    if (pc.connected) { toast("Já está conectado: é só pedir no Copiloto."); return; }
+    $("pcModal").classList.remove("hidden");
+  }
+  function closePC() { $("pcModal").classList.add("hidden"); }
+  $("pcPill").onclick = openPC;
+  $("pcClose").onclick = closePC;
+  $("pcModal").addEventListener("click", function (e) { if (e.target === $("pcModal")) closePC(); });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") closePC(); });
+  if (D && D.onStop) D.onStop(function () { if (pc.stopHook) pc.stopHook(); toast("Parado (Ctrl+Shift+Q)"); });
+  if (D) document.documentElement.classList.add("in-desktop");
+
+  function describeAct(a) {
+    var t = a.type;
+    return t === "click" ? "clicou" : t === "double_click" ? "deu dois cliques" : t === "right_click" ? "clicou com o botão direito" : t === "move" ? "moveu o mouse" :
+      t === "drag" ? "arrastou" : t === "scroll" ? "rolou a tela" : t === "type" ? "digitou “" + String(a.text || "").slice(0, 60) + "”" + (a.enter ? " + Enter" : "") :
+      t === "key" ? "apertou " + a.key : t === "hotkey" ? "apertou " + (a.keys || []).join("+") : t === "wait" ? "esperou carregar" : t;
+  }
+  // O agente: print da tela -> Gemini identifica os elementos e decide -> o programa executa -> repete
+  function runPC(goal, box, data) {
+    var MAX = 25;
+    var log = data.pcLog = { goal: goal, steps: [], status: "running" };
+    var card = document.createElement("div"); card.className = "agent";
+    card.innerHTML = '<div class="ah"><svg class="helm"><use href="#i-helmet"/></svg><b>No seu PC: ' + esc(goal) + '</b><button class="btn stop">Parar</button></div>' +
+      '<div class="shotwrap hidden"><img alt="Tela do seu PC"></div><div class="obs hidden"></div><div class="alog"></div>';
+    box.appendChild(card);
+    var stopBtn = card.querySelector(".stop"), wrap = card.querySelector(".shotwrap"), img = wrap.querySelector("img"), obs = card.querySelector(".obs"), alog = card.querySelector(".alog");
+    var stopped = false;
+    function line(t, cls) {
+      var d = document.createElement("div"); d.className = "ln" + (cls ? " " + cls : "");
+      d.innerHTML = (cls === "err" ? "<span>⚠</span>" : '<svg><use href="#i-check"/></svg>') + "<span>" + esc(t) + "</span>";
+      alog.appendChild(d); alog.scrollTop = alog.scrollHeight;
+    }
+    function nowLine(t) {
+      var d = card.querySelector(".ln.cur"); if (!d) { d = document.createElement("div"); d.className = "ln cur"; alog.appendChild(d); }
+      d.innerHTML = '<svg class="star spinstar" style="color:var(--ac)"><use href="#i-star"/></svg><span>' + esc(t) + "</span>"; alog.scrollTop = alog.scrollHeight;
+    }
+    function clearNow() { var d = card.querySelector(".ln.cur"); if (d) d.remove(); }
+    function finish(status, msg, cls) {
+      clearNow(); log.status = status; log.result = msg; if (stopBtn.parentNode) stopBtn.remove();
+      line(msg, cls); if (pc.running === card) { pc.running = null; pc.stopHook = null; D.mini(false).catch(function () {}); }
+      saveHist(); renderRecent();
+    }
+    function askUser(msg, yesTxt, noTxt) {
+      return new Promise(function (resolve) {
+        var q = document.createElement("div"); q.className = "aq";
+        q.innerHTML = "<span>" + esc(msg) + '</span><button class="btn pri">' + esc(yesTxt) + '</button><button class="btn">' + esc(noTxt) + "</button>";
+        card.appendChild(q);
+        var bs = q.querySelectorAll("button"), done = function (v) { if (q.parentNode) q.remove(); resolve(v); };
+        bs[0].onclick = function () { done(true); };
+        bs[1].onclick = function () { done(false); };
+        stopBtn.addEventListener("click", function () { done(false); }, { once: true });
+      });
+    }
+    function showShot(shot, plan) {
+      wrap.classList.remove("hidden"); img.src = shot.image;
+      Array.prototype.forEach.call(wrap.querySelectorAll(".mk"), function (m) { m.remove(); });
+      if (!plan) return;
+      (plan.elements || []).forEach(function (e) {
+        var m = document.createElement("div"); m.className = "mk"; m.style.left = e.point[1] / 10 + "%"; m.style.top = e.point[0] / 10 + "%";
+        m.innerHTML = "<span>" + esc(e.label) + "</span>"; m.title = e.label; wrap.appendChild(m);
+      });
+      var a = plan.action;
+      if (a && a.point) { var t = document.createElement("div"); t.className = "mk tg"; t.style.left = a.point[1] / 10 + "%"; t.style.top = a.point[0] / 10 + "%"; wrap.appendChild(t); }
+      if (plan.observation) { obs.classList.remove("hidden"); obs.textContent = "👁 " + plan.observation; }
+    }
+    if (pc.running) { finish("error", "Outra conversa já está usando o PC. Espere terminar ou clique em Parar nela.", "err"); return; }
+    pc.running = card;
+    stopBtn.onclick = function () { stopped = true; stopBtn.disabled = true; stopBtn.textContent = "Parando…"; };
+    pc.stopHook = function () { stopBtn.onclick(); };
+    D.mini(true).catch(function () {});
+    var step = 0;
+    function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+    function loop() {
+      if (stopped) return finish("stopped", "Parado por você.", "err");
+      if (step >= MAX) return finish("max", "Parei depois de " + MAX + " passos. Peça para continuar se precisar.", "err");
+      step++;
+      nowLine("Olhando a tela… (passo " + step + ")");
+      var shot;
+      return pcScreenshot().then(function (sh) {
+        shot = sh; showShot(shot, null);
+        if (stopped) throw { stop: true };
+        nowLine("Identificando o que tem na tela e decidindo o próximo passo…");
+        return fetch("/api/copilot", { method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ stage: "act", goal: goal, image: shot.image, steps: log.steps, cursor: shot.cursor, os: pc.os }) })
+          .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || "Erro " + r.status); return j; }); });
+      }).then(function (plan) {
+        if (stopped) throw { stop: true };
+        showShot(shot, plan);
+        var a = plan.action;
+        if (a.type === "done") { log.steps.push(plan.say); return finish("done", "✓ " + plan.say); }
+        if (a.type === "ask_user") {
+          clearNow(); log.steps.push("Pediu ajuda: " + plan.say);
+          return askUser("✋ " + plan.say, "Já fiz, continuar", "Encerrar").then(function (go) {
+            if (!go || stopped) return finish("stopped", "Encerrado.", "err");
+            log.steps.push("O usuário resolveu e pediu para continuar.");
+            return loop();
+          });
+        }
+        var confirmFirst = plan.confirm ? (clearNow(), askUser("⚠ " + plan.confirm, "Pode fazer", "Não")) : Promise.resolve(true);
+        return confirmFirst.then(function (ok) {
+          if (stopped) throw { stop: true };
+          if (!ok) { log.steps.push("Usuário NÃO autorizou: " + plan.say); return finish("stopped", "Cancelado: você não autorizou.", "err"); }
+          nowLine(plan.say);
+          return pcAct(a).then(function () {
+            clearNow(); var txt = plan.say + " (" + describeAct(a) + ")"; line(txt); log.steps.push(txt);
+            return wait(a.type === "type" || a.type === "key" || a.type === "hotkey" ? 900 : 700).then(loop);
+          }, function (e) {
+            clearNow();
+            if (e.emergency) return finish("stopped", "Parada de emergência: " + e.message + ".", "err");
+            line("Não deu certo: " + e.message, "err"); log.steps.push("FALHOU (" + describeAct(a) + "): " + e.message);
+            return loop();
+          });
+        });
+      }).catch(function (e) {
+        if (e && e.stop) return finish("stopped", "Parado por você.", "err");
+        if (e && e.emergency) return finish("stopped", "Parada de emergência: " + e.message + ".", "err");
+        return finish("error", (e && e.message) || "Falha inesperada.", "err");
+      });
+    }
+    loop();
+  }
+  function pcNeeded(box, retry) {
+    var card = document.createElement("div"); card.className = "acard";
+    card.innerHTML = '<span class="ai">' + ic("monitor") + '</span><span class="at"><b>Para mexer no seu PC, use o app IA Council para Windows</b><span>No navegador, nenhum site consegue controlar o mouse. No app, sim — é só instalar e pedir de novo.</span></span>';
+    var b = document.createElement("button"); b.className = "btn pri"; b.textContent = "Baixar o app"; b.onclick = openPC;
+    card.appendChild(b); box.appendChild(card);
+  }
+  pcCheck();
   function askAboutImage(question, img) {
     return fetch("/api/copilot", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ stage: "see", question: question, image: img }) })
       .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || "Erro " + r.status); return j; }); });
@@ -1344,25 +1529,36 @@ body.collapsed #openSide{display:grid}
       } else if (a.type === "timer") {
         if (auto) startTimer(a, status); else setStatus("Lembrete de " + fmtDur(a.seconds) + " (" + a.label + ")");
       } else if (a.type === "screen") {
-        btn.textContent = "Compartilhar tela";
-        var go = function () {
-          btn.disabled = true; setStatus("Escolha o que compartilhar…");
-          captureScreen().then(function (img) {
-            setStatus("Analisando o que aparece na tela…");
-            var shot = document.createElement("img"); shot.className = "shot"; shot.src = img; shot.alt = "Captura da tela"; card.appendChild(shot);
-            return askAboutImage(a.question, img).then(function (j) {
-              setStatus("Analisado por " + (pretty(j.model) || "Gemini"), "okk");
-              var ans = document.createElement("div"); ans.className = "md"; ans.style.marginTop = "10px"; ans.innerHTML = md(j.answer); card.appendChild(ans);
+        card.remove();
+        if (data.screenAnswer) { var an = document.createElement("div"); an.className = "md"; an.innerHTML = md(data.screenAnswer); box.appendChild(an); return; }
+        if (!auto) return;
+        var look = function () {
+          var c2 = document.createElement("div"); c2.className = "acard col";
+          c2.innerHTML = '<div class="row1"><span class="ai">' + ic("monitor") + '</span><span class="at"><b>Olhando sua tela</b><span>Tirando um print da sua tela…</span></span></div>';
+          box.appendChild(c2); var st = c2.querySelector(".at span");
+          pcScreenshot().then(function (shot) {
+            st.textContent = "Analisando o que aparece na tela…";
+            var w = document.createElement("div"); w.className = "shotwrap"; w.style.marginTop = "8px"; w.innerHTML = '<img alt="Tela do seu PC">'; w.querySelector("img").src = shot.image; c2.appendChild(w);
+            return askAboutImage(a.question, shot.image).then(function (j) {
+              st.textContent = "Analisado por " + (pretty(j.model) || "Gemini"); st.className = "okk";
+              var ans = document.createElement("div"); ans.className = "md"; ans.style.marginTop = "10px"; ans.innerHTML = md(j.answer); c2.appendChild(ans);
               data.screenAnswer = j.answer; saveHist();
             });
-          }).catch(function (e) {
-            btn.disabled = false;
-            setStatus(e && e.name === "NotAllowedError" ? "Compartilhamento cancelado. Clique para tentar de novo." : (e.message || "Não consegui ver a tela."), "bad");
-          });
+          }).catch(function (e) { st.textContent = e.message || "Não consegui ver a tela."; st.className = "bad"; });
         };
-        btn.onclick = go; row.appendChild(btn);
-        if (data.screenAnswer) { var an = document.createElement("div"); an.className = "md"; an.style.marginTop = "10px"; an.innerHTML = md(data.screenAnswer); card.appendChild(an); }
-        else if (auto) go();
+        if (pc.connected) look(); else pcCheck().then(function (ok) { if (ok) look(); else pcNeeded(box, look); });
+      } else if (a.type === "pc") {
+        card.remove();
+        if (data.pcLog && data.pcLog.status !== "running") {
+          var past = document.createElement("div"); past.className = "agent";
+          past.innerHTML = '<div class="ah"><svg class="helm"><use href="#i-helmet"/></svg><b>No seu PC: ' + esc(a.goal) + '</b></div><div class="alog">' +
+            data.pcLog.steps.map(function (t) { return '<div class="ln"><svg><use href="#i-check"/></svg><span>' + esc(t) + "</span></div>"; }).join("") +
+            '<div class="ln' + (data.pcLog.status === "done" ? "" : " err") + '"><span>' + esc(data.pcLog.result || "") + "</span></div></div>";
+          box.appendChild(past); return;
+        }
+        if (!auto) return;
+        var start = function () { runPC(a.goal, box, data); };
+        if (pc.connected) start(); else pcCheck().then(function (ok) { if (ok) start(); else pcNeeded(box, start); });
       }
     });
   }
@@ -1400,7 +1596,7 @@ body.collapsed #openSide{display:grid}
     var work = sentImgs.length
       ? askAboutImage(text, sentImgs[0]).then(function (j) { return { imageAnswer: j.answer, actions: [], by: "Gemini", model: j.model }; })
       : fetch("/api/copilot", { method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ stage: "plan", text: text, history: hist, now: new Date().toLocaleString("pt-BR"), tz: (Intl.DateTimeFormat().resolvedOptions().timeZone || "") }) })
+          body: JSON.stringify({ stage: "plan", text: text, history: hist, pc: pc.connected, now: new Date().toLocaleString("pt-BR"), tz: (Intl.DateTimeFormat().resolvedOptions().timeZone || "") }) })
           .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || "Erro " + r.status); return j; }); });
     work.then(function (data) { finishTurn(job, h, k, data); }, function (e) { finishTurn(job, h, k, { error: e.message || "Falha de rede." }); });
   }

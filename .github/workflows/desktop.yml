@@ -1,0 +1,45 @@
+name: App para Windows
+
+on:
+  push:
+    branches: [main]
+    paths: ["desktop/**", ".github/workflows/desktop.yml"]
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Instalar dependências
+        working-directory: desktop
+        run: npm install --no-audit --no-fund
+      - name: Testar controle do PC
+        working-directory: desktop
+        run: npm test
+      - name: Testar o script de mouse/teclado no Windows
+        working-directory: desktop
+        shell: pwsh
+        run: |
+          $p = Start-Process powershell.exe -ArgumentList "-NoProfile","-ExecutionPolicy","Bypass","-File","input.ps1" -RedirectStandardInput in.txt -RedirectStandardOutput out.txt -NoNewWindow -PassThru -Wait
+          Get-Content out.txt
+          if (-not (Select-String -Path out.txt -Pattern "^READY")) { throw "input.ps1 não iniciou" }
+      - name: Gerar instalador
+        working-directory: desktop
+        run: npx electron-builder --win --publish never
+      - name: Publicar para download
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: desktop-latest
+          name: IA Council para Windows
+          body: |
+            Instalador do **IA Council para Windows** (conselho de IAs + Copiloto que mexe no seu PC).
+            Baixe `IA-Council-Setup.exe`, abra e pronto. Se o Windows mostrar "O Windows protegeu o computador", clique em **Mais informações → Executar assim mesmo**.
+          files: desktop/dist/IA-Council-Setup.exe
+          make_latest: true

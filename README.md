@@ -10,7 +10,16 @@ O site chama `/api/council` em etapas (cada uma com até ~55 s, por causa do lim
 No seletor de modelos dá para trocar o presidente, o **esforço** (Baixo/Médio/Alto: raciocínio e tamanho das respostas), o número de **debates** e, em **Mais modelos**, escolher qualquer modelo que cada chave libera (`GET /api/council?list=1`).
 
 ## Copiloto (botão do capacete)
-Você pede em português e ele **faz no seu navegador**: abre abas e pesquisa (Google, YouTube, Maps, Mercado Livre, Spotify…), abre sites, **vê sua tela** quando você compartilha (o Gemini analisa a captura), cria lembretes com alarme, copia textos e prepara e-mails e mensagens de WhatsApp. Pedidos claros ("pesquise…", "abra o YouTube", "me lembre em 10 min") são entendidos na hora; os outros passam pela IA (`/api/copilot`). Por segurança, nenhum site consegue controlar mouse, teclado ou arquivos do computador.
+Você pede em português e ele faz:
+- **No site (qualquer navegador):** abre abas e pesquisa (Google, YouTube, Maps, Mercado Livre, Spotify…), abre sites, cria lembretes com alarme, copia textos e prepara e-mails e WhatsApp.
+- **No app IA Council para Windows:** além disso, vê a tela, **identifica cada elemento** (botões, campos, ícones), **troca de apps e abas, move o mouse e digita** até cumprir o pedido — como os apps de desktop do Claude e do ChatGPT. Sem código de pareamento.
+
+### App para Windows (`desktop/`)
+- Electron que abre o site oficial numa janela própria e expõe `window.iaDesktop` (print da tela, ações de mouse/teclado, modo painel) **só para o site oficial**.
+- Mouse e teclado via `input.ps1` (PowerShell + `user32.dll`, sem dependências nativas); acentos são digitados colando pela área de transferência.
+- A cada passo: print → `/api/copilot` (estágio `act`, Gemini) identifica os elementos e escolhe UMA ação → o app executa → repete (máx. 25).
+- Segurança: não digita senhas (para e pede), pede confirmação antes de enviar/comprar/apagar, ignora instruções que aparecem na tela. **Parar:** botão Parar, **Ctrl+Shift+Q** ou mouse no canto superior esquerdo.
+- O instalador `IA-Council-Setup.exe` é gerado pelo GitHub Actions (`.github/workflows/desktop.yml`) a cada mudança em `desktop/` e publicado em *Releases → desktop-latest*.
 
 ## Voz e anexos
 O microfone grava e transcreve com o Whisper do Groq (`/api/transcribe`), com o Gemini como reserva. O "+" aceita fotos e arquivos de texto, CSV e código.
