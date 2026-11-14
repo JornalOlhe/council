@@ -15,6 +15,8 @@ globalThis.fetch = async (url, init = {}) => {
   if (goneModel && body.model === goneModel) return new Response(JSON.stringify({ error: { message: `The model \`${goneModel}\` does not exist`, code: "model_not_found" } }), { status: 404 });
   const prompt = name === "Gemini" ? body.contents[0].parts[0].text : body.messages[1].content;
   let text = `<think>oculto</think>Resposta de ${name}`;
+  if (prompt.includes("Classifique")) {}
+  if (body.messages && body.messages[0].content.startsWith("Classifique")) text = /oi|valeu|tudo|beleza/i.test(prompt) ? "CONVERSA" : "CONSELHO";
   if (prompt.includes("PRESIDENTE")) text = "## Decisão\nOk\n## Confiança\n80%";
   if (prompt.includes("Descreva de forma exaustiva")) text = "Foto 1: gato";
   return new Response(JSON.stringify(name === "Gemini"
@@ -24,6 +26,7 @@ globalThis.fetch = async (url, init = {}) => {
 
 const run = async (body, headers = {}, method = "POST") => {
   const r = { code: 0, json: null };
+  if (body && typeof body === "object" && !("mode" in body)) body = { mode: "council", ...body };
   await handler({ method, headers, body }, { status(c) { r.code = c; return this; }, json(o) { r.json = o; return this; } });
   return r;
 };
@@ -33,7 +36,13 @@ delete process.env.ACCESS_CODE;
 const img = "data:image/jpeg;base64,AAAA";
 let ok = 0; const t = async (n, f) => { reset(); await f(); ok++; console.log("✓", n); };
 
-await t("só POST", async () => assert.equal((await run({}, {}, "GET")).code, 405));
+await t("só POST/GET", async () => assert.equal((await run({}, {}, "PUT")).code, 405));
+await t("GET mostra membros e modelos sem chaves", async () => {
+  const r = await run(null, {}, "GET");
+  assert.equal(r.code, 200);
+  assert.equal(r.json.members[0].label, "Gemini 3.8 Flash");
+  assert.ok(!JSON.stringify(r.json).includes('"g"'));
+});
 await t("prompt vazio", async () => assert.equal((await run({ prompt: " " })).code, 400));
 await t("texto > 6000", async () => assert.equal((await run({ prompt: "a".repeat(6001) })).code, 400));
 await t("> 4 imagens", async () => assert.equal((await run({ prompt: "x", images: Array(5).fill(img) })).code, 400));
@@ -90,6 +99,30 @@ await t("modelo sumiu: descobre outro e segue", async () => {
   assert.equal(r.code, 200);
   assert.equal(r.json.models.Groq, "openai/gpt-oss-120b-new");
   assert.ok(!r.json.errors.some((e) => e.name === "Groq"));
+});
+await t("auto: 'oi' vira conversa normal (1 chamada)", async () => {
+  const r = await run({ prompt: "oi", mode: "auto" });
+  assert.equal(r.json.mode, "chat");
+  assert.equal(calls.length, 1);
+  assert.equal(r.json.judge, "Groq");
+  assert.equal(r.json.rounds.length, 0);
+});
+await t("auto: pergunta curta ambígua passa pelo classificador", async () => {
+  const r = await run({ prompt: "e aí, beleza mano?", mode: "auto" });
+  assert.equal(r.json.mode, "chat");
+  reset();
+  const r2 = await run({ prompt: "Python ou JavaScript?", mode: "auto" });
+  assert.equal(r2.json.mode, "council");
+});
+await t("auto: pergunta longa vai direto ao conselho", async () => {
+  const r = await run({ prompt: "Quero abrir uma loja online de roupas, qual plataforma usar e por quê, considerando custo?", mode: "auto", debateRounds: 0 });
+  assert.equal(r.json.mode, "council");
+  assert.ok(!calls.some((c) => c.body.messages && c.body.messages[0].content.startsWith("Classifique")));
+});
+await t("quick: uma IA só", async () => {
+  const r = await run({ prompt: "Explique DNS", mode: "quick" });
+  assert.equal(r.json.mode, "chat");
+  assert.equal(calls.length, 1);
 });
 await t("todos falham = 502", async () => {
   const f = globalThis.fetch;
