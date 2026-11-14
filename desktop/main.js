@@ -146,6 +146,32 @@ ipcMain.handle("app:install-update", (e) => {
   return true;
 });
 
+// ---------- borda laranja na tela inteira enquanto o Copiloto controla o PC ----------
+const GLOW_HTML = `<!doctype html><html><head><meta charset="utf-8"><style>
+html,body{margin:0;height:100%;background:transparent;overflow:hidden;font-family:"Segoe UI",system-ui,sans-serif}
+.g{position:fixed;inset:0;box-shadow:inset 0 0 0 3px #d97757,inset 0 0 38px 8px rgba(217,119,87,.55);animation:p 2.2s ease-in-out infinite}
+@keyframes p{50%{box-shadow:inset 0 0 0 3px #e08a6b,inset 0 0 60px 14px rgba(217,119,87,.75)}}
+.t{position:fixed;top:10px;left:50%;transform:translateX(-50%);background:#1f1e1dee;color:#f5f4ef;border:1px solid #d97757;border-radius:999px;padding:6px 14px;font-size:13px;display:flex;gap:8px;align-items:center;box-shadow:0 6px 24px #0007}
+.d{width:8px;height:8px;border-radius:50%;background:#d97757;animation:b 1s infinite}@keyframes b{50%{opacity:.3}}
+</style></head><body><div class="g"></div><div class="t"><span class="d"></span>IA Council está controlando seu PC · <b>Ctrl+Shift+Q</b> para parar</div></body></html>`;
+let glow = null;
+function showGlow() {
+  if (glow && !glow.isDestroyed()) return;
+  const d = screen.getPrimaryDisplay();
+  glow = new BrowserWindow({
+    x: d.bounds.x, y: d.bounds.y, width: d.bounds.width, height: d.bounds.height,
+    transparent: true, frame: false, focusable: false, skipTaskbar: true, resizable: false, movable: false,
+    hasShadow: false, show: false, alwaysOnTop: true, backgroundColor: "#00000000",
+    webPreferences: { sandbox: true, contextIsolation: true },
+  });
+  glow.setIgnoreMouseEvents(true);
+  glow.setAlwaysOnTop(true, "screen-saver");
+  glow.setContentProtection(true); // fica fora dos prints que o Copiloto analisa
+  glow.loadURL("data:text/html;charset=utf-8," + encodeURIComponent(GLOW_HTML));
+  glow.once("ready-to-show", () => { if (glow && !glow.isDestroyed()) glow.showInactive(); if (win) win.moveTop(); });
+}
+function hideGlow() { if (glow && !glow.isDestroyed()) glow.destroy(); glow = null; }
+
 // Durante uma tarefa, a janela vira um painel pequeno no canto, sempre por cima
 ipcMain.handle("pc:mini", (e, on) => {
   guard(e);
@@ -155,8 +181,10 @@ ipcMain.handle("pc:mini", (e, on) => {
     if (win.isMaximized()) win.unmaximize();
     const wa = screen.getPrimaryDisplay().workArea;
     win.setAlwaysOnTop(true, "screen-saver");
-    win.setBounds({ width: 420, height: 560, x: wa.x + wa.width - 436, y: wa.y + wa.height - 576 });
+    win.setBounds({ width: 440, height: 600, x: wa.x + wa.width - 456, y: wa.y + wa.height - 616 });
+    showGlow();
   } else if (normalBounds) {
+    hideGlow();
     win.setAlwaysOnTop(false);
     win.setBounds(normalBounds.bounds);
     if (normalBounds.max) win.maximize();
@@ -208,5 +236,5 @@ app.whenReady().then(() => {
   if (process.platform === "win32") startPS();
   setupUpdates();
 });
-app.on("will-quit", () => { globalShortcut.unregisterAll(); if (ps) ps.kill(); });
+app.on("will-quit", () => { globalShortcut.unregisterAll(); hideGlow(); if (ps) ps.kill(); });
 app.on("window-all-closed", () => app.quit());

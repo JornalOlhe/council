@@ -94,13 +94,16 @@ function reasoningParams(p, eff) {
   return {};
 }
 
-async function callOpenAI(p, system, user, ms, maxTokens, eff) {
+async function callOpenAI(p, system, user, ms, maxTokens, eff, images = []) {
+  const content = images.length
+    ? [{ type: "text", text: user }, ...images.map((im) => ({ type: "image_url", image_url: { url: `data:${im.mime};base64,${im.data}` } }))]
+    : user;
   const r = await timedFetch(p.url, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${p.key}` },
     body: JSON.stringify({
       model: p.model,
-      messages: [{ role: "system", content: system }, { role: "user", content: user }],
+      messages: [{ role: "system", content: system }, { role: "user", content }],
       temperature: 0.4,
       max_tokens: maxTokens,
       ...reasoningParams(p, eff),
@@ -201,7 +204,7 @@ function callRaw(p, system, user, deadline, maxTokens, eff, images) {
   if (ms < 2000) return Promise.reject(new Error("sem tempo restante"));
   return p.kind === "gemini"
     ? callGemini(p, system, user, ms, maxTokens, eff, images)
-    : callOpenAI(p, system, user, ms, maxTokens, eff);
+    : callOpenAI(p, system, user, ms, maxTokens, eff, images);
 }
 
 // O modelo principal sempre tenta; se demorar mais que eff.hedge, a reserva rápida começa em paralelo.
@@ -259,14 +262,14 @@ async function ask(p, system, user, deadline, eff, maxTokens, images = [], depth
       return ask(p, system, user, deadline, eff, maxTokens, images, depth + 1);
     }
     // modelo grátis congestionado: troca por outro grátis
-    if (p.name === "OpenRouter" && e.status === 429) {
+    if (p.name === "OpenRouter" && e.status === 429 && !p.noSwap) {
       const alt = await discoverModel(p, e, deadline, p.model).catch(() => null);
       if (!alt) throw e;
       p.model = alt;
       return callOnce(p, system, user, deadline, maxTokens || eff.tokens, eff, images);
     }
     // modelo saiu do ar: descobre outro disponível
-    const gone = (e.status === 404 || e.status === 400) && MODEL_GONE.test(body || e.message);
+    const gone = !p.noSwap && (e.status === 404 || e.status === 400) && MODEL_GONE.test(body || e.message);
     if (!gone) throw e;
     const k = p.name + "|" + p.model;
     if (!discovered.has(k)) discovered.set(k, discoverModel(p, e, deadline).catch(() => null));
@@ -470,6 +473,57 @@ export default async function handler(req, res) {
   } catch (e) {
     return send(500, { error: "Erro interno no conselho." });
   }
+}
+
+// ---------- visão (ver imagens) com troca automática quando um modelo esgota a cota ----------
+// No plano grátis do Google cada modelo tem cota própria; se um der 429, tenta o próximo.
+const cooldown = new Map(); // "Provedor|modelo" -> até quando evitar
+const VISION_GEMINI = ["gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-2.5-flash", "gemini-2.5-flash-lite", "gemma-3-27b-it"];
+const VISION_OPENROUTER = ["nvidia/nemotron-3.5-super-vl:free", "google/gemma-4-31b-it:free", "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free", "google/gemma-4-26b-a4b-it:free"];
+
+function retryDelayMs(e) {
+  const m = /retry(?:Delay)?["\s:]*"?(\d+(?:\.\d+)?)s/i.exec((e && e.body) || "");
+  return m ? Math.min(10 * 60000, Math.ceil(parseFloat(m[1]) * 1000)) : 90000;
+}
+
+export function visionCandidates(providers) {
+  const out = [];
+  const seen = new Set();
+  const add = (base, model, fallback = null) => {
+    const k = base.name + "|" + model;
+    if (!model || seen.has(k)) return;
+    seen.add(k);
+    out.push({ ...base, model, fallback, thinkIdx: 0, noSwap: true });
+  };
+  const g = providers.find((p) => p.kind === "gemini");
+  if (g) { add(g, g.model, g.fallback); for (const m of VISION_GEMINI) add(g, m); }
+  const o = providers.find((p) => p.name === "OpenRouter");
+  if (o) for (const m of VISION_OPENROUTER) add(o, m);
+  return out;
+}
+
+export async function askVision(providers, system, user, deadline, eff, maxTokens, images) {
+  const errors = [];
+  const list = visionCandidates(providers);
+  if (!list.length) throw new Error("nenhum modelo que enxerga imagens está configurado");
+  const now = Date.now();
+  const ready = list.filter((c) => (cooldown.get(c.name + "|" + c.model) || 0) <= now);
+  const order = ready.length ? ready : list; // se todos estão em espera, tenta mesmo assim
+  for (const c of order) {
+    if (deadline - Date.now() < 5000) break;
+    try {
+      const text = await ask(c, system, user, deadline, eff, maxTokens, images);
+      return { text, model: c.lastUsed || c.model, provider: c.name };
+    } catch (e) {
+      errors.push(`${c.name} ${c.model}: ${String(e.message).slice(0, 80)}`);
+      if (e.status === 429) cooldown.set(c.name + "|" + c.model, Date.now() + retryDelayMs(e));
+      else if (e.status === 404 || e.status === 400) cooldown.set(c.name + "|" + c.model, Date.now() + 30 * 60000);
+      else if ([500, 502, 503].includes(e.status) || /tempo esgotado/.test(e.message)) cooldown.set(c.name + "|" + c.model, Date.now() + 30000);
+    }
+  }
+  const err = new Error("todos os modelos de visão falharam agora (cota ou instabilidade). Tente em 1 minuto.");
+  err.details = errors;
+  throw err;
 }
 
 export { ask, SYSTEM };

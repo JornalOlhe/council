@@ -95,6 +95,24 @@ await t("plano pode pedir controle do PC", async () => {
   const r = await run(copilot, { stage: "plan", text: "abre o bloco de notas e escreve minha lista", pc: true });
   assert.equal(r.json.actions[0].type, "pc");
 });
+await t("cota do Gemini esgotada (429): troca de modelo e continua", async () => {
+  const saved = globalThis.fetch, tried = [];
+  process.env.OPENROUTER_API_KEY = "o";
+  globalThis.fetch = async (url, init) => {
+    const u = String(url);
+    const body = JSON.parse(init.body);
+    tried.push(u.includes("googleapis") ? u.split("models/")[1].split(":")[0] : body.model);
+    if (u.includes("googleapis")) return new Response('{"error":{"code":429,"message":"You exceeded your current quota","details":[{"retryDelay":"40s"}]}}', { status: 429 });
+    assert.ok(Array.isArray(body.messages[1].content) && body.messages[1].content.some((c) => c.type === "image_url"));
+    return new Response(JSON.stringify({ choices: [{ message: { content: '{"plan":"1) abrir","elements":[],"say":"Abrindo.","action":{"type":"key","key":"win"}}' } }] }), { status: 200 });
+  };
+  const r = await run(copilot, { stage: "act", goal: "abrir o bloco de notas", request: "abre o bloco de notas", image: "data:image/jpeg;base64,AAAA" });
+  globalThis.fetch = saved; delete process.env.OPENROUTER_API_KEY;
+  assert.equal(r.code, 200);
+  assert.equal(r.json.provider, "OpenRouter");
+  assert.ok(tried.filter((m) => /gemini|gemma/.test(m)).length >= 3, "tentou vários Gemini antes");
+  assert.equal(r.json.plan, "1) abrir");
+});
 await t("áudio inválido = 400", async () => {
   assert.equal((await run(transcribe, { audio: "data:text/plain;base64,AAAA" })).code, 400);
 });

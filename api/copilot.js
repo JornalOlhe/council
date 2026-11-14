@@ -1,7 +1,7 @@
 // IA Council — Copiloto
 // POST { stage: "plan", text, now, tz, history }  -> { say, actions[] }   (o site executa as ações)
 // POST { stage: "see", question, image }          -> { answer }           (Gemini olha a captura da tela)
-import { ask, buildProviders, EFFORTS } from "./council.js";
+import { ask, askVision, buildProviders, EFFORTS } from "./council.js";
 
 const ENGINES = ["google", "youtube", "maps", "imagens", "noticias", "shopping", "wikipedia", "mercadolivre", "amazon", "github", "spotify", "tradutor"];
 const TYPES = ["search", "open", "copy", "timer", "screen", "email", "whatsapp", "route", "pc"];
@@ -23,8 +23,9 @@ Você pode executar estas ações (o site do usuário executa por você):
 - {"type":"email","to":"","subject":"...","body":"..."}  abre um e-mail pronto no app de e-mail
 - {"type":"whatsapp","text":"...","phone":""}  abre o WhatsApp com a mensagem pronta (phone só com dígitos e DDI, ou vazio)
 - {"type":"route","from":"","to":"..."}  abre rota no Google Maps (from vazio = localização atual)
-- {"type":"pc","goal":"..."}  CONTROLA O COMPUTADOR do usuário (vê a tela, move o mouse, clica, digita) para cumprir o objetivo descrito. ${pc ? "O PC ESTÁ CONECTADO: use esta ação para qualquer coisa em programas, janelas, arquivos ou no próprio computador." : "O PC NÃO está conectado: se o pedido exigir mexer no computador, inclua esta ação mesmo assim (o site vai pedir para conectar)."}
+- {"type":"pc","goal":"..."}  CONTROLA O COMPUTADOR do usuário (vê a tela, move o mouse, clica, digita) para cumprir o objetivo descrito. O "goal" deve ser COMPLETO e autoexplicativo: inclua todos os detalhes do pedido (programas, textos exatos entre aspas, ordem das etapas). ${pc ? "O PC ESTÁ CONECTADO: use esta ação para qualquer coisa em programas, janelas, arquivos ou no próprio computador." : "O PC NÃO está conectado: se o pedido exigir mexer no computador, inclua esta ação mesmo assim (o site vai pedir para conectar)."}
 
+LEIA O PEDIDO COM ATENÇÃO: entenda a intenção real, todas as partes (se houver "e depois", "também", listas), nomes, textos exatos, quantidades e horários. Não ignore nenhuma parte; se o pedido tiver várias tarefas, inclua uma ação para cada. Textos que o usuário quer escritos/enviados devem ir EXATAMENTE como ele pediu. Se algo essencial estiver ambíguo, pergunte em "say" (sem ações) em vez de chutar.
 Não finja que fez algo que não está nas ações. Pesquisas e sites simples: prefira "search"/"open" (mais rápido). Use "pc" para mexer em programas, no Windows, em arquivos, ou quando pedirem explicitamente para usar o mouse/teclado.
 Para perguntas sobre fatos atuais (preços, notícias, clima, resultados), responda o que souber com cautela e inclua uma ação de pesquisa.
 Para pedidos de texto (escrever, resumir, traduzir, calcular), responda no campo "say" e, se útil, adicione "copy".
@@ -77,7 +78,12 @@ export function sanitizePlan(raw) {
 const ACT_SYSTEM = (os) => `Você é o COPILOTO e está controlando o computador do usuário (${os || "Windows"}) para cumprir o OBJETIVO dele. Responda em português do Brasil.
 A cada passo você recebe uma captura da tela atual e devolve UMA ação. Coordenadas: "point": [y, x] normalizados de 0 a 1000 em relação à captura (0,0 = canto superior esquerdo). Mire no CENTRO do elemento.
 
-Primeiro identifique os elementos importantes visíveis (janelas, botões, campos, ícones, menus, abas) com a posição de cada um. Depois escolha a ação.
+COMO PENSAR (sempre):
+1. Releia o PEDIDO ORIGINAL do usuário: entenda exatamente o que ele quer no final (detalhes, textos exatos, ordem). O objetivo só está cumprido quando TUDO foi feito.
+2. Olhe a captura: qual app/janela está em foco, o que mudou desde o último passo, se a ação anterior funcionou.
+3. Identifique os elementos importantes visíveis (janelas, botões, campos, ícones, menus, abas) com a posição de cada um.
+4. Escolha a próxima ação mais direta e segura. Prefira atalhos de teclado confiáveis a cliques em ícones pequenos.
+Se um passo falhou, não repita igual: tente outro caminho (atalho, menu, pesquisar no Iniciar).
 
 Ações possíveis:
 - {"type":"click","point":[y,x]} | {"type":"double_click","point":[y,x]} | {"type":"right_click","point":[y,x]} | {"type":"move","point":[y,x]}
@@ -101,7 +107,7 @@ SEGURANÇA (obrigatório):
 VELOCIDADE: seja rápido e objetivo. Se as próximas ações NÃO dependem de ver a tela de novo, mande-as juntas em "then" (até 4), na ordem. Ex.: abrir o Bloco de Notas = action {"type":"key","key":"win"} e then [{"type":"wait","seconds":0.6},{"type":"type","text":"bloco de notas","enter":true},{"type":"wait","seconds":1.2}]. Escrever num campo já focado e apertar Enter também pode ir junto. NÃO junte cliques em lugares que ainda não estão visíveis.
 
 Responda APENAS com JSON válido (curto):
-{"observation":"o que está na tela (1 frase)","elements":[{"label":"nome curto","point":[y,x]}],"say":"o que vou fazer agora (1 frase)","action":{...},"then":[],"confirm":""}
+{"plan":"no 1º passo: checklist curto do que falta (ex.: 1) abrir X 2) escrever Y 3) salvar)","progress":"o que já foi feito e o que falta (1 frase)","observation":"o que está na tela (1 frase)","elements":[{"label":"nome curto","point":[y,x]}],"say":"o que vou fazer agora (1 frase)","action":{...},"then":[],"confirm":""}
 "elements": até 8 itens, os mais relevantes.`;
 
 const pt = (p) => Array.isArray(p) && p.length === 2 && p.every((n) => Number.isFinite(Number(n)))
@@ -130,6 +136,8 @@ function cleanAction(a, out) {
 
 export function sanitizeAct(raw) {
   const out = {
+    plan: str(raw && raw.plan, 500),
+    progress: str(raw && raw.progress, 300),
     observation: str(raw && raw.observation, 600),
     say: str(raw && raw.say, 400),
     confirm: str(raw && raw.confirm, 400),
@@ -169,16 +177,22 @@ export default async function handler(req, res) {
       if (!m) return send(400, { error: "Captura de tela inválida." });
       const goal = str(body.goal, 1000);
       if (!goal) return send(400, { error: "Objetivo vazio." });
-      const gemini = providers.find((p) => p.kind === "gemini");
-      if (!gemini) return send(400, { error: "Controlar o PC exige GEMINI_API_KEY (é ele que enxerga a tela)." });
-      const steps = (Array.isArray(body.steps) ? body.steps : []).slice(-12).map((x, i) => `${i + 1}. ${str(x, 300)}`).join("\n");
-      const user = `OBJETIVO DO USUÁRIO: ${goal}\n\nPASSOS JÁ FEITOS:\n${steps || "(nenhum ainda)"}\n\nPosição atual do mouse: ${JSON.stringify(pt(body.cursor) || "desconhecida")}\nAnalise a captura da tela atual e devolva o JSON com a próxima ação.`;
+      const steps = (Array.isArray(body.steps) ? body.steps : []).slice(-14).map((x, i) => `${i + 1}. ${str(x, 300)}`).join("\n");
+      const request = str(body.request, 2000);
+      const context = str(body.context, 2000);
+      const plan = str(body.plan, 600);
+      const user = (context ? `CONVERSA RECENTE (contexto):\n${context}\n\n` : "") +
+        (request ? `PEDIDO ORIGINAL DO USUÁRIO (leia com atenção):\n"${request}"\n\n` : "") +
+        `OBJETIVO DESTA TAREFA: ${goal}\n\n` + (plan ? `SEU PLANO:\n${plan}\n\n` : "") +
+        `PASSOS JÁ FEITOS:\n${steps || "(nenhum ainda — este é o 1º passo: faça o plano)"}\n\n` +
+        `Posição atual do mouse: ${JSON.stringify(pt(body.cursor) || "desconhecida")}\nAnalise a captura da tela atual e devolva o JSON com a próxima ação.`;
+      const eff = { ...EFFORTS.medium, timeout: 30000, hedge: 12000 };
       let lastErr = "";
       for (let tryN = 0; tryN < 2; tryN++) {
         try {
-          const out = await ask(gemini, ACT_SYSTEM(str(body.os, 20)), user, deadline, { ...EFFORTS.low, hedge: 8000, timeout: 30000 }, 1800, [{ mime: m[1], data: m[2] }]);
-          const json = extractJSON(out);
-          if (json) return send(200, { ...sanitizeAct(json), model: gemini.lastUsed });
+          const r = await askVision(providers, ACT_SYSTEM(str(body.os, 20)), user, deadline, eff, 2200, [{ mime: m[1], data: m[2] }]);
+          const json = extractJSON(r.text);
+          if (json) return send(200, { ...sanitizeAct(json), model: r.model, provider: r.provider });
           lastErr = "resposta fora do formato";
         } catch (e) { lastErr = e.message; }
       }
@@ -188,14 +202,12 @@ export default async function handler(req, res) {
     if (body.stage === "see") {
       const m = /^data:(image\/[a-zA-Z0-9.+-]+);base64,([A-Za-z0-9+/=]+)$/.exec(String(body.image || ""));
       if (!m) return send(400, { error: "Captura de tela inválida." });
-      const gemini = providers.find((p) => p.kind === "gemini");
-      if (!gemini) return send(400, { error: "Ver a tela exige GEMINI_API_KEY." });
       const q = str(body.question, 1000) || "Descreva o que aparece na tela.";
       try {
-        const answer = await ask(gemini,
+        const r = await askVision(providers,
           "Você é o copiloto do usuário e está vendo uma captura da tela dele. Responda em português do Brasil, direto e prático. Transcreva textos importantes literalmente. Se for um erro, explique a causa provável e como resolver passo a passo. Não invente o que não estiver visível.",
           q, deadline, EFFORTS.medium, 2500, [{ mime: m[1], data: m[2] }]);
-        return send(200, { answer, model: gemini.lastUsed });
+        return send(200, { answer: r.text, model: r.model });
       } catch (e) {
         return send(502, { error: "Não consegui analisar a tela: " + e.message });
       }
@@ -217,7 +229,7 @@ export default async function handler(req, res) {
     const errors = [];
     for (const p of order) {
       try {
-        const out = await ask(p, PLAN_SYSTEM(now, tz, !!body.pc), user, deadline, EFFORTS.low, 2000);
+        const out = await ask(p, PLAN_SYSTEM(now, tz, !!body.pc), user, deadline, { ...EFFORTS.medium, timeout: 30000 }, 3000);
         const json = extractJSON(out);
         if (!json) { errors.push(`${p.name}: resposta fora do formato`); continue; }
         return send(200, { ...sanitizePlan(json), by: p.name, model: p.lastUsed || p.model });

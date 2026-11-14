@@ -275,6 +275,8 @@ body.collapsed #openSide{display:grid}
 .aq{padding:10px 12px;border-top:1px solid var(--line);display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#d977570f}
 .aq span{flex:1;min-width:200px}
 .aq.perm{background:#d977571c;border-top:1px solid #d9775766}
+body.pc-active::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:999;border:2px solid #d97757;box-shadow:inset 0 0 22px #d9775777;animation:pcglow 2.2s ease-in-out infinite}
+@keyframes pcglow{50%{box-shadow:inset 0 0 34px #d97757aa}}
 .aq.perm i{color:var(--tx)}
 .upd{display:flex;align-items:center;gap:10px;padding:8px 14px;background:#2f3b2f;border-bottom:1px solid #3e5a3e;color:#cfe8cf;font-size:14px;flex:none}
 .upd b{font-weight:600}
@@ -1273,7 +1275,10 @@ body.collapsed #openSide{display:grid}
     if (/\b(minha tela|a tela|na tela|da tela|meu monitor|o que (est[aá]|tem) (aberto|na tela)|print da tela)\b/i.test(s) && /\b(olh|v[eê]|vej|analis|l[eê]|leia|diga|explic|ajud|o que|qual|tem|confer|ach)/i.test(s) && !/\b(cliqu|digit|abr|fech|escrev|mexa|mova|arrast)\w*/i.test(s))
       return { say: "Vou olhar sua tela.", actions: [{ type: "screen", question: s }] };
     // tarefas no computador (programas, arquivos, mouse/teclado)
-    if (/\b(meu (pc|computador|notebook)|no (pc|computador|notebook)|use o mouse|mexa? no mouse|cliqu\w* (em|no|na)|bloco de notas|notepad|explorador de arquivos|gerenciador de tarefas|paint|calculadora|configura[cç][oõ]es do windows|painel de controle|área de trabalho|lixeira|minha pasta|meus documentos|downloads|word|excel|powerpoint|prompt de comando|terminal)\b/i.test(s) && !/^(pesquis|procur|bus[cq]|googl|me mostr|mostr)\w*/i.test(s))
+    if ((/\b(no meu (pc|computador|notebook)|no (pc|computador|notebook)|use o mouse|mexa no mouse)\b/i.test(s) ||
+         (/^(abr[aei]\w*|abre|use|usa|cliqu\w*|clica|digit\w*|escrev\w*|fech\w*|minimiz\w*|maximiz\w*|troqu\w*|troca|mud[ae] para|v[aá] para|salv\w*|cri[ae]\w*|renomei\w*|arrast\w*|aperte|pressione)\b/i.test(s) &&
+          /\b(bloco de notas|notepad|explorador de arquivos|gerenciador de tarefas|paint|calculadora|configura[cç][oõ]es do windows|painel de controle|área de trabalho|lixeira|word|excel|powerpoint|prompt de comando|terminal|janela|aba|programa|aplicativo|app|arquivo|pasta)\b/i.test(s))) &&
+        !/^(pesquis|procur|bus[cq]|googl|me mostr|mostr)\w*/i.test(s))
       return { say: "Vou fazer isso no seu PC.", actions: [{ type: "pc", goal: s }] };
     // lembrete / timer
     m = /\b(lembr\w*|lembrete|alarme|timer|temporizador|cron[oô]metro|avis\w*)\b.*?\b(\d+(?:[.,]\d+)?)\s*(segundos?|seg|s|minutos?|mins?|m|horas?|hrs?|h)\b/i.exec(s);
@@ -1430,7 +1435,7 @@ body.collapsed #openSide{display:grid}
     function clearNow() { var d = card.querySelector(".ln.cur"); if (d) d.remove(); }
     function finish(status, msg, cls) {
       clearNow(); log.status = status; log.result = msg; if (stopBtn.parentNode) stopBtn.remove();
-      line(msg, cls); if (pc.running === card) { pc.running = null; pc.stopHook = null; D.mini(false).catch(function () {}); }
+      line(msg, cls); if (pc.running === card) { pc.running = null; pc.stopHook = null; document.body.classList.remove("pc-active"); D.mini(false).catch(function () {}); }
       saveHist(); renderRecent();
     }
     function askUser(msg, yesTxt, noTxt) {
@@ -1473,11 +1478,12 @@ body.collapsed #openSide{display:grid}
         if (stopped) throw { stop: true };
         nowLine("Identificando o que tem na tela…");
         return fetch("/api/copilot", { method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ stage: "act", goal: goal, image: shot.image, steps: log.steps, cursor: shot.cursor, os: pc.os }) })
+          body: JSON.stringify({ stage: "act", goal: goal, request: data.request || goal, context: data.ctx || "", plan: log.plan || "", image: shot.image, steps: log.steps, cursor: shot.cursor, os: pc.os }) })
           .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || "Erro " + r.status); return j; }); });
       }).then(function (plan) {
         if (stopped) throw { stop: true };
         showShot(shot, plan);
+        if (plan.plan && !log.plan) { log.plan = plan.plan; line("Plano: " + plan.plan); }
         var a = plan.action;
         if (a.type === "done") { log.steps.push(plan.say); return finish("done", "✓ " + plan.say); }
         if (a.type === "ask_user") {
@@ -1536,6 +1542,7 @@ body.collapsed #openSide{display:grid}
       if (v === "always") { sset(PERMK, "always"); toast("Permissão salva. Você pode revogar no menu “Conselho”."); }
       log.steps.push("O usuário permitiu controlar o PC.");
       D.mini(true).catch(function () {});
+      document.body.classList.add("pc-active");
       loop();
     });
   }
@@ -1668,7 +1675,9 @@ body.collapsed #openSide{display:grid}
     });
     var T = beginTurn("copilot", text, sentImgs), h = T.h, k = T.k;
     ta.value = ""; images = []; files = []; renderThumbs(); autosize();
+    var ctxTxt = hist.map(function (x) { return (x.role === "user" ? "Usuário: " : "Copiloto: ") + x.text; }).join("\n").slice(-1800);
     if (local) { // age no mesmo clique: o navegador não bloqueia a aba
+      local.request = text; local.ctx = ctxTxt;
       T.t.data = local; saveHist(); renderCop(T.el, local, true); renderRecent(); updSend();
       T.el.scrollIntoView({ behavior: "smooth", block: "end" });
       return;
@@ -1682,7 +1691,7 @@ body.collapsed #openSide{display:grid}
       : fetch("/api/copilot", { method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ stage: "plan", text: text, history: hist, pc: pc.connected, now: new Date().toLocaleString("pt-BR"), tz: (Intl.DateTimeFormat().resolvedOptions().timeZone || "") }) })
           .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || "Erro " + r.status); return j; }); });
-    work.then(function (data) { finishTurn(job, h, k, data); }, function (e) { finishTurn(job, h, k, { error: e.message || "Falha de rede." }); });
+    work.then(function (data) { data.request = text; data.ctx = ctxTxt; finishTurn(job, h, k, data); }, function (e) { finishTurn(job, h, k, { error: e.message || "Falha de rede." }); });
   }
 
   // ---------- topo ----------
