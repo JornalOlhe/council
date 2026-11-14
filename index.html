@@ -269,7 +269,17 @@ body.collapsed #openSide{display:grid}
 .shotwrap .acur b{position:absolute;left:18px;top:18px;background:#d97757;color:#fff;font:600 10.5px/1 system-ui;padding:3px 6px;border-radius:5px;white-space:nowrap;display:none}
 .shotwrap .acur.typ b{display:block}
 .cpanel{flex:none;height:100%;display:flex;flex-direction:column;border-left:1px solid var(--line2);background:#1b1b1a}
-.cph{height:46px;flex:none;display:flex;align-items:center;gap:2px;padding:0 6px;border-bottom:1px solid var(--line2);background:#232321}
+.cptabs{height:36px;flex:none;display:flex;align-items:flex-end;gap:6px;padding:0 8px;background:#1a1a19}
+.cpgrp{align-self:center;background:#d97757;color:#fff;font:600 11.5px/1 system-ui;padding:5px 9px;border-radius:7px;margin-bottom:2px}
+.cptab{display:flex;align-items:center;gap:7px;height:30px;max-width:260px;min-width:120px;padding:0 12px;background:#232321;border-radius:9px 9px 0 0;border-top:2px solid #d97757;font-size:12.5px;color:#e8e6df}
+.cptab span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cpspin{display:none;width:11px;height:11px;border-radius:50%;border:2px solid #d9775755;border-top-color:#d97757;animation:cps .8s linear infinite}@keyframes cps{to{transform:rotate(360deg)}}
+.cpanel.loading .cpspin{display:block}
+.cpdbg{height:32px;flex:none;display:flex;align-items:center;gap:8px;padding:0 8px 0 12px;background:#2b2116;border-bottom:1px solid #4a3426;color:#f0d9c9;font-size:12.5px}
+.cpdbg span:nth-child(2){flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cpdbg .btn{padding:3px 10px;font-size:12px;background:#d97757;color:#fff}
+.cpanel:not(.work) .cpdbg{background:#202020;border-color:var(--line2);color:var(--mut)}.cpanel:not(.work) #cpStop{display:none}
+.cph{height:44px;flex:none;display:flex;align-items:center;gap:2px;padding:0 6px;border-bottom:1px solid var(--line2);background:#232321}
 .cph .ib{width:30px;height:30px}
 .cpu{flex:1;min-width:0;display:flex;align-items:center;gap:8px;background:#ffffff0c;border:1px solid var(--line);border-radius:999px;padding:5px 12px;margin:0 6px;font-size:12.5px}
 .cpu b{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:45%}
@@ -555,6 +565,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
 </aside>
 <div class="scrim" id="scrim"></div>
 <aside class="cpanel hidden" id="cpPanel" aria-label="Navegador do Copiloto">
+  <div class="cptabs"><span class="cpgrp">Council</span><div class="cptab"><svg style="width:13px;height:13px;flex:none;color:#8f8c84"><use href="#i-globe"/></svg><span id="cpTab">Nova aba</span><i class="cpspin"></i></div></div>
   <div class="cph">
     <button class="ib" data-n="back" title="Voltar" aria-label="Voltar"><svg style="width:16px;height:16px;transform:rotate(180deg)"><use href="#i-right"/></svg></button>
     <button class="ib" data-n="forward" title="Avançar" aria-label="Avançar"><svg style="width:16px;height:16px"><use href="#i-right"/></svg></button>
@@ -563,6 +574,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
     <button class="ib" id="cpExt" title="Abrir no seu navegador" aria-label="Abrir no seu navegador"><svg style="width:15px;height:15px"><use href="#i-share"/></svg></button>
     <button class="ib" id="cpClose" title="Fechar painel" aria-label="Fechar painel"><svg class="ico"><use href="#i-x"/></svg></button>
   </div>
+  <div class="cpdbg"><span class="cpd"></span><span id="cpDbg">“IA Council” está depurando esta aba</span><button class="btn" id="cpStop">Parar</button></div>
   <div class="cpbody"><span>Carregando…</span></div>
 </aside>
 
@@ -1882,10 +1894,14 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
       var p = $("cpPanel");
       p.classList.toggle("hidden", !st.open); p.style.width = (st.width || 0) + "px"; p.classList.toggle("work", !!st.working);
       $("cpTitle").textContent = st.title || "Navegador do Copiloto";
+      $("cpTab").textContent = st.title || (st.url && st.url !== "about:blank" ? st.url : "Nova aba");
+      p.classList.toggle("loading", !!st.loading);
+      $("cpDbg").textContent = st.working ? "“IA Council” está depurando esta aba" + (st.status ? " · " + st.status : "") : "Pronto · o Copiloto usa esta aba quando você pedir algo num site";
       $("cpUrl").textContent = (st.url || "").replace(/^https?:\/\/(www\.)?/, "").replace(/^about:blank$/, "");
     });
     Array.prototype.forEach.call(document.querySelectorAll("#cpPanel [data-n]"), function (b) { b.onclick = function () { D.web.nav(b.dataset.n); }; });
     $("cpExt").onclick = function () { D.web.openExternal(); };
+    $("cpStop").onclick = function () { if (webBusy) { var sb = webBusy.querySelector(".stop"); if (sb && !sb.disabled) sb.click(); } };
     $("cpClose").onclick = function () {
       if (webBusy) { var sb = webBusy.querySelector(".stop"); if (sb && !sb.disabled) sb.click(); }
       D.web.close();
@@ -1953,7 +1969,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
       });
     }
     function showShot(page, plan) {
-      if (!page.image) return;
+      if (!page.image || W.onPanel) return; // no app o painel ao lado já mostra tudo ao vivo
       wrap.classList.remove("hidden"); img.src = page.image;
       Array.prototype.forEach.call(wrap.querySelectorAll(".mk"), function (m) { m.remove(); });
       var a = plan && plan.action, pt = null;

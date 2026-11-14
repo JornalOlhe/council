@@ -112,7 +112,7 @@ class CopilotBrowser {
   }
   layout() {
     const p = this.getParent(); if (!p || p.isDestroyed() || !this.view || !this.attached) return;
-    const [w, h] = p.getContentSize(), pw = Math.max(380, Math.min(Math.round(w * 0.48), w - 360)), HEAD = 46;
+    const [w, h] = p.getContentSize(), pw = Math.max(380, Math.min(Math.round(w * 0.48), w - 360)), HEAD = 112; // abas (36) + barra (44) + aviso de depuração (32)
     this.panelW = pw; this.view.setBounds({ x: w - pw, y: HEAD, width: pw, height: Math.max(100, h - HEAD) });
     this.emit();
   }

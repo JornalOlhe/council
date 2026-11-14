@@ -134,6 +134,7 @@ ipcMain.handle("pc:act", async (e, a) => {
   if (cur.x - d.bounds.x <= 2 && cur.y - d.bounds.y <= 2) throw new Error("EMERGENCIA: o mouse está no canto superior esquerdo");
   const [w, h] = await physSize();
   const steps = control.plan(a, w, h);
+  if (a && a.point) await aiCursor(a.point, /click/.test(a.type) ? "click" : a.type === "type" ? "type" : "");
   for (const s of steps) {
     if (stopFlag) { stopFlag = false; throw new Error("EMERGENCIA: parada pedida pelo atalho Ctrl+Shift+Q"); }
     if (s.sleep) await sleep(s.sleep);
@@ -255,7 +256,22 @@ html,body{margin:0;height:100%;background:transparent;overflow:hidden;font-famil
 @keyframes p{50%{box-shadow:inset 0 0 0 3px #e08a6b,inset 0 0 60px 14px rgba(217,119,87,.75)}}
 .t{position:fixed;top:10px;left:50%;transform:translateX(-50%);background:#1f1e1dee;color:#f5f4ef;border:1px solid #d97757;border-radius:999px;padding:6px 14px;font-size:13px;display:flex;gap:8px;align-items:center;box-shadow:0 6px 24px #0007}
 .d{width:8px;height:8px;border-radius:50%;background:#d97757;animation:b 1s infinite}@keyframes b{50%{opacity:.3}}
-</style></head><body><div class="g"></div><div class="t"><span class="d"></span>IA Council está controlando seu PC · <b>Ctrl+Shift+Q</b> para parar</div></body></html>`;
+#c{position:fixed;left:0;top:0;transition:transform .45s cubic-bezier(.3,.8,.3,1);opacity:0}
+#c.on{opacity:1}#c svg{display:block;filter:drop-shadow(0 2px 6px rgba(0,0,0,.5)) drop-shadow(0 0 9px rgba(217,119,87,.85))}
+#c .r{position:absolute;left:-18px;top:-18px;width:38px;height:38px;border-radius:50%;border:3px solid #d97757;opacity:0}
+#c.k .r{animation:rp .6s ease-out}@keyframes rp{0%{opacity:1;transform:scale(.3)}100%{opacity:0;transform:scale(1.7)}}
+#c .tg{position:absolute;left:26px;top:24px;background:#d97757;color:#fff;font:600 12px/1 "Segoe UI",sans-serif;padding:5px 8px;border-radius:7px;white-space:nowrap;opacity:0}#c.ty .tg{opacity:1}
+</style></head><body><div class="g"></div><div class="t"><span class="d"></span>IA Council está controlando seu PC · <b>Ctrl+Shift+Q</b> para parar</div>
+<div id="c"><div class="r"></div><svg width="28" height="33" viewBox="0 0 22 26"><path d="M2 1.5v20.2l5.6-5.2 3.6 8.3 3.7-1.6-3.6-8.1 7.7-.3z" fill="#d97757" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg><div class="tg">digitando…</div></div>
+<script>window.mv=function(x,y,m){var c=document.getElementById("c");c.classList.add("on");if(x!=null)c.style.transform="translate("+x+"px,"+y+"px)";c.classList.toggle("ty",m==="type");if(m==="click"){c.classList.remove("k");void c.offsetWidth;c.classList.add("k");}}</script></body></html>`;
+// cursor laranja da IA na tela (por cima de tudo, fora dos prints)
+async function aiCursor(point, mode) {
+  if (!glow || glow.isDestroyed() || !Array.isArray(point)) return;
+  const d = screen.getPrimaryDisplay(), x = Math.round(point[1] / 1000 * d.bounds.width), y = Math.round(point[0] / 1000 * d.bounds.height);
+  await glow.webContents.executeJavaScript(`mv(${x},${y},"")`).catch(() => {});
+  await sleep(460); // dá para ver o cursor indo até o alvo antes do clique
+  if (mode) glow.webContents.executeJavaScript(`mv(null,null,${JSON.stringify(mode)})`).catch(() => {});
+}
 let glow = null;
 function showGlow() {
   if (glow && !glow.isDestroyed()) return;
