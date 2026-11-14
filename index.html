@@ -189,6 +189,53 @@ svg{flex:none;display:block}
 body.collapsed .side{display:none}
 body.collapsed #openSide{display:grid}
 
+.modal{position:fixed;inset:0;z-index:70;background:#000a;display:grid;place-items:center;padding:16px}
+.mbox{width:min(680px,100%);height:min(580px,92vh);background:#2a2a28;border:1px solid var(--line2);border-radius:16px;display:flex;flex-direction:column;box-shadow:0 20px 60px #000b}
+.mhead{display:flex;align-items:center;gap:10px;padding:16px 16px 16px 24px;border-bottom:1px solid var(--line);font-size:15px;font-weight:500}
+.mhead .beta{margin-left:auto;font-size:11.5px;color:var(--tx2);background:#ffffff14;border-radius:6px;padding:2px 7px}
+.drop{flex:1;margin:20px;border-radius:14px;background:#383836;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:20px;transition:background .15s,outline-color .15s;outline:2px dashed transparent;outline-offset:-10px}
+.drop.over{background:#40403d;outline-color:var(--ac)}
+.drop b{font-weight:600;font-size:15px}
+.drop span{color:var(--mut);font-size:14px}
+.btn{background:#4a4a46;border-radius:8px;padding:6px 12px;font-size:14.5px;font-weight:500}
+.btn:hover{background:#56564f}
+.fchip{display:flex;align-items:center;gap:8px;height:62px;padding:0 10px 0 12px;border:1px solid var(--line2);border-radius:10px;max-width:220px;background:#ffffff08;position:relative}
+.fchip .fi{width:34px;height:40px;border-radius:6px;background:#ffffff12;display:grid;place-items:center;font:600 9.5px var(--mono);color:var(--tx2);flex:none;text-transform:uppercase}
+.fchip .fn{min-width:0;font-size:13px;line-height:1.3}
+.fchip .fn b{display:block;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fchip .fn span{color:var(--mut);font-size:12px}
+.fchip button{position:absolute;top:-7px;right:-7px;width:20px;height:20px;border-radius:50%;background:#000c;color:#fff;font-size:13px;line-height:20px;border:1px solid var(--line2)}
+.umsg .files{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;margin-bottom:8px}
+.umsg .files span{font-size:12.5px;background:#ffffff10;border-radius:6px;padding:3px 8px;color:var(--tx2)}
+.recbar{display:flex;align-items:center;gap:8px;height:48px}
+.recbar canvas{flex:1;height:36px;min-width:0}
+.recbar .rt{font:13px var(--mono);color:var(--tx2);min-width:42px;text-align:right}
+.recbar .rx{width:32px;height:32px;border-radius:8px;display:grid;place-items:center;color:var(--tx2)}
+.recbar .rx:hover{background:var(--hover);color:var(--tx)}
+.recbar .rok{width:32px;height:32px;border-radius:9px;background:var(--ac);color:#fff;display:grid;place-items:center}
+.recbar .rok:hover{background:var(--ac2)}
+.helm{width:22px;height:22px}
+.greet .helm{width:42px;height:42px}
+.seg .ib .helm{width:19px;height:19px;filter:grayscale(.35) brightness(.9)}
+.seg .ib.on .helm{filter:none}
+.chips{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:16px;max-width:672px}
+.chips button{border:1px solid var(--line);border-radius:999px;padding:6px 12px;color:var(--tx2);font-size:13.5px;display:inline-flex;align-items:center;gap:6px}
+.chips button:hover{background:var(--hover);color:var(--tx)}
+.chips svg{width:15px;height:15px}
+.cnote{color:var(--mut);font-size:12.5px;margin-top:14px;text-align:center;max-width:560px}
+.acards{display:flex;flex-direction:column;gap:8px;margin:4px 0 12px}
+.acard{display:flex;align-items:center;gap:12px;border:1px solid var(--line);background:#ffffff06;border-radius:12px;padding:10px 12px;font-size:14.5px}
+.acard .ai{width:32px;height:32px;border-radius:8px;background:#ffffff10;display:grid;place-items:center;color:var(--ac);flex:none}
+.acard .at{flex:1;min-width:0}
+.acard .at b{font-weight:500;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.acard .at span{color:var(--mut);font-size:12.5px;display:block}
+.acard .at span.okk{color:#8fcf9e}
+.acard .at span.bad{color:#e3b679}
+.acard .btn{flex:none;font-size:13.5px}
+.acard img.shot{display:block;max-width:100%;border-radius:8px;margin-top:8px;border:1px solid var(--line)}
+.acard.col{flex-direction:column;align-items:stretch}
+.acard.col .row1{display:flex;align-items:center;gap:12px}
+
 @media(max-width:820px){
   .side{position:fixed;inset:0 auto 0 0;z-index:40;transform:translateX(-100%);transition:transform .2s}
   body.sopen .side{transform:none}
@@ -203,6 +250,23 @@ body.collapsed #openSide{display:grid}
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <defs>
+    <linearGradient id="visorG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f6b37a"/><stop offset="1" stop-color="#c6613f"/></linearGradient>
+    <linearGradient id="domeG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#cfccc3"/></linearGradient>
+    <symbol id="i-helmet" viewBox="0 0 32 32">
+      <path d="M4.5 19.5a11.5 11.5 0 0 1 23 0v2.8a2.7 2.7 0 0 1-2.7 2.7H7.2a2.7 2.7 0 0 1-2.7-2.7z" fill="url(#domeG)"/>
+      <path d="M16 8v5.2" stroke="#d97757" stroke-width="3.2" stroke-linecap="round"/>
+      <path d="M7.6 18.8a8.4 6.2 0 0 1 16.8 0v1.4a1.6 1.6 0 0 1-1.6 1.6H9.2a1.6 1.6 0 0 1-1.6-1.6z" fill="url(#visorG)"/>
+      <path d="M10.4 16.6c1.1-1.5 2.7-2.3 4.6-2.4" stroke="#fff" stroke-opacity=".75" stroke-width="1.4" stroke-linecap="round" fill="none"/>
+      <path d="M4.5 22.6h23v.4a2 2 0 0 1-2 2h-19a2 2 0 0 1-2-2z" fill="#a9a59b"/>
+      <circle cx="6.6" cy="20.5" r="1.1" fill="#8f8b81"/><circle cx="25.4" cy="20.5" r="1.1" fill="#8f8b81"/>
+    </symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.4 2.4 3.6 5.2 3.6 8.5s-1.2 6.1-3.6 8.5c-2.4-2.4-3.6-5.2-3.6-8.5S9.6 5.9 12 3.5z"/></g></symbol>
+    <symbol id="i-monitor" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="12" rx="1.8"/><path d="M8.5 20h7M12 16.5V20"/></g></symbol>
+    <symbol id="i-alarm" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="13" r="7"/><path d="M12 9.5V13l2.5 1.5M4.5 5.5l3-2.5M19.5 5.5l-3-2.5"/></g></symbol>
+    <symbol id="i-mail" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><rect x="3" y="5.5" width="18" height="13" rx="2"/><path d="m3.5 7 8.5 6 8.5-6"/></g></symbol>
+    <symbol id="i-wa" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M4.5 19.5l1.2-3.8A8 8 0 1 1 8.6 18.6z"/><path d="M9.3 9.2c.3 2.4 2.2 4.7 5.3 5.6l1-1.2-1.6-.9-.8.8c-1-.4-2.2-1.6-2.6-2.6l.8-.8-.9-1.6z" fill="currentColor" stroke="none"/></g></symbol>
+    <symbol id="i-route" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="6" cy="18" r="2.2"/><path d="M18 9.5c-2.2-2.6-3.3-4.3-3.3-5.2a3.3 3.3 0 0 1 6.6 0c0 .9-1.1 2.6-3.3 5.2z"/><path d="M8.2 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h3"/></g></symbol>
     <symbol id="i-star" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" d="M12 2.5v19M2.5 12h19M5.3 5.3l13.4 13.4M18.7 5.3 5.3 18.7M8.2 3.2l7.6 17.6M15.8 3.2 8.2 20.8M3.2 8.2l17.6 7.6M20.8 8.2 3.2 15.8"/></symbol>
     <symbol id="i-panel" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4.5" width="18" height="15" rx="2.5"/><path d="M9 4.5v15"/></g></symbol>
     <symbol id="i-plus" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" d="M12 5v14M5 12h14"/></symbol>
@@ -235,8 +299,8 @@ body.collapsed #openSide{display:grid}
     <button class="ib" id="collapse" title="Recolher barra lateral" aria-label="Recolher barra lateral"><svg class="ico"><use href="#i-panel"/></svg></button>
     <div class="wordmark">IA Council</div>
     <div class="seg">
-      <button class="ib on" title="Conversas" aria-label="Conversas"><svg style="width:16px;height:16px"><use href="#i-chat"/></svg></button>
-      <button class="ib" id="segCode" title="Código-fonte" aria-label="Código-fonte"><svg style="width:16px;height:16px"><use href="#i-code"/></svg></button>
+      <button class="ib on" id="segChat" title="Conselho" aria-label="Conselho de IAs"><svg style="width:16px;height:16px"><use href="#i-chat"/></svg></button>
+      <button class="ib" id="segCopilot" title="Copiloto" aria-label="Copiloto"><svg class="helm"><use href="#i-helmet"/></svg></button>
     </div>
   </div>
   <nav class="nav">
@@ -270,8 +334,16 @@ body.collapsed #openSide{display:grid}
 
   <div class="scroll" id="scroll">
     <section class="home" id="home">
-      <h1 class="greet"><svg class="star"><use href="#i-star"/></svg><span id="greet"></span></h1>
+      <h1 class="greet"><svg class="star" id="greetStar"><use href="#i-star"/></svg><svg class="helm hidden" id="greetHelm"><use href="#i-helmet"/></svg><span id="greet"></span></h1>
       <div class="cw" id="homeSlot"></div>
+      <div class="chips hidden" id="copChips">
+        <button data-p="Pesquise no YouTube música lo-fi para estudar"><svg><use href="#i-globe"/></svg>Lo-fi no YouTube</button>
+        <button data-p="Olhe minha tela e me diga o que está errado"><svg><use href="#i-monitor"/></svg>Olhar minha tela</button>
+        <button data-p="Me lembre em 10 minutos de tirar o bolo do forno"><svg><use href="#i-alarm"/></svg>Lembrete em 10 min</button>
+        <button data-p="Qual o caminho daqui até a Avenida Paulista?"><svg><use href="#i-route"/></svg>Rota no Maps</button>
+        <button data-p="Escreva um e-mail pedindo orçamento de 50 camisetas personalizadas"><svg><use href="#i-mail"/></svg>Escrever e-mail</button>
+      </div>
+      <div class="cnote hidden" id="copNote">O copiloto age no seu navegador: abre abas e pesquisa, vê sua tela (só quando você compartilhar), cria lembretes, copia textos e prepara e-mails e WhatsApp. Por segurança, nenhum site consegue mexer no mouse, no teclado ou nos arquivos do seu PC.</div>
     </section>
     <section class="chat hidden" id="chat"></section>
   </div>
@@ -282,6 +354,12 @@ body.collapsed #openSide{display:grid}
 <div id="composerWrap">
   <div class="composer" id="composer">
     <div class="thumbs" id="thumbs"></div>
+    <div class="recbar hidden" id="recbar">
+      <button class="rx" id="recCancel" title="Cancelar" aria-label="Cancelar gravação"><svg class="ico"><use href="#i-x"/></svg></button>
+      <canvas id="wave" aria-hidden="true"></canvas>
+      <span class="rt" id="recTime">0:00</span>
+      <button class="rok" id="recDone" title="Transcrever" aria-label="Parar e transcrever"><svg style="width:16px;height:16px"><use href="#i-check"/></svg></button>
+    </div>
     <textarea id="prompt" rows="1" maxlength="6000" placeholder="Como o conselho pode ajudar você hoje?" aria-label="Mensagem"></textarea>
     <div class="crow">
       <button class="cb" id="plus" title="Adicionar" aria-label="Adicionar"><svg class="ico"><use href="#i-plus"/></svg></button>
@@ -298,14 +376,24 @@ body.collapsed #openSide{display:grid}
     <button class="pick" id="modePick"><b id="modeTxt">Auto</b></button>
   </div>
 </div>
-<input type="file" id="file" accept="image/*" multiple hidden>
+<input type="file" id="file" accept="image/*,.txt,.md,.markdown,.csv,.tsv,.json,.xml,.html,.htm,.css,.js,.mjs,.ts,.jsx,.tsx,.py,.java,.c,.cpp,.h,.hpp,.cs,.go,.rs,.rb,.php,.sql,.yaml,.yml,.toml,.ini,.log,.sh,.bat,.ps1,.kt,.swift,.vue,.svelte,.lua,.r,.srt,.vtt" multiple hidden>
+<div class="modal hidden" id="upModal" role="dialog" aria-modal="true" aria-labelledby="upTitle">
+  <div class="mbox">
+    <div class="mhead"><span id="upTitle">Fazer upload ou adicionar arquivos</span><span class="beta">Beta</span><button class="ib" id="upClose" aria-label="Fechar"><svg class="ico"><use href="#i-x"/></svg></button></div>
+    <div class="drop" id="drop">
+      <b>Arraste arquivos ou fotos para cá</b>
+      <span>Imagens, documentos de texto, planilhas CSV e arquivos de código</span>
+      <button class="btn" id="upPick">Escolher arquivos</button>
+    </div>
+  </div>
+</div>
 <input type="file" id="cam" accept="image/*" capture="environment" hidden>
 
 <script>
 (function () {
   "use strict";
-  var MAX_IMG = 4, HIST = "iacouncil_hist", CODE = "iacouncil_code", PREF = "iacouncil_prefs";
-  var images = [], busy = false, history = [], current = -1, members = [], filter = "";
+  var MAX_IMG = 4, HIST = "iacouncil_hist", PREF = "iacouncil_prefs";
+  var images = [], files = [], appMode = "council", busy = false, history = [], current = -1, members = [], filter = "";
   var prefs = { rounds: 1, mode: "auto", effort: "medium", leader: "", models: {} };
   var $ = function (id) { return document.getElementById(id); };
   var ic = function (n) { return '<svg class="ico"><use href="#i-' + n + '"/></svg>'; };
@@ -339,6 +427,7 @@ body.collapsed #openSide{display:grid}
     if (pp && ["low", "medium", "high"].indexOf(pp.effort) >= 0) prefs.effort = pp.effort;
     if (pp && typeof pp.leader === "string") prefs.leader = pp.leader;
     if (pp && pp.models && typeof pp.models === "object") prefs.models = pp.models;
+    if (pp && pp.app === "copilot") prefs.app = "copilot";
   } catch (e) {}
   function savePrefs() { sset(PREF, JSON.stringify(prefs)); }
   var toastT;
@@ -379,10 +468,12 @@ body.collapsed #openSide{display:grid}
   window.addEventListener("resize", closePop);
 
   // ---------- saudação ----------
-  (function () {
+  function setGreet() {
+    if (appMode === "copilot") { $("greet").textContent = "Copiloto pronto. O que eu faço?"; return; }
     var d = new Date(), h = d.getHours(), wd = d.getDay();
     $("greet").textContent = (wd === 0 || wd === 6) ? "Bem-vindo ao fim de semana" : h < 5 ? "Boa madrugada" : h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite";
-  })();
+  }
+  setGreet();
 
   // ---------- composer ----------
   var ta = $("prompt"), wrap = $("composerWrap");
@@ -393,11 +484,11 @@ body.collapsed #openSide{display:grid}
     $("photoPick").classList.toggle("hidden", chat);
     $("disc").classList.toggle("hidden", !chat);
     $("underSp").classList.toggle("hidden", chat);
-    ta.placeholder = chat ? "Responder…" : "Como o conselho pode ajudar você hoje?";
+    ta.placeholder = appMode === "copilot" ? (chat ? "Peça outra coisa…" : "Ex.: pesquise passagens para Salvador em março") : chat ? "Responder…" : "Como o conselho pode ajudar você hoje?";
   }
   place("home");
   function autosize() { ta.style.height = "auto"; ta.style.height = Math.min(ta.scrollHeight, 260) + "px"; }
-  function updSend() { $("go").disabled = busy || !ta.value.trim(); }
+  function updSend() { $("go").disabled = busy || (!ta.value.trim() && !(appMode === "copilot" && images.length)); }
   ta.addEventListener("input", function () { autosize(); updSend(); });
   ta.addEventListener("keydown", function (e) {
     if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); if (!$("go").disabled) send(); }
@@ -485,7 +576,7 @@ body.collapsed #openSide{display:grid}
         var list = c.models.filter(function (x) { return !q || (x.id + " " + x.label).toLowerCase().indexOf(q) >= 0; });
         html += '<div class="grp"><span>' + esc(m.name) + " · " + c.models.length + " modelos</span><span>usando " + esc(modelLabel(cur)) + "</span></div>";
         if (c.error) html += '<div class="note">Não consegui listar: ' + esc(c.error) + "</div>";
-        if (m.name === "OpenRouter" && !q) html += '<div class="note">Só modelos grátis (:free) — os pagos exigem créditos.</div>';
+        if (!q) html += '<div class="note">' + (m.name === "Gemini" ? "Só modelos do plano gratuito (Flash, Flash-Lite e Gemma)." : m.name === "OpenRouter" ? "Só modelos 100% grátis (:free)." : "Modelos do plano gratuito.") + "</div>";
         list.slice(0, q ? 80 : 200).forEach(function (x) {
           html += '<button class="it' + (x.id === cur ? " sel" : "") + '" data-pm="' + esc(m.name) + '" data-id="' + esc(x.id) + '"><span style="min-width:0">' + esc(x.label) +
             (x.id === m.model ? ' <span style="color:var(--mut);font-size:12px">· padrão</span>' : "") + '<span class="mid">' + esc(x.id) + '</span></span><svg class="ico ck"><use href="#i-check"/></svg></button>';
@@ -499,7 +590,6 @@ body.collapsed #openSide{display:grid}
           var m = members.filter(function (x) { return x.name === name; })[0];
           if (m && id === m.model) delete prefs.models[name]; else prefs.models[name] = id;
           savePrefs(); updPick(); fillModels(p.querySelector("#mfind").value);
-          toast(name + " agora usa " + modelLabel(id));
         };
       });
     }
@@ -515,7 +605,7 @@ body.collapsed #openSide{display:grid}
         b.onclick = function () { prefs.rounds = +b.getAttribute("data-r"); savePrefs(); updPick(); draw("main"); };
       });
       var rs = p.querySelector("[data-reset]");
-      if (rs) rs.onclick = function () { prefs.models = {}; savePrefs(); updPick(); fillModels(""); toast("Modelos padrão restaurados"); };
+      if (rs) rs.onclick = function () { prefs.models = {}; savePrefs(); updPick(); fillModels(""); };
       if (v === "models") {
         var f = p.querySelector("#mfind");
         f.addEventListener("input", function () { fillModels(f.value); });
@@ -528,7 +618,7 @@ body.collapsed #openSide{display:grid}
     draw(view || "main");
   }
   function loadCatalog() {
-    var headers = {}, code = sget(CODE); if (code) headers["x-access-code"] = code;
+    var headers = {};
     return fetch("/api/council?list=1", { headers: headers }).then(function (r) {
       return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || "Erro " + r.status); catalogData = j.catalog || {}; });
     });
@@ -549,7 +639,7 @@ body.collapsed #openSide{display:grid}
   updPick();
 
   function loadMembers() {
-    var headers = {}, code = sget(CODE); if (code) headers["x-access-code"] = code;
+    var headers = {};
     fetch("/api/council", { headers: headers }).then(function (r) { return r.json(); }).then(function (j) {
       members = Array.isArray(j.members) ? j.members : [];
       $("planTxt").textContent = "· " + members.length + (members.length === 1 ? " IA" : " IAs");
@@ -559,8 +649,18 @@ body.collapsed #openSide{display:grid}
   loadMembers();
 
   // ---------- fotos ----------
+  var TEXT_EXT = /\.(txt|md|markdown|csv|tsv|json|xml|html?|css|m?js|ts|jsx|tsx|py|java|c|cpp|h|hpp|cs|go|rs|rb|php|sql|ya?ml|toml|ini|log|sh|bat|ps1|kt|swift|vue|svelte|lua|r|srt|vtt)$/i;
+  function fmtSize(n) { return n < 1024 ? n + " B" : n < 1048576 ? Math.round(n / 1024) + " KB" : (n / 1048576).toFixed(1) + " MB"; }
   function renderThumbs() {
     var box = $("thumbs"); box.innerHTML = "";
+    files.forEach(function (f, i) {
+      var d = document.createElement("div"); d.className = "fchip";
+      var ext = (f.name.split(".").pop() || "txt").slice(0, 4);
+      d.innerHTML = '<span class="fi">' + esc(ext) + '</span><span class="fn"><b>' + esc(f.name) + "</b><span>" + fmtSize(f.size) + (f.cut ? " · cortado" : "") + "</span></span>";
+      var b = document.createElement("button"); b.type = "button"; b.textContent = "×"; b.setAttribute("aria-label", "Remover " + f.name);
+      b.onclick = function () { files.splice(i, 1); renderThumbs(); };
+      d.appendChild(b); box.appendChild(d);
+    });
     images.forEach(function (src, i) {
       var d = document.createElement("div"); d.className = "thumb";
       var im = document.createElement("img"); im.src = src; im.alt = "Foto " + (i + 1);
@@ -568,7 +668,9 @@ body.collapsed #openSide{display:grid}
       b.onclick = function () { images.splice(i, 1); renderThumbs(); };
       d.appendChild(im); d.appendChild(b); box.appendChild(d);
     });
-    $("photoTxt").textContent = images.length ? images.length + (images.length > 1 ? " fotos" : " foto") : "Fotos";
+    var n = images.length + files.length;
+    $("photoTxt").textContent = n ? n + (n > 1 ? " anexos" : " anexo") : "Anexos";
+    updSend();
   }
   function resize(file) {
     return new Promise(function (resolve, reject) {
@@ -585,8 +687,23 @@ body.collapsed #openSide{display:grid}
       img.src = url;
     });
   }
-  function addFiles(files) {
-    var list = Array.prototype.slice.call(files || []).filter(function (f) { return /^image\//.test(f.type); });
+  function addFiles(input) {
+    var all = Array.prototype.slice.call(input || []);
+    var list = all.filter(function (f) { return /^image\//.test(f.type); });
+    all.forEach(function (f) {
+      if (/^image\//.test(f.type)) return;
+      if (TEXT_EXT.test(f.name) || /^text\//.test(f.type) || f.type === "application/json") {
+        if (f.size > 2 * 1048576) { toast(f.name + " é grande demais (máx. 2 MB)"); return; }
+        if (files.length >= 5) { toast("Máximo de 5 arquivos de texto"); return; }
+        f.text().then(function (t) {
+          var used = files.reduce(function (a, x) { return a + x.text.length; }, 0), room = Math.max(0, 30000 - used);
+          if (!room) { toast("Limite de texto dos anexos atingido"); return; }
+          files.push({ name: f.name, size: f.size, text: t.slice(0, room), cut: t.length > room }); renderThumbs();
+        }, function () { toast("Não consegui ler " + f.name); });
+      } else if (/\.(pdf|docx?|xlsx?|pptx?|odt|rtf)$/i.test(f.name)) {
+        toast("Ainda não leio " + f.name.split(".").pop().toUpperCase() + ": salve como .txt ou .csv, ou cole o texto");
+      } else toast("Tipo de arquivo não suportado: " + f.name);
+    });
     if (!list.length) return;
     var room = MAX_IMG - images.length;
     if (list.length > room) toast("Máximo de " + MAX_IMG + " fotos");
@@ -594,23 +711,33 @@ body.collapsed #openSide{display:grid}
       return p.then(function () { return resize(f).then(function (d) { images.push(d); renderThumbs(); }, function () { toast("Não consegui ler uma imagem"); }); });
     }, Promise.resolve());
   }
-  function pick() { $("file").click(); }
-  $("file").onchange = function (e) { addFiles(e.target.files); e.target.value = ""; };
+  function pick() { $("upModal").classList.remove("hidden"); $("upPick").focus(); }
+  function closeUp() { $("upModal").classList.add("hidden"); }
+  $("upClose").onclick = closeUp;
+  $("upModal").addEventListener("click", function (e) { if (e.target === $("upModal")) closeUp(); });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeUp(); });
+  $("upPick").onclick = function () { $("file").click(); };
+  var drop = $("drop");
+  ["dragenter", "dragover"].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add("over"); }); });
+  ["dragleave", "drop"].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove("over"); }); });
+  drop.addEventListener("drop", function (e) { addFiles(e.dataTransfer && e.dataTransfer.files); closeUp(); });
+  $("file").onchange = function (e) { addFiles(e.target.files); e.target.value = ""; closeUp(); };
   $("cam").onchange = function (e) { addFiles(e.target.files); e.target.value = ""; };
   $("attachNav").onclick = function () { closeSide(); pick(); };
   $("photoPick").onclick = pick;
   $("plus").onclick = function (e) {
     e.stopPropagation();
     var p = popover($("plus"),
-      '<button class="it" data-a="up">' + ic("clip") + 'Fazer upload de fotos<span class="r">Ctrl+U</span></button>' +
+      '<button class="it" data-a="up">' + ic("clip") + 'Fazer upload ou adicionar arquivos<span class="r">Ctrl+U</span></button>' +
       '<button class="it" data-a="cam">' + ic("cam") + "Tirar foto</button>" +
-      "<hr>" +
+      (appMode === "copilot" ? '<div class="note">No copiloto, uma foto anexada vira pergunta sobre a imagem.</div>' : "<hr>" +
       '<button class="it" data-a="rounds">' + ic("users") + 'Debates<span class="r">' + RN[prefs.rounds] + "</span>" + ic("right") + "</button>" +
       '<button class="it" data-a="effort">' + ic("gear") + 'Esforço<span class="r">' + EFF[prefs.effort][0] + "</span>" + ic("right") + "</button>" +
       '<button class="it" data-a="mode">' + ic("chat") + 'Modo de resposta<span class="r">' + MODES[prefs.mode][0] + "</span>" + ic("right") + "</button>" +
-      '<div class="note">Dica: cole uma imagem com Ctrl+V ou arraste para a caixa.</div>');
+      '<div class="note">Dica: cole uma imagem com Ctrl+V ou arraste para a caixa.</div>'));
     p.querySelector('[data-a="up"]').onclick = function () { closePop(); pick(); };
     p.querySelector('[data-a="cam"]').onclick = function () { closePop(); $("cam").click(); };
+    if (appMode === "copilot") return;
     p.querySelector('[data-a="rounds"]').onclick = function () { openPicker($("modelPick"), "rounds"); };
     p.querySelector('[data-a="effort"]').onclick = function () { openPicker($("modelPick"), "effort"); };
     p.querySelector('[data-a="mode"]').onclick = function () { openModes($("modePick")); };
@@ -625,21 +752,91 @@ body.collapsed #openSide{display:grid}
     if (fs.length) { e.preventDefault(); addFiles(fs); }
   });
 
-  // ---------- ditado por voz ----------
-  var SR = window.SpeechRecognition || window.webkitSpeechRecognition, rec = null;
-  if (!SR) $("mic").classList.add("hidden");
-  $("mic").onclick = function () {
-    if (rec) { rec.stop(); return; }
-    rec = new SR(); rec.lang = "pt-BR"; rec.interimResults = true; rec.continuous = true;
+  // ---------- voz: grava, mostra a onda e transcreve (Whisper do Groq / Gemini) ----------
+  var REC = null, SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  var canRecord = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
+  if (!canRecord && !SR) $("mic").classList.add("hidden");
+  function recUI(on) {
+    $("recbar").classList.toggle("hidden", !on);
+    ta.classList.toggle("hidden", on);
+    $("composer").querySelector(".crow").classList.toggle("hidden", on);
+    $("mic").classList.toggle("rec", on);
+  }
+  function insertText(t) {
+    t = String(t || "").trim(); if (!t) { toast("Não ouvi nada. Tente falar mais perto do microfone."); return; }
+    var v = ta.value; ta.value = v ? v.replace(/\s*$/, " ") + t : t;
+    autosize(); updSend(); ta.focus();
+  }
+  function startRecording() {
+    if (REC || busy) return;
+    var mimes = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus", "audio/ogg"];
+    var mime = mimes.filter(function (m) { return MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(m); })[0] || "";
+    navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } }).then(function (stream) {
+      var mr = new MediaRecorder(stream, mime ? { mimeType: mime, audioBitsPerSecond: 32000 } : undefined);
+      var chunks = [], AC = window.AudioContext || window.webkitAudioContext, ac = null, an = null, levels = [];
+      try { ac = new AC(); an = ac.createAnalyser(); an.fftSize = 512; ac.createMediaStreamSource(stream).connect(an); } catch (e) {}
+      REC = { mr: mr, stream: stream, ac: ac, an: an, start: Date.now(), send: false, raf: 0 };
+      mr.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
+      mr.onstop = function () {
+        var r = REC; REC = null;
+        cancelAnimationFrame(r.raf); stream.getTracks().forEach(function (t) { t.stop(); }); if (r.ac) r.ac.close().catch(function () {});
+        recUI(false);
+        if (!r.send) return;
+        var blob = new Blob(chunks, { type: mr.mimeType || mime || "audio/webm" });
+        if (blob.size < 1200) { toast("Gravação curta demais"); return; }
+        if (blob.size > 3.8 * 1048576) { toast("Gravação longa demais (máx. ~2 min)"); return; }
+        var old = ta.placeholder; ta.placeholder = "Transcrevendo…"; ta.disabled = true;
+        var fr = new FileReader();
+        fr.onload = function () {
+          fetch("/api/transcribe", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ audio: fr.result }) })
+            .then(function (x) { return x.json().then(function (j) { if (!x.ok) throw new Error(j.error || "Erro " + x.status); return j; }); })
+            .then(function (j) { ta.disabled = false; ta.placeholder = old; insertText(j.text); },
+              function (e) { ta.disabled = false; ta.placeholder = old; toast(e.message || "Falha ao transcrever"); });
+        };
+        fr.readAsDataURL(blob);
+      };
+      mr.start(250);
+      recUI(true);
+      var cv = $("wave"), cx = cv.getContext("2d"), buf = an ? new Uint8Array(an.fftSize) : null;
+      (function draw() {
+        if (!REC) return;
+        var sec = Math.floor((Date.now() - REC.start) / 1000);
+        $("recTime").textContent = Math.floor(sec / 60) + ":" + ("0" + (sec % 60)).slice(-2);
+        if (sec >= 120) { stopRecording(true); return; }
+        var dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight;
+        if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+        var lvl = 0;
+        if (an) { an.getByteTimeDomainData(buf); var sum = 0; for (var i = 0; i < buf.length; i++) { var v = (buf[i] - 128) / 128; sum += v * v; } lvl = Math.min(1, Math.sqrt(sum / buf.length) * 4.5); }
+        levels.push(lvl);
+        var step = 6, n = Math.floor(w / step); if (levels.length > n) levels.splice(0, levels.length - n);
+        cx.setTransform(dpr, 0, 0, dpr, 0, 0); cx.clearRect(0, 0, w, h);
+        for (var k = 0; k < levels.length; k++) {
+          var x = w - (levels.length - k) * step + step / 2, bh = Math.max(2.5, levels[k] * (h - 4));
+          cx.fillStyle = levels[k] > 0.04 ? "#ecebe7" : "#75736c";
+          cx.beginPath();
+          if (cx.roundRect) cx.roundRect(x - 1.25, (h - bh) / 2, 2.5, bh, 1.25); else cx.rect(x - 1.25, (h - bh) / 2, 2.5, bh);
+          cx.fill();
+        }
+        REC.raf = requestAnimationFrame(draw);
+      })();
+    }, function (e) {
+      if (e && e.name === "NotAllowedError") toast("Permita o microfone no cadeado da barra de endereço");
+      else if (SR) dictateLive(); else toast("Não encontrei microfone");
+    });
+  }
+  function stopRecording(send) { if (!REC) return; REC.send = send; try { REC.mr.stop(); } catch (e) { REC = null; recUI(false); } }
+  var live = null;
+  function dictateLive() { // reserva: ditado ao vivo do próprio navegador
+    if (live) { live.stop(); return; }
+    live = new SR(); live.lang = "pt-BR"; live.interimResults = true; live.continuous = true;
     var base = ta.value ? ta.value.replace(/\s*$/, " ") : "";
-    rec.onresult = function (e) {
-      var t = ""; for (var i = 0; i < e.results.length; i++) t += e.results[i][0].transcript;
-      ta.value = base + t; autosize(); updSend();
-    };
-    rec.onend = function () { rec = null; $("mic").classList.remove("rec"); };
-    rec.onerror = function (e) { if (e.error === "not-allowed") toast("Permita o microfone para ditar"); };
-    try { rec.start(); $("mic").classList.add("rec"); } catch (e) { rec = null; }
-  };
+    live.onresult = function (e) { var t = ""; for (var i = 0; i < e.results.length; i++) t += e.results[i][0].transcript; ta.value = base + t; autosize(); updSend(); };
+    live.onend = function () { live = null; $("mic").classList.remove("rec"); };
+    try { live.start(); $("mic").classList.add("rec"); } catch (e) { live = null; }
+  }
+  $("mic").onclick = function () { if (canRecord) startRecording(); else dictateLive(); };
+  $("recCancel").onclick = function () { stopRecording(false); };
+  $("recDone").onclick = function () { stopRecording(true); };
 
   // ---------- barra lateral ----------
   function mobile() { return window.matchMedia("(max-width:820px)").matches; }
@@ -647,7 +844,22 @@ body.collapsed #openSide{display:grid}
   $("openSide").onclick = function () { if (mobile()) document.body.classList.add("sopen"); else document.body.classList.remove("collapsed"); };
   $("collapse").onclick = function () { if (mobile()) closeSide(); else document.body.classList.add("collapsed"); };
   $("scrim").onclick = closeSide;
-  $("segCode").onclick = function () { window.open("https://github.com/JornalOlhe/council", "_blank", "noopener"); };
+  function setApp(mode, keep) {
+    appMode = mode; prefs.app = mode; savePrefs();
+    var cop = mode === "copilot";
+    $("segChat").classList.toggle("on", !cop); $("segCopilot").classList.toggle("on", cop);
+    $("greetStar").classList.toggle("hidden", cop); $("greetHelm").classList.toggle("hidden", !cop);
+    $("copChips").classList.toggle("hidden", !cop); $("copNote").classList.toggle("hidden", !cop);
+    $("modelPick").classList.toggle("hidden", cop); $("modePick").classList.toggle("hidden", cop);
+    $("disc").textContent = cop ? "O copiloto age no seu navegador. Confira antes de enviar e-mails e mensagens." : "O IA Council é uma IA e pode cometer erros. Confira informações importantes.";
+    setGreet();
+    if (!keep) goHome(); else place($("chat").classList.contains("hidden") ? "home" : "dock");
+  }
+  $("segChat").onclick = function () { if (appMode !== "council" && !busy) setApp("council"); };
+  $("segCopilot").onclick = function () { if (appMode !== "copilot" && !busy) setApp("copilot"); };
+  Array.prototype.forEach.call($("copChips").querySelectorAll("button"), function (b) {
+    b.onclick = function () { ta.value = b.getAttribute("data-p"); autosize(); updSend(); send(); };
+  });
   $("recentToggle").onclick = function () { $("recentToggle").classList.toggle("closed"); $("recent").classList.toggle("hidden"); };
   $("searchBtn").onclick = function () {
     var b = $("searchBox"); b.classList.toggle("hidden");
@@ -660,14 +872,11 @@ body.collapsed #openSide{display:grid}
     e.stopPropagation();
     var p = popover($("meBtn"),
       '<div class="hd">' + esc(location.host) + "</div>" +
-      '<div class="row"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;color:var(--tx2);font-size:13px">' + ic("key") + 'Código de acesso</div><input id="codeIn" type="password" autocomplete="off" placeholder="se o servidor exigir"></div>' +
       '<button class="it" data-a="members">' + ic("users") + 'Membros do conselho<span class="r">' + members.length + "</span></button>" +
       '<button class="it" data-a="clear">' + ic("trash") + "Limpar histórico</button>" +
       "<hr>" +
       '<button class="it" data-a="src">' + ic("code") + "Código-fonte no GitHub</button>" +
       '<button class="it" data-a="about">' + ic("info") + "Como funciona</button>");
-    var ci = p.querySelector("#codeIn"); ci.value = sget(CODE) || "";
-    ci.addEventListener("change", function () { sset(CODE, ci.value); loadMembers(); toast("Código salvo"); });
     p.querySelector('[data-a="members"]').onclick = function () { openPicker($("meBtn")); };
     p.querySelector('[data-a="clear"]').onclick = function () { history = []; saveHist(); closePop(); goHome(); toast("Histórico apagado"); };
     p.querySelector('[data-a="src"]').onclick = function () { closePop(); window.open("https://github.com/JornalOlhe/council", "_blank", "noopener"); };
@@ -690,13 +899,14 @@ body.collapsed #openSide{display:grid}
     list.forEach(function (x) {
       var h = x[0], i = x[1];
       var row = document.createElement("div"); row.className = "ri" + (i === current ? " on" : "");
-      var b = document.createElement("button"); b.className = "t"; b.textContent = h.title || shortTitle(h.prompt); b.title = h.prompt.slice(0, 300);
+      var b = document.createElement("button"); b.className = "t"; b.title = h.prompt.slice(0, 300);
+      b.innerHTML = (h.kind === "copilot" ? '<svg class="helm" style="width:15px;height:15px;display:inline-block;vertical-align:-2px;margin-right:6px"><use href="#i-helmet"/></svg>' : "") + esc(h.title || shortTitle(h.prompt));
       b.onclick = function () { closeSide(); showEntry(i); };
       var m = document.createElement("button"); m.className = "more"; m.innerHTML = ic("dots"); m.setAttribute("aria-label", "Opções");
       m.onclick = function (e) {
         e.stopPropagation();
         var p = popover(m, '<button class="it" data-a="copy">' + ic("copy") + 'Copiar última resposta</button><button class="it" data-a="del" style="color:#f0a49b">' + ic("trash") + "Excluir</button>", "right");
-        p.querySelector('[data-a="copy"]').onclick = function () { closePop(); var t = turnsOf(h); copy(t[t.length - 1].data.final || ""); };
+        p.querySelector('[data-a="copy"]').onclick = function () { closePop(); var t = turnsOf(h); copy(t[t.length - 1].data.final || t[t.length - 1].data.say || ""); };
         p.querySelector('[data-a="del"]').onclick = function () {
           closePop(); history.splice(i, 1); saveHist();
           if (current === i) { current = -1; goHome(); } else { if (current > i) current--; renderRecent(); }
@@ -720,7 +930,7 @@ body.collapsed #openSide{display:grid}
     current = -1; closeSide();
     $("chat").classList.add("hidden"); $("chat").innerHTML = "";
     $("home").classList.remove("hidden"); setTop("");
-    place("home"); ta.value = ""; images = []; renderThumbs(); autosize(); updSend(); renderRecent(); ta.focus();
+    place("home"); ta.value = ""; images = []; files = []; renderThumbs(); autosize(); updSend(); renderRecent(); ta.focus();
   }
   $("newBtn").onclick = goHome;
   document.addEventListener("keydown", function (e) {
@@ -735,10 +945,11 @@ body.collapsed #openSide{display:grid}
     }
     setTop(title);
   }
-  function addTurn(prompt, imgs) {
+  function addTurn(prompt, imgs, fnames) {
     var ph = (imgs || []).map(function (s, i) { return '<img src="' + esc(s) + '" alt="Foto ' + (i + 1) + '">'; }).join("");
+    var fl = (fnames || []).map(function (n) { return "<span>📄 " + esc(n) + "</span>"; }).join("");
     var t = document.createElement("div");
-    t.innerHTML = '<div class="umsg"><div>' + (ph ? '<div class="ph">' + ph + "</div>" : "") + esc(prompt) + '</div></div><div class="amsg"></div>';
+    t.innerHTML = '<div class="umsg"><div>' + (ph ? '<div class="ph">' + ph + "</div>" : "") + (fl ? '<div class="files">' + fl + "</div>" : "") + esc(prompt) + '</div></div><div class="amsg"></div>';
     $("chat").appendChild(t);
     return t.querySelector(".amsg");
   }
@@ -746,7 +957,12 @@ body.collapsed #openSide{display:grid}
     var h = history[i]; if (!h || busy) return;
     current = i; $("chat").innerHTML = ""; $("chat").classList.add("hidden");
     ensureChat(h.title || shortTitle(h.prompt));
-    turnsOf(h).forEach(function (t) { render(addTurn(t.prompt, []), t.data, t.prompt); });
+    if ((h.kind === "copilot") !== (appMode === "copilot")) setApp(h.kind === "copilot" ? "copilot" : "council", true);
+    current = i;
+    turnsOf(h).forEach(function (t) {
+      var b = addTurn(t.prompt, [], t.files);
+      if (h.kind === "copilot") renderCop(b, t.data, false); else render(b, t.data, t.prompt);
+    });
     renderRecent(); $("scroll").scrollTop = 0;
   }
 
@@ -757,11 +973,10 @@ body.collapsed #openSide{display:grid}
       return "Usuário: " + t.prompt + "\nResposta: " + String((t.data && t.data.final) || "").slice(0, 1500);
     }).join("\n\n");
     var full = "CONVERSA ANTERIOR (contexto):\n" + ctx + "\n\nNOVA MENSAGEM DO USUÁRIO:\n" + prompt;
-    return full.length > 5900 ? "…" + full.slice(full.length - 5890) : full;
+    return full.length > 39000 ? "…" + full.slice(full.length - 38990) : full;
   }
   function api(payload) {
-    var headers = { "Content-Type": "application/json" }, code = sget(CODE);
-    if (code) headers["x-access-code"] = code;
+    var headers = { "Content-Type": "application/json" };
     return fetch("/api/council", { method: "POST", headers: headers, body: JSON.stringify(payload) }).then(function (r) {
       return r.text().then(function (t) {
         var j;
@@ -780,21 +995,28 @@ body.collapsed #openSide{display:grid}
     h += '<div class="thinking"><svg class="star spinstar"><use href="#i-star"/></svg><div>' + esc(now[0]) + (now[1] ? "<small>" + esc(now[1]) + "</small>" : "") + "</div></div>";
     body.innerHTML = h;
   }
+  function withFiles(prompt, fl) {
+    if (!fl.length) return prompt;
+    return prompt + "\n\n---\nARQUIVOS ANEXADOS PELO USUÁRIO:\n" + fl.map(function (f) { return "### " + f.name + "\n```\n" + f.text + "\n```"; }).join("\n\n");
+  }
   function send() {
+    if (appMode === "copilot") return sendCop();
     var prompt = ta.value.trim(); if (!prompt || busy) return;
     busy = true; updSend();
-    var sent = images.slice(), rounds = prefs.rounds, mode = prefs.mode, isNew = current < 0;
+    var sent = images.slice(), fl = files.slice(), rounds = prefs.rounds, mode = prefs.mode, isNew = current < 0;
     var L = leaderMember();
+    var full = withFiles(prompt, fl);
     var base = {
-      prompt: isNew ? prompt : withContext(prompt), effort: prefs.effort, mode: mode,
+      prompt: isNew ? full : withContext(full), effort: prefs.effort, mode: mode,
       leader: L ? L.name : "", models: prefs.models
     };
     ensureChat(isNew ? shortTitle(prompt) : $("title").textContent);
-    var body = addTurn(prompt, sent);
+    var fnames = fl.map(function (f) { return f.name; });
+    var body = addTurn(prompt, sent, fnames);
     var done = [];
     progress(body, done, [mode === "quick" ? "Pensando…" : sent.length ? "O olho do conselho está lendo as fotos…" : "Lendo sua mensagem…", ""]);
     body.scrollIntoView({ behavior: "smooth", block: "end" });
-    ta.value = ""; images = []; renderThumbs(); autosize();
+    ta.value = ""; images = []; files = []; renderThumbs(); autosize();
 
     var data = { mode: "council", rounds: [], errors: [] };
     var positions = [];
@@ -845,9 +1067,9 @@ body.collapsed #openSide{display:grid}
       });
     }).then(function () {
       render(body, data, prompt);
-      var turn = { prompt: prompt, data: data };
+      var turn = { prompt: prompt, data: data, files: fnames };
       if (isNew) {
-        history.unshift({ prompt: prompt, title: shortTitle(prompt), turns: [turn], ts: Date.now() });
+        history.unshift({ kind: "council", prompt: prompt, title: shortTitle(prompt), turns: [turn], ts: Date.now() });
       } else {
         var h = history[current]; h.turns = turnsOf(h).concat(turn); h.ts = Date.now();
         history.splice(current, 1); history.unshift(h);
@@ -858,7 +1080,7 @@ body.collapsed #openSide{display:grid}
     }).catch(function (e) {
       var det = (e.details || []).concat(data.errors).map(function (x) { return '<div class="warn">' + esc(x.name) + " — " + esc(x.stage) + ": " + esc(x.error) + "</div>"; }).join("");
       body.innerHTML = '<div class="err">' + esc(e.message || "Falha de rede.") +
-        (e.status === 401 ? " Abra o menu “Conselho” no canto inferior esquerdo e informe o código." : "") + "</div>" + det;
+"</div>" + det;
     }).then(function () { busy = false; updSend(); ta.focus(); });
   }
   $("go").onclick = send;
@@ -903,10 +1125,266 @@ body.collapsed #openSide{display:grid}
     body.querySelector('[data-a="retry"]').onclick = function () { ta.value = prompt; autosize(); updSend(); ta.focus(); };
   }
 
+  // =================== COPILOTO ===================
+  var SITES = {
+    youtube: "https://www.youtube.com", gmail: "https://mail.google.com", "e-mail": "https://mail.google.com", email: "https://mail.google.com",
+    google: "https://www.google.com", whatsapp: "https://web.whatsapp.com", "whatsapp web": "https://web.whatsapp.com", zap: "https://web.whatsapp.com",
+    instagram: "https://www.instagram.com", insta: "https://www.instagram.com", facebook: "https://www.facebook.com", face: "https://www.facebook.com",
+    twitter: "https://x.com", x: "https://x.com", tiktok: "https://www.tiktok.com", linkedin: "https://www.linkedin.com", netflix: "https://www.netflix.com",
+    spotify: "https://open.spotify.com", github: "https://github.com", maps: "https://www.google.com/maps", "google maps": "https://www.google.com/maps", mapa: "https://www.google.com/maps",
+    drive: "https://drive.google.com", "google drive": "https://drive.google.com", docs: "https://docs.google.com", agenda: "https://calendar.google.com", calendario: "https://calendar.google.com",
+    outlook: "https://outlook.live.com", wikipedia: "https://pt.wikipedia.org", g1: "https://g1.globo.com", "mercado livre": "https://www.mercadolivre.com.br",
+    amazon: "https://www.amazon.com.br", shopee: "https://shopee.com.br", twitch: "https://www.twitch.tv", discord: "https://discord.com/app", reddit: "https://www.reddit.com",
+    tradutor: "https://translate.google.com", "google tradutor": "https://translate.google.com", chatgpt: "https://chatgpt.com", claude: "https://claude.ai", canva: "https://www.canva.com", figma: "https://www.figma.com"
+  };
+  var ENG = {
+    google: ["Google", function (q) { return "https://www.google.com/search?q=" + encodeURIComponent(q); }],
+    youtube: ["YouTube", function (q) { return "https://www.youtube.com/results?search_query=" + encodeURIComponent(q); }],
+    maps: ["Google Maps", function (q) { return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(q); }],
+    imagens: ["Google Imagens", function (q) { return "https://www.google.com/search?tbm=isch&q=" + encodeURIComponent(q); }],
+    noticias: ["Google Notícias", function (q) { return "https://www.google.com/search?tbm=nws&q=" + encodeURIComponent(q); }],
+    shopping: ["Google Shopping", function (q) { return "https://www.google.com/search?tbm=shop&q=" + encodeURIComponent(q); }],
+    wikipedia: ["Wikipédia", function (q) { return "https://pt.wikipedia.org/w/index.php?search=" + encodeURIComponent(q); }],
+    mercadolivre: ["Mercado Livre", function (q) { return "https://lista.mercadolivre.com.br/" + encodeURIComponent(q.replace(/\s+/g, "-")); }],
+    amazon: ["Amazon", function (q) { return "https://www.amazon.com.br/s?k=" + encodeURIComponent(q); }],
+    github: ["GitHub", function (q) { return "https://github.com/search?q=" + encodeURIComponent(q); }],
+    spotify: ["Spotify", function (q) { return "https://open.spotify.com/search/" + encodeURIComponent(q); }],
+    tradutor: ["Google Tradutor", function (q) { return "https://translate.google.com/?sl=auto&tl=pt&op=translate&text=" + encodeURIComponent(q); }]
+  };
+  var ENGWORDS = [["google maps", "maps"], ["maps", "maps"], ["mapa", "maps"], ["youtube", "youtube"], ["yt", "youtube"], ["wikipedia", "wikipedia"], ["wikipédia", "wikipedia"],
+    ["mercado livre", "mercadolivre"], ["amazon", "amazon"], ["spotify", "spotify"], ["github", "github"], ["imagens", "imagens"], ["notícias", "noticias"], ["noticias", "noticias"],
+    ["shopping", "shopping"], ["google", "google"], ["tradutor", "tradutor"]];
+  var ENGRX = "(google maps|maps|mapa|youtube|yt|wikip[eé]dia|mercado livre|amazon|spotify|github|imagens|not[ií]cias|shopping|google|tradutor)";
+  function engOf(w) { w = (w || "").toLowerCase(); for (var i = 0; i < ENGWORDS.length; i++) if (ENGWORDS[i][0] === w || (w === "wikipedia" && ENGWORDS[i][1] === "wikipedia")) return ENGWORDS[i][1]; return /wikip/.test(w) ? "wikipedia" : /not/.test(w) ? "noticias" : "google"; }
+  function cleanQ(q) { return q.replace(/^(por|sobre|pelo|pela|de|o|a|os|as|um|uma)\s+/i, "").replace(/[?.!]+$/, "").trim(); }
+
+  // Entende na hora pedidos claros (abre a aba no mesmo clique, sem bloqueio do navegador)
+  function parseLocal(t) {
+    var s = t.trim().replace(/\s+/g, " "), m;
+    // ver a tela
+    if (/\b(minha tela|a tela|na tela|da tela|meu monitor|o que (est[aá]|tem) (aberto|na tela)|print da tela)\b/i.test(s) && /\b(olh|v[eê]|vej|analis|l[eê]|leia|diga|explic|ajud|o que|qual|tem|confer|ach)/i.test(s))
+      return { say: "Vou olhar sua tela. Escolha a janela ou a tela inteira para compartilhar.", actions: [{ type: "screen", question: s }] };
+    // lembrete / timer
+    m = /\b(lembr\w*|lembrete|alarme|timer|temporizador|cron[oô]metro|avis\w*)\b.*?\b(\d+(?:[.,]\d+)?)\s*(segundos?|seg|s|minutos?|mins?|m|horas?|hrs?|h)\b/i.exec(s);
+    if (m) {
+      var n = parseFloat(m[2].replace(",", ".")), u = m[3].toLowerCase(), sec = Math.round(n * (/^h/.test(u) ? 3600 : /^m/.test(u) ? 60 : 1));
+      var lab = (/\b(de|para|pra)\s+(.+)$/i.exec(s.slice(m.index + m[0].length)) || [])[2] || (/\b(de|para|pra)\s+(.+?)\s+(em|daqui)\b/i.exec(s) || [])[2] || "Lembrete";
+      if (sec >= 1 && sec <= 86400) return { say: "Combinado! Vou te avisar em " + fmtDur(sec) + ". Deixe esta aba aberta.", actions: [{ type: "timer", seconds: sec, label: cleanQ(lab) || "Lembrete" }] };
+    }
+    // "abra o youtube e pesquise X" / "toque X no spotify"
+    m = new RegExp("^(?:abr\\w*|entr\\w*(?: no| na| em)?|v[aá] (?:para|pro|pra|no|na))\\s+(?:o |a )?" + ENGRX + "\\s+e\\s+(?:pesquis\\w*|procur\\w*|bus[cq]\\w*|coloc\\w*|to[cq]\\w*|bot\\w*|ach\\w*)\\s+(.+)$", "i").exec(s);
+    if (m) return searchPlan(engOf(m[1]), cleanQ(m[2]));
+    m = /^(?:to[cq]\w*|coloc\w*|bot\w*|ouvir|quero ouvir)\s+(.+?)\s+(?:no|na)\s+(spotify|youtube)$/i.exec(s);
+    if (m) return searchPlan(engOf(m[2]), cleanQ(m[1]));
+    // pesquisas
+    m = /^(?:pesquis\w*|procur\w*|bus[cq]\w*|googl\w*|ach\w*|encontr\w*|mostr\w*|me mostr\w*)\s+(.+)$/i.exec(s);
+    if (m) {
+      var rest = m[1], eng = "google", mm;
+      if ((mm = new RegExp("^(?:no|na|nos|nas|em)\\s+" + ENGRX + "\\s+(.+)$", "i").exec(rest))) { eng = engOf(mm[1]); rest = mm[2]; }
+      else if ((mm = new RegExp("^(.+?)\\s+(?:no|na|nos|nas|em)\\s+" + ENGRX + "$", "i").exec(rest))) { eng = engOf(mm[2]); rest = mm[1]; }
+      else if ((mm = /^(?:imagens|fotos) d[eao]s?\s+(.+)$/i.exec(rest))) { eng = "imagens"; rest = mm[1]; }
+      else if ((mm = /^not[ií]cias (?:sobre|de|do|da)\s+(.+)$/i.exec(rest))) { eng = "noticias"; rest = mm[1]; }
+      rest = cleanQ(rest);
+      if (rest.length > 1 && rest.length < 200) return searchPlan(eng, rest);
+    }
+    // abrir site
+    m = /^(?:abr\w*|entr\w*(?: no| na| em)?|v[aá] (?:para|pro|pra|no|na)|acess\w*)\s+(?:o |a |no |na )?(.+?)[.!]?$/i.exec(s);
+    if (m) {
+      var tg = m[1].toLowerCase().replace(/^(site|página|pagina|app)\s+(do |da |de )?/, "").trim();
+      if (SITES[tg]) return { say: "Abrindo " + m[1].replace(/^(o|a) /i, "") + ".", actions: [{ type: "open", url: SITES[tg] }] };
+      if (/^(https?:\/\/)?[\w-]+(\.[\w-]+)+(\/\S*)?$/i.test(tg)) return { say: "Abrindo " + tg + ".", actions: [{ type: "open", url: /^https?:/.test(tg) ? tg : "https://" + tg }] };
+    }
+    return null;
+  }
+  function searchPlan(eng, q) { return { say: "Pesquisando “" + q + "” no " + ENG[eng][0] + ".", actions: [{ type: "search", engine: eng, query: q }] }; }
+  function fmtDur(sec) {
+    if (sec < 60) return sec + (sec === 1 ? " segundo" : " segundos");
+    if (sec < 3600) { var mi = Math.round(sec / 60); return mi + (mi === 1 ? " minuto" : " minutos"); }
+    var h = Math.floor(sec / 3600), r = Math.round((sec % 3600) / 60); return h + (h === 1 ? " hora" : " horas") + (r ? " e " + r + " min" : "");
+  }
+  function actionURL(a) {
+    if (a.type === "search") return ENG[a.engine] ? ENG[a.engine][1](a.query) : ENG.google[1](a.query);
+    if (a.type === "open") return a.url;
+    if (a.type === "route") return "https://www.google.com/maps/dir/?api=1" + (a.from ? "&origin=" + encodeURIComponent(a.from) : "") + "&destination=" + encodeURIComponent(a.to);
+    if (a.type === "whatsapp") return "https://wa.me/" + (a.phone || "") + "?text=" + encodeURIComponent(a.text || "");
+    if (a.type === "email") return "mailto:" + encodeURIComponent(a.to || "") + "?subject=" + encodeURIComponent(a.subject || "") + "&body=" + encodeURIComponent(a.body || "");
+    return "";
+  }
+  function actionInfo(a) {
+    if (a.type === "search") return ["globe", "Pesquisa no " + (ENG[a.engine] || ENG.google)[0], a.query];
+    if (a.type === "open") { var host = a.url; try { host = new URL(a.url).host.replace(/^www\./, ""); } catch (e) {} return ["globe", "Abrir " + host, a.url]; }
+    if (a.type === "route") return ["route", "Rota até " + a.to, a.from ? "Saindo de " + a.from : "Saindo da sua localização"];
+    if (a.type === "whatsapp") return ["wa", "Mensagem no WhatsApp", a.text];
+    if (a.type === "email") return ["mail", "E-mail: " + (a.subject || "sem assunto"), a.to ? "Para " + a.to : "Escolha o destinatário no seu e-mail"];
+    if (a.type === "copy") return ["copy", "Copiar texto", a.text.slice(0, 120)];
+    if (a.type === "timer") return ["alarm", "Lembrete em " + fmtDur(a.seconds), a.label];
+    if (a.type === "screen") return ["monitor", "Ver sua tela", a.question];
+    return ["globe", a.type, ""];
+  }
+  function openURL(url) {
+    if (/^mailto:/i.test(url)) { var l = document.createElement("a"); l.href = url; document.body.appendChild(l); l.click(); l.remove(); return true; }
+    var w = null; try { w = window.open(url, "_blank"); } catch (e) {}
+    if (w) { try { w.opener = null; } catch (e) {} return true; }
+    return false;
+  }
+
+  // ----- lembretes -----
+  function beep() {
+    try {
+      var AC = window.AudioContext || window.webkitAudioContext, ac = new AC();
+      [0, 0.35, 0.7].forEach(function (t) {
+        var o = ac.createOscillator(), g = ac.createGain(); o.frequency.value = 880; o.connect(g); g.connect(ac.destination);
+        g.gain.setValueAtTime(0.0001, ac.currentTime + t); g.gain.exponentialRampToValueAtTime(0.3, ac.currentTime + t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + t + 0.28);
+        o.start(ac.currentTime + t); o.stop(ac.currentTime + t + 0.3);
+      });
+      setTimeout(function () { ac.close(); }, 1500);
+    } catch (e) {}
+  }
+  function startTimer(a, statusEl) {
+    var end = Date.now() + a.seconds * 1000;
+    try { if (window.Notification && Notification.permission === "default") Notification.requestPermission(); } catch (e) {}
+    var iv = setInterval(function () {
+      var left = Math.max(0, Math.round((end - Date.now()) / 1000));
+      if (statusEl && statusEl.isConnected) statusEl.textContent = left ? "Faltam " + Math.floor(left / 60) + ":" + ("0" + (left % 60)).slice(-2) + " · deixe esta aba aberta" : "";
+      if (!left) {
+        clearInterval(iv); beep();
+        var msg = "⏰ " + (a.label || "Lembrete");
+        toast(msg);
+        try { if (window.Notification && Notification.permission === "granted") new Notification("IA Council · Copiloto", { body: a.label || "Lembrete" }); } catch (e) {}
+        if (statusEl && statusEl.isConnected) { statusEl.textContent = "Tocou às " + new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }); statusEl.className = "okk"; }
+        var old = document.title; document.title = msg; setTimeout(function () { document.title = old; }, 8000);
+      }
+    }, 1000);
+  }
+
+  // ----- ver a tela -----
+  function captureScreen() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) return Promise.reject(new Error("Seu navegador não permite compartilhar a tela (use o Chrome ou o Edge no computador)."));
+    return navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 5 }, audio: false }).then(function (stream) {
+      return new Promise(function (resolve, reject) {
+        var v = document.createElement("video"); v.muted = true; v.playsInline = true; v.srcObject = stream;
+        var stop = function () { stream.getTracks().forEach(function (t) { t.stop(); }); };
+        v.onloadedmetadata = function () {
+          v.play().then(function () {
+            setTimeout(function () {
+              var s = Math.min(1, 1600 / Math.max(v.videoWidth, v.videoHeight)), c = document.createElement("canvas");
+              c.width = Math.round(v.videoWidth * s); c.height = Math.round(v.videoHeight * s);
+              c.getContext("2d").drawImage(v, 0, 0, c.width, c.height); stop();
+              resolve(c.toDataURL("image/jpeg", 0.82));
+            }, 450);
+          }, function (e) { stop(); reject(e); });
+        };
+      });
+    });
+  }
+  function askAboutImage(question, img) {
+    return fetch("/api/copilot", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ stage: "see", question: question, image: img }) })
+      .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || "Erro " + r.status); return j; }); });
+  }
+
+  // ----- executar e desenhar ações -----
+  function runActions(box, data, auto) {
+    var navDone = false;
+    data.actions.forEach(function (a, idx) {
+      var info = actionInfo(a), url = actionURL(a);
+      var card = document.createElement("div"); card.className = "acard" + (a.type === "screen" ? " col" : "");
+      var head = '<span class="ai">' + ic(info[0]) + '</span><span class="at"><b>' + esc(info[1]) + "</b><span>" + esc(info[2] || "") + "</span></span>";
+      card.innerHTML = a.type === "screen" ? '<div class="row1">' + head + "</div>" : head;
+      var row = a.type === "screen" ? card.querySelector(".row1") : card;
+      var status = card.querySelector(".at span");
+      var btn = document.createElement("button"); btn.className = "btn";
+      box.appendChild(card);
+      function setStatus(t, cls) { status.textContent = t; status.className = cls || ""; }
+      if (url) {
+        btn.textContent = a.type === "email" ? "Abrir e-mail" : a.type === "whatsapp" ? "Abrir WhatsApp" : "Abrir";
+        btn.onclick = function () { if (openURL(url)) { setStatus("Aberto em nova aba", "okk"); btn.textContent = "Abrir de novo"; } else setStatus("O navegador bloqueou. Permita pop-ups para este site.", "bad"); };
+        row.appendChild(btn);
+        if (auto && !navDone) {
+          navDone = true;
+          if (openURL(url)) { setStatus(a.type === "email" ? "E-mail aberto no seu aplicativo" : "Aberto em nova aba", "okk"); btn.textContent = "Abrir de novo"; }
+          else { setStatus("Clique em Abrir — o navegador bloqueou a aba automática", "bad"); btn.style.background = "var(--ac)"; btn.style.color = "#fff"; }
+        }
+      } else if (a.type === "copy") {
+        btn.textContent = "Copiar"; btn.onclick = function () { copy(a.text, "Texto copiado"); setStatus("Copiado", "okk"); };
+        row.appendChild(btn);
+        if (auto) { try { navigator.clipboard.writeText(a.text).then(function () { setStatus("Copiado para a área de transferência", "okk"); }, function () {}); } catch (e) {} }
+      } else if (a.type === "timer") {
+        if (auto) startTimer(a, status); else setStatus("Lembrete de " + fmtDur(a.seconds) + " (" + a.label + ")");
+      } else if (a.type === "screen") {
+        btn.textContent = "Compartilhar tela";
+        var go = function () {
+          btn.disabled = true; setStatus("Escolha o que compartilhar…");
+          captureScreen().then(function (img) {
+            setStatus("Analisando o que aparece na tela…");
+            var shot = document.createElement("img"); shot.className = "shot"; shot.src = img; shot.alt = "Captura da tela"; card.appendChild(shot);
+            return askAboutImage(a.question, img).then(function (j) {
+              setStatus("Analisado por " + (pretty(j.model) || "Gemini"), "okk");
+              var ans = document.createElement("div"); ans.className = "md"; ans.style.marginTop = "10px"; ans.innerHTML = md(j.answer); card.appendChild(ans);
+              data.screenAnswer = j.answer; saveCopTurn();
+            });
+          }).catch(function (e) {
+            btn.disabled = false;
+            setStatus(e && e.name === "NotAllowedError" ? "Compartilhamento cancelado. Clique para tentar de novo." : (e.message || "Não consegui ver a tela."), "bad");
+          });
+        };
+        btn.onclick = go; row.appendChild(btn);
+        if (data.screenAnswer) { var an = document.createElement("div"); an.className = "md"; an.style.marginTop = "10px"; an.innerHTML = md(data.screenAnswer); card.appendChild(an); }
+        else if (auto) go();
+      }
+    });
+  }
+  var saveCopTurn = function () {};
+  function renderCop(body, data, auto) {
+    body.innerHTML = "";
+    if (data.imageAnswer) { var d0 = document.createElement("div"); d0.className = "md"; d0.innerHTML = md(data.imageAnswer); body.appendChild(d0); }
+    if (data.say) { var d1 = document.createElement("div"); d1.className = "md"; d1.innerHTML = md(data.say); body.appendChild(d1); }
+    if (data.actions && data.actions.length) { var box = document.createElement("div"); box.className = "acards"; body.appendChild(box); runActions(box, data, auto); }
+    var meta = document.createElement("div"); meta.className = "meta";
+    meta.innerHTML = '<svg class="helm"><use href="#i-helmet"/></svg><span>Copiloto' + (data.by ? " · " + esc(data.by) + (data.model ? " (" + esc(pretty(data.model)) + ")" : "") : " · ação imediata") + '</span><span class="acts"><button data-a="copy" title="Copiar" aria-label="Copiar">' + ic("copy") + "</button></span>";
+    body.appendChild(meta);
+    meta.querySelector('[data-a="copy"]').onclick = function () { copy([data.imageAnswer, data.say, data.screenAnswer].filter(Boolean).join("\n\n")); };
+  }
+  function sendCop() {
+    var text = ta.value.trim(), sentImgs = images.slice();
+    if ((!text && !sentImgs.length) || busy) return;
+    if (!text) text = "O que tem nesta imagem?";
+    var isNew = current < 0;
+    var local = sentImgs.length ? null : parseLocal(text);
+    ensureChat(isNew ? shortTitle(text) : $("title").textContent);
+    var body = addTurn(text, sentImgs);
+    ta.value = ""; images = []; files = []; renderThumbs(); autosize();
+    var turn = { prompt: text, data: null };
+    saveCopTurn = function () {
+      if (!turn.data) return;
+      if (isNew && !turn.saved) { history.unshift({ kind: "copilot", prompt: text, title: shortTitle(text), turns: [turn], ts: Date.now() }); current = 0; turn.saved = true; isNew = false; }
+      else if (!turn.saved) { var h = history[current]; h.turns = turnsOf(h).concat(turn); h.ts = Date.now(); history.splice(current, 1); history.unshift(h); current = 0; turn.saved = true; }
+      saveHist(); renderRecent();
+    };
+    if (local) { // age no mesmo clique: o navegador não bloqueia a aba
+      turn.data = local; renderCop(body, local, true); saveCopTurn(); body.scrollIntoView({ behavior: "smooth", block: "end" });
+      return;
+    }
+    busy = true; updSend();
+    body.innerHTML = '<div class="thinking"><svg class="helm spinstar"><use href="#i-helmet"/></svg><div>' + (sentImgs.length ? "Olhando a imagem…" : "Planejando…") + "</div></div>";
+    body.scrollIntoView({ behavior: "smooth", block: "end" });
+    var h0 = history[current], hist = [];
+    if (h0 && h0.kind === "copilot") turnsOf(h0).slice(-3).forEach(function (t) { hist.push({ role: "user", text: t.prompt }); hist.push({ role: "assistant", text: (t.data && (t.data.say || t.data.imageAnswer)) || "" }); });
+    var job = sentImgs.length
+      ? askAboutImage(text, sentImgs[0]).then(function (j) { return { imageAnswer: j.answer, actions: [], by: "Gemini", model: j.model }; })
+      : fetch("/api/copilot", { method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ stage: "plan", text: text, history: hist, now: new Date().toLocaleString("pt-BR"), tz: (Intl.DateTimeFormat().resolvedOptions().timeZone || "") }) })
+          .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || "Erro " + r.status); return j; }); });
+    job.then(function (data) {
+      turn.data = data; renderCop(body, data, true); saveCopTurn();
+    }).catch(function (e) {
+      body.innerHTML = '<div class="err">' + esc(e.message || "Falha de rede.") + "</div>";
+    }).then(function () { busy = false; updSend(); ta.focus(); });
+  }
+
   // ---------- topo ----------
   $("shareBtn").onclick = function () {
     var h = history[current]; if (!h) return;
-    var text = turnsOf(h).map(function (t) { return "Pergunta: " + t.prompt + "\n\n" + (t.data.final || ""); }).join("\n\n---\n\n") + "\n\n— via IA Council (" + location.origin + ")";
+    var text = turnsOf(h).map(function (t) { return "Pergunta: " + t.prompt + "\n\n" + ((t.data && (t.data.final || t.data.say || t.data.imageAnswer)) || ""); }).join("\n\n---\n\n") + "\n\n— via IA Council (" + location.origin + ")";
     if (navigator.share && mobile()) navigator.share({ title: h.title, text: text }).catch(function () {});
     else copy(text, "Conversa copiada para compartilhar");
   };
@@ -934,7 +1412,7 @@ body.collapsed #openSide{display:grid}
     p.querySelector('[data-a="del"]').onclick = function () { closePop(); if (current >= 0) { history.splice(current, 1); saveHist(); } current = -1; goHome(); };
   };
 
-  renderRecent(); autosize(); updSend(); ta.focus();
+  renderRecent(); if (prefs.app === "copilot") setApp("copilot"); autosize(); updSend(); ta.focus();
 })();
 </script>
 </body>

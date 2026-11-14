@@ -81,17 +81,10 @@ await t("GET ?list=1 lista os modelos de cada chave", async () => {
 });
 await t("validações", async () => {
   assert.equal((await run({ prompt: " " })).code, 400);
-  assert.equal((await run({ prompt: "a".repeat(6001) })).code, 400);
+  assert.equal((await run({ prompt: "a".repeat(40001) })).code, 400);
   assert.equal((await run({ prompt: "x", images: Array(5).fill(img) })).code, 400);
   assert.equal((await run({ prompt: "x", images: ["data:text/html;base64,AAAA"] })).code, 400);
   assert.equal((await run({ stage: "debate", prompt: "x", positions: [{ name: "Hacker", text: "x" }] })).code, 400);
-});
-await t("código de acesso", async () => {
-  process.env.ACCESS_CODE = "s";
-  assert.equal((await run({ prompt: "oi" })).code, 401);
-  assert.equal((await run(null, {}, "GET", "/api/council?list=1")).code, 401);
-  assert.equal((await run({ prompt: "oi" }, { "x-access-code": "s" })).code, 200);
-  delete process.env.ACCESS_CODE;
 });
 await t("conselho completo com 3 debates", async () => {
   const { o, all, f } = await fullCouncil("Pergunta", 3);

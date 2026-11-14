@@ -5,7 +5,7 @@
 //   debate -> cada membro lê os outros, critica e revisa (1 a 3 vezes, chamada pelo site)
 //   final  -> o presidente escolhido sintetiza a decisão
 const STAGE_BUDGET = 55000;
-const MAX_TEXT = 6000;
+const MAX_TEXT = 40000; // inclui o texto de arquivos anexados
 const MAX_IMAGES = 4;
 const MODEL_ID = /^[\w.\-/:@]{1,120}$/;
 
@@ -146,6 +146,8 @@ async function callGemini(p, system, user, ms, maxTokens, eff, images = []) {
 // ---------- descoberta de modelos ----------
 const MODEL_GONE = /model.?not.?found|does not exist|no longer available|not available|unavailable|not supported|decommissioned|deprecated|is not found/i;
 const SKIP = /guard|whisper|tts|orpheus|safeguard|embed|audio|image|transcri|moderation|rerank|live|native-audio|veo|imagen|lyria|aqa|robotics/i;
+// Só modelos do plano gratuito: Flash, Flash-Lite e Gemma (Pro/Ultra e ferramentas especiais ficam de fora)
+const PAID_GEMINI = /(^|-)pro($|-)|ultra|computer-use|deep-research|learnlm|-4-(argon|carbon|hydrogen)/i;
 const discovered = new Map();
 const geminiThinkIdx = new Map();
 
@@ -166,7 +168,7 @@ async function listModels(p, ms) {
     return (j.models || [])
       .filter((m) => (m.supportedGenerationMethods || []).includes("generateContent"))
       .map((m) => String(m.name).replace(/^models\//, ""))
-      .filter((id) => /gemini|gemma/.test(id) && !SKIP.test(id));
+      .filter((id) => /gemini|gemma/.test(id) && !SKIP.test(id) && !PAID_GEMINI.test(id));
   }
   const base = p.url.replace(/\/chat\/completions$/, "");
   const url = p.name === "GitHub Models" ? "https://models.github.ai/catalog/models" : `${base}/models`;
@@ -329,18 +331,13 @@ async function catalog(providers) {
 export default async function handler(req, res) {
   const send = (code, obj) => res.status(code).json(obj);
   try {
-    const access = process.env.ACCESS_CODE;
-    const authed = !access || req.headers["x-access-code"] === access;
-
     if (req.method === "GET") {
       const ps = buildProviders(process.env);
       const wantList = /[?&]list=1/.test(req.url || "") || req.query?.list === "1";
       if (wantList) {
-        if (!authed) return send(401, { error: "Código de acesso inválido." });
         return send(200, { catalog: await catalog(ps) });
       }
       return send(200, {
-        locked: !!access,
         efforts: Object.fromEntries(Object.entries(EFFORTS).map(([k, v]) => [k, v.label])),
         members: ps.map((p) => ({
           name: p.name, model: p.model, label: modelLabel(p.model), desc: DESCRIPTIONS[p.name] || p.name,
@@ -349,7 +346,6 @@ export default async function handler(req, res) {
       });
     }
     if (req.method !== "POST") return send(405, { error: "Use POST ou GET." });
-    if (!authed) return send(401, { error: "Código de acesso inválido." });
 
     let body = req.body;
     if (typeof body === "string") { try { body = JSON.parse(body); } catch { body = null; } }
@@ -475,3 +471,5 @@ export default async function handler(req, res) {
     return send(500, { error: "Erro interno no conselho." });
   }
 }
+
+export { ask, SYSTEM };

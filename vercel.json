@@ -1,5 +1,7 @@
 {
   "functions": {
-    "api/council.js": { "maxDuration": 60 }
+    "api/council.js": { "maxDuration": 60 },
+    "api/copilot.js": { "maxDuration": 60 },
+    "api/transcribe.js": { "maxDuration": 60 }
   }
 }
