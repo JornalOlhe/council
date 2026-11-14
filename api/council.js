@@ -14,7 +14,7 @@ const stripThink = (t) =>
 export function buildProviders(env) {
   const list = [];
   if (env.GEMINI_API_KEY)
-    list.push({ name: "Gemini", kind: "gemini", key: env.GEMINI_API_KEY, model: env.GEMINI_MODEL || "gemini-3.8-flash" });
+    list.push({ name: "Gemini", kind: "gemini", key: env.GEMINI_API_KEY, model: env.GEMINI_MODEL || "gemini-3.5-flash-lite" });
   if (env.GROQ_API_KEY)
     list.push({ name: "Groq", kind: "openai", url: "https://api.groq.com/openai/v1/chat/completions", key: env.GROQ_API_KEY, model: env.GROQ_MODEL || "openai/gpt-oss-120b" });
   if (env.OPENROUTER_API_KEY)
