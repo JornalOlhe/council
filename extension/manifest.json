@@ -2,14 +2,43 @@
   "manifest_version": 3,
   "name": "IA Council",
   "short_name": "Council",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "O Copiloto do IA Council faz tarefas em sites num grupo de abas próprio (Council), mesmo quando você sai da aba.",
-  "icons": { "16": "icons/icon16.png", "32": "icons/icon32.png", "48": "icons/icon48.png", "128": "icons/icon128.png" },
-  "action": { "default_title": "IA Council", "default_icon": { "16": "icons/icon16.png", "32": "icons/icon32.png" } },
-  "background": { "service_worker": "background.js" },
-  "permissions": ["debugger", "tabs", "tabGroups", "storage", "alarms"],
-  "host_permissions": ["https://council-one-sigma.vercel.app/*"],
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_title": "IA Council",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": [
+    "debugger",
+    "tabs",
+    "tabGroups",
+    "storage",
+    "alarms"
+  ],
+  "host_permissions": [
+    "https://council-one-sigma.vercel.app/*"
+  ],
   "content_scripts": [
-    { "matches": ["https://council-one-sigma.vercel.app/*"], "js": ["content.js"], "run_at": "document_start" }
+    {
+      "matches": [
+        "https://council-one-sigma.vercel.app/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_start"
+    }
   ]
 }

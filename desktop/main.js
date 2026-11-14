@@ -19,6 +19,7 @@ let normalBounds = null;
 let stopFlag = false;
 
 if (!app.requestSingleInstanceLock()) app.quit();
+if (process.platform === "win32") app.setAppUserModelId("com.jornalolhe.iacouncil"); // notificações aparecem como "IA Council"
 app.on("second-instance", () => { if (win) { if (win.isMinimized()) win.restore(); win.focus(); } });
 
 // ---------- PowerShell persistente que move o mouse e aperta teclas (Windows) ----------
