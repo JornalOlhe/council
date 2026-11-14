@@ -4,6 +4,10 @@ Várias IAs (cada uma com sua chave) respondem ao seu prompt, **debatem entre si
 
 Stack: `index.html` (JS puro) + `api/council.js` (Node 20, sem dependências). Sem build.
 
+## Copiloto: imagens e arquivos
+- `{"type":"image"}` gera imagens grátis (Pollinations, sem chave), com "Outra versão" e "Baixar".
+- `{"type":"file"}` cria **PDF, DOCX, TXT, MD, CSV, HTML, JSON e ZIP** no próprio navegador (sem servidor): o PDF usa fontes padrão com acentos, o DOCX tem estilos de título/lista/tabela, o ZIP guarda vários arquivos (ex.: um site).
+
 ## Como funciona
 O site chama `/api/council` em etapas (cada uma com até ~55 s, por causa do limite de 60 s da Vercel):
 `start` (conversa ou conselho; o Gemini descreve as fotos) → `open` (rodada 1) → `debate` (1 a 3 vezes) → `final` (o presidente escolhido decide).
@@ -17,6 +21,9 @@ Você pede em português e ele faz:
 ### Extensão IA Council (Brave/Chrome/Edge) — `extension/`
 Igual ao Claude in Chrome: o Copiloto abre um **grupo de abas laranja "Council"** no navegador do usuário e controla as abas por depuração (`chrome.debugger`), sem mexer no mouse. A tarefa roda no service worker da extensão, então **continua mesmo se você sair da aba do site**; ao voltar, o site mostra o andamento/resultado.
 - Instalação: baixar `/extension/ia-council-extension.zip` → extrair → `brave://extensions` (ou `chrome://extensions`) → Modo do desenvolvedor → Carregar sem compactação.
+- **Permissão por site** (como o Claude in Chrome): antes de agir num site novo, pergunta "Permitir sempre / Só desta vez / Não permitir". As escolhas ficam em `chrome.storage.local`.
+- **Visual de depuração**: borda laranja pulsando + pílula "Council · passo atual · Parar" na própria aba (o Parar usa `Runtime.addBinding`).
+- **Divisão de trabalho entre modelos**: o planejador (Groq) escolhe as ações, o modelo de visão (Gemini) vê a página e decide cada passo, e um VERIFICADOR (outro modelo) confere o resultado antes de terminar; se não aprovar, a tarefa continua.
 - O site fala com a extensão por `content.js` (só no domínio oficial); a extensão só aceita mensagens desse domínio.
 - Gerar o zip depois de mudar a extensão: `npm run build:ext`.
 

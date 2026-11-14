@@ -4,7 +4,8 @@
 import { ask, askVision, buildProviders, EFFORTS } from "./council.js";
 
 const ENGINES = ["google", "youtube", "maps", "imagens", "noticias", "shopping", "wikipedia", "mercadolivre", "amazon", "github", "spotify", "tradutor"];
-const TYPES = ["search", "open", "copy", "timer", "screen", "email", "whatsapp", "route", "pc", "web"];
+const TYPES = ["search", "open", "copy", "timer", "screen", "email", "whatsapp", "route", "pc", "web", "image", "file"];
+const FILE_FORMATS = ["txt", "md", "csv", "html", "json", "pdf", "docx", "zip"];
 const WEB_TYPES = ["click", "type", "select", "key", "scroll", "navigate", "back", "forward", "wait", "done", "ask_user"];
 const WEB_KEYS = new Set(["enter", "tab", "escape", "backspace", "delete", "space", "arrowdown", "arrowup", "arrowleft", "arrowright", "pagedown", "pageup", "home", "end"]);
 const ACT_TYPES = ["click", "double_click", "right_click", "move", "drag", "scroll", "type", "key", "hotkey", "wait", "done", "ask_user"];
@@ -25,13 +26,15 @@ Você pode executar estas ações (o site do usuário executa por você):
 - {"type":"email","to":"","subject":"...","body":"..."}  abre um e-mail pronto no app de e-mail
 - {"type":"whatsapp","text":"...","phone":""}  abre o WhatsApp com a mensagem pronta (phone só com dígitos e DDI, ou vazio)
 - {"type":"route","from":"","to":"..."}  abre rota no Google Maps (from vazio = localização atual)
+- {"type":"image","prompt":"descrição DETALHADA em inglês (assunto, estilo, luz, cores, enquadramento)","width":1024,"height":1024}  GERA UMA IMAGEM (desenho, foto, logo, ilustração, wallpaper). Use 1024x1024 por padrão, 1280x720 para paisagem/wallpaper, 720x1280 para story/celular. Pode pôr até 4 ações image para variações.
+- {"type":"file","format":"pdf|docx|txt|md|csv|html|json|zip","name":"nome-do-arquivo.ext","title":"Título","content":"..."}  CRIA UM ARQUIVO para baixar. Escreva o conteúdo COMPLETO e caprichado (não resuma, não deixe "..." ou "[preencha]"). Para pdf/docx/md use markdown simples (# título, ## seção, - lista, **negrito**, tabelas | a | b |). Para csv use vírgulas e cabeçalho. Para zip use "files":[{"name":"pasta/arquivo.ext","content":"..."}] com cada arquivo completo (ex.: um site com index.html, style.css, script.js).
 ${app ? `- {"type":"web","goal":"..."}  usa o NAVEGADOR DO COPILOTO (uma janela própria que você controla sozinho, sem mexer no mouse do usuário) para tarefas DENTRO DE SITES: pesquisar e trazer a resposta, comparar preços, ler e resumir páginas, preencher formulários, navegar em lojas, fazer cadastros. PREFIRA "web" a "pc" para qualquer coisa em sites. O "goal" deve ser completo (o que buscar, onde, o que trazer de volta, textos exatos).
 ` : ""}- {"type":"pc","goal":"..."}  CONTROLA O COMPUTADOR do usuário (vê a tela, move o mouse, clica, digita) para cumprir o objetivo descrito. O "goal" deve ser COMPLETO e autoexplicativo: inclua todos os detalhes do pedido (programas, textos exatos entre aspas, ordem das etapas). ${pc ? "O PC ESTÁ CONECTADO: use esta ação para qualquer coisa em programas, janelas, arquivos ou no próprio computador." : "O PC NÃO está conectado: se o pedido exigir mexer no computador, inclua esta ação mesmo assim (o site vai pedir para conectar)."}
 
 LEIA O PEDIDO COM ATENÇÃO: entenda a intenção real, todas as partes (se houver "e depois", "também", listas), nomes, textos exatos, quantidades e horários. Não ignore nenhuma parte; se o pedido tiver várias tarefas, inclua uma ação para cada. Textos que o usuário quer escritos/enviados devem ir EXATAMENTE como ele pediu. Se algo essencial estiver ambíguo, pergunte em "say" (sem ações) em vez de chutar.
 Não finja que fez algo que não está nas ações. Se o usuário só quer ABRIR uma pesquisa ou site para ele mesmo ver, use "search"/"open". ${app ? 'Se ele quer que VOCÊ faça algo em um site ou traga uma informação de lá (ex.: "pesquise e me diga", "compare", "preencha", "veja o preço"), use "web".' : ""} Use "pc" para mexer em programas, no Windows, em arquivos, ou quando pedirem explicitamente para usar o mouse/teclado.
 Para perguntas sobre fatos atuais (preços, notícias, clima, resultados), responda o que souber com cautela e inclua uma ação de pesquisa.
-Para pedidos de texto (escrever, resumir, traduzir, calcular), responda no campo "say" e, se útil, adicione "copy".
+Para pedidos de texto (escrever, resumir, traduzir, calcular), responda no campo "say" e, se útil, adicione "copy". Se pedirem um ARQUIVO (pdf, word/docx, txt, planilha csv, zip, código) use "file"; se pedirem uma IMAGEM/desenho/foto/logo use "image" — nunca diga que não consegue gerar imagens ou arquivos.
 
 Responda APENAS com um JSON válido, sem texto fora dele:
 {"say":"resposta curta e natural para o usuário (markdown simples permitido)","actions":[ ...no máximo 4 ações... ]}`;
@@ -72,6 +75,23 @@ export function sanitizePlan(raw) {
       const g = str(a.goal, 1200); if (g) out.actions.push({ type: "web", goal: g });
     } else if (a.type === "pc") {
       const g = str(a.goal, 1000); if (g) out.actions.push({ type: "pc", goal: g });
+    } else if (a.type === "image") {
+      const p = str(a.prompt, 1500); if (!p) continue;
+      const dim = (v) => Math.max(256, Math.min(1536, Math.round(Number(v) || 1024)));
+      out.actions.push({ type: "image", prompt: p, width: dim(a.width), height: dim(a.height) });
+    } else if (a.type === "file") {
+      const fmt = FILE_FORMATS.includes(String(a.format || "").toLowerCase()) ? String(a.format).toLowerCase() : "txt";
+      let name = str(a.name, 120).replace(/[\\/:*?"<>|]+/g, "-") || "arquivo";
+      if (!name.toLowerCase().endsWith("." + fmt)) name = name.replace(/\.[a-z0-9]{1,5}$/i, "") + "." + fmt;
+      const f = { type: "file", format: fmt, name, title: str(a.title, 200), content: str(a.content, 60000) };
+      if (fmt === "zip") {
+        f.files = (Array.isArray(a.files) ? a.files : []).slice(0, 30).map((x) => ({
+          name: str(x && x.name, 160).replace(/\\/g, "/").replace(/^\/+|\.\.\/?/g, "").replace(/[:*?"<>|]+/g, "-"), content: str(x && x.content, 40000) }))
+          .filter((x) => x.name);
+        if (!f.files.length && f.content) f.files = [{ name: (f.title || "arquivo").replace(/[\\/:*?"<>|]+/g, "-") + ".txt", content: f.content }];
+        if (!f.files.length) continue;
+      } else if (!f.content) continue;
+      out.actions.push(f);
     } else if (a.type === "route") {
       const to = str(a.to, 300); if (to) out.actions.push({ type: "route", from: str(a.from, 300), to });
     }
@@ -234,6 +254,25 @@ export function sanitizeWeb(raw) {
   return out;
 }
 
+const VERIFY_SYSTEM = `Você é o VERIFICADOR do Copiloto. Outro modelo diz que terminou uma tarefa no navegador. Confira com rigor, usando só o PEDIDO, a PÁGINA ATUAL (URL, título, texto) e a RESPOSTA proposta:
+- A página/resposta é EXATAMENTE o que foi pedido? (pessoa/canal/produto certo — grafias parecidas valem, ex. "Assad"≈"Assaad"; todas as partes do pedido feitas)
+- A resposta inventa algo que não está na página?
+Responda APENAS com JSON: {"ok":true|false,"reason":"se não, o que falta ou está errado (1 frase, diga o que fazer)"}`;
+async function verifyWeb(providers, deciderModel, request, out, page, deadline) {
+  const pool = [...providers.filter((p) => p.name === "Groq"), ...providers.filter((p) => p.kind !== "gemini" && p.name !== "Groq")]
+    .filter((p) => !String(deciderModel || "").includes(p.model));
+  const user = `PEDIDO: "${request}"\n\nPÁGINA ATUAL: ${str(page.url, 400)}\nTÍTULO: ${str(page.title, 200)}\nTEXTO (trecho):\n${str(page.text, 4500)}\n\n` +
+    `O QUE O OUTRO MODELO FEZ: ${out.progress || ""} ${out.say}\nRESPOSTA PROPOSTA:\n${out.answer || "(nenhuma)"}`;
+  for (const p of pool.slice(0, 2)) {
+    try {
+      const t = await ask(p, VERIFY_SYSTEM, user, Math.min(deadline, Date.now() + 15000), { ...EFFORTS.low, timeout: 15000 }, 600);
+      const j = extractJSON(t);
+      if (j && typeof j.ok === "boolean") return { ok: j.ok, reason: str(j.reason, 300), model: p.lastUsed || p.model };
+    } catch {}
+  }
+  return null;
+}
+
 export default async function handler(req, res) {
   const send = (code, obj) => res.status(code).json(obj);
   try {
@@ -298,7 +337,19 @@ export default async function handler(req, res) {
             text = await ask(p, WEB_SYSTEM, user, deadline, eff, 3000); model = p.lastUsed || p.model;
           }
           const json = extractJSON(text);
-          if (json) return send(200, { ...sanitizeWeb(json), model });
+          if (json) {
+            const out = { ...sanitizeWeb(json), model };
+            // Divisão de trabalho: um modelo VÊ e decide; OUTRO modelo confere o resultado antes de dar por terminado
+            if (out.action.type === "done" && (Number(body.rejections) || 0) < 2 && deadline - Date.now() > 12000) {
+              const v = await verifyWeb(providers, model, str(body.request, 2000) || goal, out, page, deadline).catch(() => null);
+              if (v) {
+                out.checker = v.model;
+                if (!v.ok) return send(200, { ...out, action: { type: "wait", seconds: 0.3 }, then: [], answer: "", confirm: "",
+                  rejected: v.reason || "o resultado não bate com o pedido", say: "O verificador não aprovou: " + (v.reason || "o resultado não bate com o pedido") });
+              }
+            }
+            return send(200, out);
+          }
           lastErr = "resposta fora do formato";
         } catch (e) { lastErr = e.message; }
       }
@@ -335,7 +386,7 @@ export default async function handler(req, res) {
     const errors = [];
     for (const p of order) {
       try {
-        const out = await ask(p, PLAN_SYSTEM(now, tz, !!body.pc, !!body.app), user, deadline, { ...EFFORTS.medium, timeout: 30000 }, 3000);
+        const out = await ask(p, PLAN_SYSTEM(now, tz, !!body.pc, !!body.app), user, deadline, { ...EFFORTS.medium, timeout: 40000 }, 12000);
         const json = extractJSON(out);
         if (!json) { errors.push(`${p.name}: resposta fora do formato`); continue; }
         return send(200, { ...sanitizePlan(json), by: p.name, model: p.lastUsed || p.model });

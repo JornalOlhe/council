@@ -12,6 +12,7 @@ const READ_PAGE = `(() => {
   const sel = 'a[href],button,input:not([type=hidden]),textarea,select,[role=button],[role=link],[role=tab],[role=menuitem],[role=checkbox],[role=radio],[role=option],[role=switch],[role=combobox],[role=searchbox],[role=textbox],[contenteditable=""],[contenteditable=true],summary,[onclick],label[for]';
   let n = 0;
   for (const el of document.querySelectorAll(sel)) {
+    if (el.closest("#iac-pill")) continue;
     const r = el.getBoundingClientRect();
     if (r.width < 4 || r.height < 4 || r.bottom < 0 || r.top > vh || r.right < 0 || r.left > vw) continue;
     const st = getComputedStyle(el);
@@ -41,11 +42,24 @@ const KEYS = {
   pagedown: { key: "PageDown", code: "PageDown", keyCode: 34 }, pageup: { key: "PageUp", code: "PageUp", keyCode: 33 },
   home: { key: "Home", code: "Home", keyCode: 36 }, end: { key: "End", code: "End", keyCode: 35 },
 };
+// Visual igual ao Claude in Chrome: borda laranja brilhando + pílula embaixo com o passo atual e "Parar"
 const GLOW = `(() => { if (document.getElementById("iac-glow")) return; const s = document.createElement("style"); s.id = "iac-glow";
-  s.textContent = 'html::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:2147483647;box-shadow:inset 0 0 0 3px #d97757,inset 0 0 28px 4px rgba(217,119,87,.55)}';
-  (document.head || document.documentElement).appendChild(s); })()`;
-const UNGLOW = `(() => { const s = document.getElementById("iac-glow"); if (s) s.remove(); })()`;
+  s.textContent = 'html::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:2147483646;box-shadow:inset 0 0 0 3px #d97757,inset 0 0 34px 6px rgba(217,119,87,.5);animation:iacg 2.4s ease-in-out infinite}' +
+    '@keyframes iacg{50%{box-shadow:inset 0 0 0 2px #d97757,inset 0 0 18px 2px rgba(217,119,87,.35)}}' +
+    '#iac-pill{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:2147483647;display:flex;align-items:center;gap:10px;padding:7px 7px 7px 14px;border-radius:999px;background:#262624;color:#f3f1ea;font:500 13px/1.2 system-ui,-apple-system,Segoe UI,sans-serif;box-shadow:0 8px 28px rgba(0,0,0,.35),0 0 0 1px rgba(217,119,87,.7);pointer-events:auto}' +
+    '#iac-pill i{flex:none;width:8px;height:8px;border-radius:50%;background:#d97757;animation:iacp 1.1s ease-in-out infinite}@keyframes iacp{50%{opacity:.25}}' +
+    '#iac-pill b{font-weight:650;color:#d97757}#iac-pill span{max-width:44vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#d6d3cb}' +
+    '#iac-pill button{all:unset;cursor:pointer;background:#d97757;color:#fff;border-radius:999px;padding:5px 13px;font-weight:600}#iac-pill button:hover{background:#c4633f}';
+  (document.head || document.documentElement).appendChild(s);
+  const p = document.createElement("div"); p.id = "iac-pill";
+  const dot = document.createElement("i"), b = document.createElement("b"), sp = document.createElement("span"), bt = document.createElement("button");
+  b.textContent = "Council"; sp.textContent = window.__iacNow || "trabalhando nesta aba…"; bt.textContent = "Parar";
+  bt.onclick = () => { try { window.__iacStop("stop"); } catch (e) {} sp.textContent = "parando…"; };
+  p.append(dot, b, sp, bt); (document.body || document.documentElement).appendChild(p); })()`;
+const UNGLOW = `(() => { ["iac-glow", "iac-pill"].forEach((id) => { const e = document.getElementById(id); if (e) e.remove(); }); })()`;
+const pillText = (t) => `(() => { window.__iacNow = ${JSON.stringify(String(t || "").slice(0, 140))}; const s = document.querySelector("#iac-pill span"); if (s) s.textContent = window.__iacNow; })()`;
 
+const short = (m) => { m = String(m || "IA").replace(/^.*\//, "").replace(/:free$/, ""); return /gemini/i.test(m) ? "Gemini" : /gpt-oss/i.test(m) ? "GPT-OSS (Groq)" : /nemotron/i.test(m) ? "Nemotron" : /llama/i.test(m) ? "Llama" : m.slice(0, 30); };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let task = null; // tarefa atual (uma de cada vez)
 
@@ -63,7 +77,7 @@ async function emit() {
   chrome.action.setBadgeText({ text: task && task.status === "running" ? "●" : "" }).catch(() => {});
   chrome.action.setBadgeBackgroundColor({ color: "#d97757" }).catch(() => {});
 }
-function setNow(t) { if (task) { task.now = t; emit(); } }
+function setNow(t) { if (task) { task.now = t; emit(); if (task.tabId != null && t) evaluate(task.tabId, pillText(t)).catch(() => {}); } }
 function addLine(t, kind) { if (task) { task.lines.push({ t, kind: kind || "" }); if (task.lines.length > 80) task.lines.shift(); emit(); } }
 
 // ---------- aba no grupo "Council" ----------
@@ -75,7 +89,7 @@ async function ensureTab() {
   const st = await chrome.storage.session.get(["groupId", "windowId"]).catch(() => ({}));
   let windowId = st.windowId;
   if (windowId != null && !(await chrome.windows.get(windowId).catch(() => null))) windowId = null;
-  const tab = await chrome.tabs.create({ url: "about:blank", active: false, ...(windowId != null ? { windowId } : {}) });
+  const tab = await chrome.tabs.create({ url: "about:blank", active: true, ...(windowId != null ? { windowId } : {}) });
   let groupId = st.groupId;
   const g = groupId != null ? await chrome.tabGroups.get(groupId).catch(() => null) : null;
   if (g && g.windowId === tab.windowId) await chrome.tabs.group({ groupId, tabIds: [tab.id] });
@@ -92,6 +106,8 @@ async function attach(tabId) {
   if (targets.some((t) => t.tabId === tabId && t.attached)) return;
   await chrome.debugger.attach({ tabId }, "1.3");
   await cdp(tabId, "Page.enable").catch(() => {});
+  await cdp(tabId, "Runtime.enable").catch(() => {});
+  await cdp(tabId, "Runtime.addBinding", { name: "__iacStop" }).catch(() => {}); // botão "Parar" da pílula na própria aba
   await cdp(tabId, "Emulation.setFocusEmulationEnabled", { enabled: true }).catch(() => {}); // funciona com a aba em segundo plano
 }
 function cdp(tabId, method, params) {
@@ -109,6 +125,11 @@ async function evaluate(tabId, expr) {
 }
 chrome.debugger.onDetach.addListener((src, reason) => {
   if (task && src.tabId === task.tabId && task.status === "running") { task.detached = reason; }
+});
+chrome.debugger.onEvent.addListener((src, method, params) => {
+  if (method === "Runtime.bindingCalled" && params && params.name === "__iacStop" && task && src.tabId === task.tabId && task.status === "running") {
+    task.stop = true; const w = waiters.get(task.id); if (w) { waiters.delete(task.id); w(false); }
+  }
 });
 chrome.tabs.onRemoved.addListener((tabId) => { if (task && tabId === task.tabId) task.tabId = null; });
 
@@ -211,9 +232,31 @@ function askUser(kind, msg) {
   return new Promise((resolve) => waiters.set(task.id, resolve)).then((v) => { if (task) { task.waiting = null; emit(); } return v; });
 }
 
+// ---------- permissão por site (como o Claude in Chrome) ----------
+function hostOf(u) { try { const x = new URL(u); return /^https?:$/.test(x.protocol) ? x.hostname.replace(/^www\./, "") : ""; } catch { return ""; } }
+async function siteAllowed(host) {
+  if (!host || task.allowed.has(host)) return true;
+  const st = await chrome.storage.local.get(["allowAll", "allowedSites"]).catch(() => ({}));
+  return !!st.allowAll || (st.allowedSites || []).includes(host);
+}
+async function askSite(host) {
+  if (await siteAllowed(host)) return true;
+  await chrome.tabs.update(task.tabId, { active: true }).catch(() => {});
+  const choice = await askUser("site", host);
+  if (!choice) return false;
+  task.allowed.add(host);
+  if (choice === "always" || choice === "all") {
+    const st = await chrome.storage.local.get(["allowedSites"]).catch(() => ({}));
+    const list = new Set(st.allowedSites || []); list.add(host);
+    await chrome.storage.local.set(choice === "all" ? { allowAll: true, allowedSites: [...list] } : { allowedSites: [...list] }).catch(() => {});
+  }
+  addLine(choice === "all" ? "Você permitiu o Council em todos os sites" : "Você permitiu o Council em " + host + (choice === "always" ? " (sempre)" : " (só agora)"));
+  return true;
+}
+
 // ---------- o loop da tarefa ----------
 async function runTask(t) {
-  task = { ...t, steps: [], lines: [], status: "running", now: "Abrindo a aba no grupo Council…", waiting: null, answer: "", plan: "", tabId: null, stop: false };
+  task = { ...t, steps: [], lines: [], status: "running", now: "Abrindo a aba no grupo Council…", waiting: null, answer: "", plan: "", tabId: null, stop: false, allowed: new Set(), rejections: 0 };
   emit();
   chrome.alarms.create("iac-keepalive", { periodInMinutes: 0.5 });
   let step = 0;
@@ -242,15 +285,25 @@ async function runTask(t) {
       task.shot = page.image; task.url = page.url; task.title = page.title;
       setNow("Entendendo a página e decidindo o próximo passo…");
       const r = await fetch(API, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
-        stage: "web", goal: task.goal, request: task.request || task.goal, context: task.context || "", plan: task.plan, steps: task.steps,
+        stage: "web", rejections: task.rejections, goal: task.goal, request: task.request || task.goal, context: task.context || "", plan: task.plan, steps: task.steps,
         page: { url: page.url, title: page.title, elements: page.elements, text: page.text, scrollY: page.scrollY, scrollMax: page.scrollMax }, image: page.image }) });
       const plan = await r.json().catch(() => ({ error: "resposta inválida do servidor" }));
       if (!r.ok) throw new Error(plan.error || "Erro " + r.status);
       if (task.stop) return finish("stopped", "Parado por você.", "err");
-      if (plan.plan && !task.plan) { task.plan = plan.plan; addLine("Plano: " + plan.plan); }
+      if (plan.plan && !task.plan) { task.plan = plan.plan; addLine("Plano (" + short(plan.model) + " vê a página e decide): " + plan.plan); }
+      if (plan.rejected) {
+        task.rejections++;
+        addLine("🔎 " + short(plan.checker) + " conferiu e não aprovou: " + plan.rejected, "err");
+        task.steps.push("O VERIFICADOR recusou o resultado: " + plan.rejected + " — corrija antes de terminar.");
+        continue;
+      }
       task.target = null;
       const a = plan.action;
-      if (a.type === "done") { task.steps.push(plan.say); return finish("done", "✓ " + plan.say, "", plan.answer); }
+      if (a.type === "done") {
+        task.steps.push(plan.say);
+        if (plan.checker) addLine("🔎 Conferido por " + short(plan.checker));
+        return finish("done", "✓ " + plan.say, "", plan.answer);
+      }
       if (a.type === "ask_user") {
         task.steps.push("Pediu ajuda: " + plan.say);
         await chrome.tabs.update(task.tabId, { active: true }).catch(() => {});
@@ -266,6 +319,10 @@ async function runTask(t) {
         if (task.stop) return finish("stopped", "Parado por você.", "err");
         if (!ok) { task.steps.push("Usuário NÃO autorizou: " + plan.say); return finish("stopped", "Cancelado: você não autorizou.", "err"); }
       }
+      // permissão do site antes de agir nele
+      const host = a.type === "navigate" ? hostOf(a.url) : hostOf(page.url);
+      if (host && !(await askSite(host))) return finish("stopped", "Você não permitiu o Council em " + host + ".", "err");
+      if (task.stop) return finish("stopped", "Parado por você.", "err");
       setNow(plan.say);
       const did = [];
       try {
@@ -307,7 +364,12 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
       return { ok: true, id };
     }
     if (msg.type === "stop") { if (task && task.status === "running") { task.stop = true; const w = waiters.get(task.id); if (w) { waiters.delete(task.id); w(false); } } return { ok: true }; }
-    if (msg.type === "answer") { if (task) { const w = waiters.get(task.id); if (w) { waiters.delete(task.id); w(!!msg.yes); } } return { ok: true }; }
+    if (msg.type === "answer") { if (task) { const w = waiters.get(task.id); if (w) { waiters.delete(task.id); w(msg.choice ? msg.choice : !!msg.yes); } } return { ok: true }; }
+    if (msg.type === "perms") {
+      if (msg.reset) await chrome.storage.local.set({ allowAll: false, allowedSites: [] }).catch(() => {});
+      const st = await chrome.storage.local.get(["allowAll", "allowedSites"]).catch(() => ({}));
+      return { allowAll: !!st.allowAll, sites: st.allowedSites || [] };
+    }
     if (msg.type === "show") {
       if (task && task.tabId != null) {
         await chrome.tabs.update(task.tabId, { active: true }).catch(() => {});
