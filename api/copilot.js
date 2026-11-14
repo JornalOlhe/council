@@ -26,8 +26,10 @@ Você pode executar estas ações (o site do usuário executa por você):
 - {"type":"email","to":"","subject":"...","body":"..."}  abre um e-mail pronto no app de e-mail
 - {"type":"whatsapp","text":"...","phone":""}  abre o WhatsApp com a mensagem pronta (phone só com dígitos e DDI, ou vazio)
 - {"type":"route","from":"","to":"..."}  abre rota no Google Maps (from vazio = localização atual)
-- {"type":"image","prompt":"descrição DETALHADA em inglês (assunto, estilo, luz, cores, enquadramento)","width":1024,"height":1024}  GERA UMA IMAGEM (desenho, foto, logo, ilustração, wallpaper). Use 1024x1024 por padrão, 1280x720 para paisagem/wallpaper, 720x1280 para story/celular. Pode pôr até 4 ações image para variações.
-- {"type":"file","format":"pdf|docx|txt|md|csv|html|json|zip","name":"nome-do-arquivo.ext","title":"Título","content":"..."}  CRIA UM ARQUIVO para baixar. Escreva o conteúdo COMPLETO e caprichado (não resuma, não deixe "..." ou "[preencha]"). Para pdf/docx/md use markdown simples (# título, ## seção, - lista, **negrito**, tabelas | a | b |). Para csv use vírgulas e cabeçalho. Para zip use "files":[{"name":"pasta/arquivo.ext","content":"..."}] com cada arquivo completo (ex.: um site com index.html, style.css, script.js).
+- {"type":"image","prompt":"descrição DETALHADA em inglês","style":"realista|anime|3d|aquarela|pixel|cinematico|logo|ilustracao|nenhum","width":1024,"height":1024}  GERA UMA IMAGEM. O prompt deve ser rico (40-80 palavras): assunto e ação, cenário, composição/enquadramento, iluminação, paleta de cores, materiais/texturas, clima, nível de detalhe — sem texto escrito na imagem, a não ser que peçam. Escolha o "style" que combina com o pedido. 1024x1024 padrão, 1344x768 paisagem/wallpaper/banner, 768x1344 story/celular/pôster. Se pedirem "opções/variações", use 2 a 4 ações image com abordagens diferentes.
+- {"type":"file","format":"pdf|docx|txt|md|csv|html|json|zip","name":"nome-do-arquivo.ext","title":"Título","subtitle":"linha curta abaixo do título","theme":"laranja|azul|verde|roxo|minimal","content":"..."}  CRIA UM ARQUIVO para baixar.
+  QUALIDADE OBRIGATÓRIA para pdf/docx/md: documento PROFISSIONAL e COMPLETO (nada de "..." ou "[preencha]"), em markdown: comece com um parágrafo de resumo; use ## seções e ### subseções; listas com - ou 1.; **negrito** nos termos-chave; pelo menos UMA tabela | Coluna | Coluna | quando houver dados comparáveis (ingredientes, preços, cronograma, etapas, prós/contras); use linhas começando com "> " para dicas/destaques (viram caixas coloridas); termine com conclusão ou próximos passos. Receita: ingredientes em tabela (item | quantidade), modo de preparo numerado, tempo/rendimento, dicas. Currículo: dados, resumo, experiências, formação, habilidades em tabela.
+  html: página completa e bonita (CSS moderno embutido, responsiva, cores harmoniosas, fontes do Google). csv: cabeçalho + dados reais coerentes. zip: "files":[{"name":"pasta/arquivo.ext","content":"..."}] com cada arquivo completo e funcional (ex.: site com index.html, style.css, script.js caprichados).
 ${app ? `- {"type":"web","goal":"..."}  usa o NAVEGADOR DO COPILOTO (uma janela própria que você controla sozinho, sem mexer no mouse do usuário) para tarefas DENTRO DE SITES: pesquisar e trazer a resposta, comparar preços, ler e resumir páginas, preencher formulários, navegar em lojas, fazer cadastros. PREFIRA "web" a "pc" para qualquer coisa em sites. O "goal" deve ser completo (o que buscar, onde, o que trazer de volta, textos exatos).
 ` : ""}- {"type":"pc","goal":"..."}  CONTROLA O COMPUTADOR do usuário (vê a tela, move o mouse, clica, digita) para cumprir o objetivo descrito. O "goal" deve ser COMPLETO e autoexplicativo: inclua todos os detalhes do pedido (programas, textos exatos entre aspas, ordem das etapas). ${pc ? "O PC ESTÁ CONECTADO: use esta ação para qualquer coisa em programas, janelas, arquivos ou no próprio computador." : "O PC NÃO está conectado: se o pedido exigir mexer no computador, inclua esta ação mesmo assim (o site vai pedir para conectar)."}
 
@@ -82,12 +84,14 @@ export function sanitizePlan(raw) {
     } else if (a.type === "image") {
       const p = str(a.prompt, 1500); if (!p) continue;
       const dim = (v) => Math.max(256, Math.min(1536, Math.round(Number(v) || 1024)));
-      out.actions.push({ type: "image", prompt: p, width: dim(a.width), height: dim(a.height) });
+      const STY = ["realista", "anime", "3d", "aquarela", "pixel", "cinematico", "logo", "ilustracao", "nenhum"];
+      out.actions.push({ type: "image", prompt: p, style: STY.includes(a.style) ? a.style : "nenhum", width: dim(a.width), height: dim(a.height) });
     } else if (a.type === "file") {
       const fmt = FILE_FORMATS.includes(String(a.format || "").toLowerCase()) ? String(a.format).toLowerCase() : "txt";
       let name = str(a.name, 120).replace(/[\\/:*?"<>|]+/g, "-") || "arquivo";
       if (!name.toLowerCase().endsWith("." + fmt)) name = name.replace(/\.[a-z0-9]{1,5}$/i, "") + "." + fmt;
-      const f = { type: "file", format: fmt, name, title: str(a.title, 200), content: str(a.content, 60000) };
+      const THEMES = ["laranja", "azul", "verde", "roxo", "minimal"];
+      const f = { type: "file", format: fmt, name, title: str(a.title, 200), subtitle: str(a.subtitle, 200), theme: THEMES.includes(a.theme) ? a.theme : "laranja", content: str(a.content, 60000) };
       if (fmt === "zip") {
         f.files = (Array.isArray(a.files) ? a.files : []).slice(0, 30).map((x) => ({
           name: str(x && x.name, 160).replace(/\\/g, "/").replace(/^\/+|\.\.\/?/g, "").replace(/[:*?"<>|]+/g, "-"), content: str(x && x.content, 40000) }))
@@ -202,7 +206,9 @@ MÉTODO (siga sempre):
 ATALHOS (use!):
 - Google: https://www.google.com/search?q=TERMOS  (o resumo e os primeiros resultados costumam ter a resposta: leia o TEXTO antes de clicar)
 - YouTube: pesquisa https://www.youtube.com/results?search_query=TERMOS ; canal = clique no NOME do canal nos resultados. "Vídeo mais recente" = https://www.youtube.com/@HANDLE/videos e o PRIMEIRO vídeo da grade (ignore Shorts, lives agendadas e recomendados).
-- Mercado Livre: https://lista.mercadolivre.com.br/TERMOS ; Amazon: https://www.amazon.com.br/s?k=TERMOS ; Wikipedia: https://pt.wikipedia.org/wiki/TITULO ; Maps: https://www.google.com/maps/search/TERMOS ; notícias: https://news.google.com/search?q=TERMOS&hl=pt-BR
+- Mercado Livre: https://lista.mercadolivre.com.br/TERMOS-COM-HIFENS ; MAIS BARATOS = https://lista.mercadolivre.com.br/TERMOS-COM-HIFENS_OrderId_PRICE (já vem do menor para o maior: leia o TEXTO e pegue os primeiros que sejam o produto certo, ignorando acessórios/capas/peças). Amazon: https://www.amazon.com.br/s?k=TERMOS (mais baratos: acrescente &s=price-asc-rank) ; Wikipedia: https://pt.wikipedia.org/wiki/TITULO ; Maps: https://www.google.com/maps/search/TERMOS ; notícias: https://news.google.com/search?q=TERMOS&hl=pt-BR
+- Preços/listas: ignore anúncios de ACESSÓRIOS ou produtos diferentes do pedido (ex.: pediu "PS5" → console, não controle/jogo/capa). Copie o preço exato do texto, com centavos.
+- Informação simples (clima, cotação, horário, resultado de jogo, definição): o resumo do Google costuma bastar — leia o TEXTO e termine.
 - Pop-up de cookies/aviso atrapalhando: feche ou aceite só o essencial antes de seguir.
 - Elemento não está na lista: role a página (scroll) ou use "point" [y,x] 0-1000 na captura (quando houver).
 

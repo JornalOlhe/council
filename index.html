@@ -234,6 +234,37 @@ body.collapsed #openSide{display:grid}
 .cnote{color:var(--mut);font-size:12.5px;margin-top:14px;text-align:center;max-width:560px}
 .acards{display:flex;flex-direction:column;gap:8px;margin:4px 0 12px}
 .acard{display:flex;align-items:center;gap:12px;border:1px solid var(--line);background:#ffffff06;border-radius:12px;padding:10px 12px;font-size:14.5px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;padding:8px 10px 0}
+.chip{border:1px solid var(--line2);background:#ffffff08;color:#d6d3cb;border-radius:999px;padding:4px 11px;font-size:12.5px;cursor:pointer;transition:background .15s,border-color .15s}
+.chip:hover{background:#ffffff14}.chip.on{background:var(--ac);border-color:var(--ac);color:#fff}
+.chip .sw{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:0}
+.genimg .gi img{cursor:zoom-in}
+.lbox{position:fixed;inset:0;z-index:80;background:#000e;display:grid;place-items:center;padding:24px;cursor:zoom-out}
+.lbox img{max-width:100%;max-height:100%;border-radius:10px;box-shadow:0 20px 70px #000}
+.fcard{border:1px solid var(--line);border-radius:14px;background:#ffffff06;overflow:hidden;max-width:620px}
+.fcard .fh{display:flex;align-items:center;gap:12px;padding:12px}
+.fcard .fico{width:42px;height:50px;border-radius:7px;display:grid;place-items:center;color:#fff;font:700 10.5px/1 system-ui;letter-spacing:.3px;flex:none;box-shadow:inset 0 -14px 0 #0002}
+.fcard .ft{flex:1;min-width:0}.fcard .ft b{display:block;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fcard .ft span{color:var(--mut);font-size:12.5px}
+.fcard .fb{display:flex;gap:6px;flex-wrap:wrap;padding:0 12px 12px}
+.fcard .thumb{height:150px;overflow:hidden;position:relative;border-top:1px solid var(--line);background:#fff;cursor:pointer}
+.fcard .thumb iframe{border:0;width:200%;height:300px;transform:scale(.5);transform-origin:0 0;pointer-events:none;background:#fff}
+.fcard .thumb:after{content:"";position:absolute;inset:auto 0 0;height:50px;background:linear-gradient(transparent,#26262470)}
+.viewer .mbox{width:min(900px,100%);height:92vh}
+.viewer .vbody{flex:1;min-height:0;overflow:auto;background:#fff;color:#222;border-radius:0 0 16px 16px}
+.viewer .vbody iframe{border:0;width:100%;height:100%;display:block}
+.viewer .vdoc{max-width:760px;margin:0 auto;padding:36px 40px;font:15.5px/1.65 Calibri,"Segoe UI",system-ui,sans-serif}
+.viewer .vdoc h1,.viewer .vdoc h2,.viewer .vdoc h3{color:var(--vth,#b5532f);margin:1.2em 0 .4em}
+.viewer .vdoc table{border-collapse:collapse;width:100%;margin:10px 0}.viewer .vdoc th{background:var(--vth,#d97757);color:#fff;text-align:left}
+.viewer .vdoc th,.viewer .vdoc td{padding:7px 10px;border:1px solid #ddd}.viewer .vdoc tr:nth-child(even) td{background:#f7f5f1}
+.viewer .vdoc blockquote{margin:12px 0;padding:10px 14px;border-left:4px solid var(--vth,#d97757);background:#faf3ef;border-radius:4px}
+.viewer textarea{flex:1;min-height:0;margin:0;border:0;border-radius:0 0 16px 16px;background:#1e1e1c;color:#eee;font:13.5px/1.55 ui-monospace,Consolas,monospace;padding:16px;resize:none;outline:none}
+.viewer .vtree{padding:14px 18px;font:13px/1.6 ui-monospace,Consolas,monospace;color:#222;white-space:pre-wrap}
+.shotwrap .acur{position:absolute;left:0;top:0;width:20px;height:24px;margin:-2px 0 0 -2px;z-index:3;pointer-events:none;transition:left .42s cubic-bezier(.3,.8,.3,1),top .42s cubic-bezier(.3,.8,.3,1);filter:drop-shadow(0 2px 4px #0008) drop-shadow(0 0 6px #d97757aa)}
+.shotwrap .acur i{position:absolute;left:-12px;top:-12px;width:26px;height:26px;border-radius:50%;border:2.5px solid #d97757;opacity:0}
+.shotwrap .acur.clk i{animation:iacr .6s ease-out}@keyframes iacr{0%{opacity:1;transform:scale(.3)}100%{opacity:0;transform:scale(1.6)}}
+.shotwrap .acur b{position:absolute;left:18px;top:18px;background:#d97757;color:#fff;font:600 10.5px/1 system-ui;padding:3px 6px;border-radius:5px;white-space:nowrap;display:none}
+.shotwrap .acur.typ b{display:block}
 .genimg{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#ffffff06;max-width:520px}
 .genimg .gi{position:relative;background:#ffffff08;min-height:180px;display:grid;place-items:center}
 .genimg img{display:block;width:100%;height:auto}
@@ -495,8 +526,8 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
     <button class="first" id="newBtn"><svg class="ico"><use href="#i-plus"/></svg>Criar<span class="kbd">Ctrl+Shift+O</span></button>
     <button id="searchBtn"><svg class="ico"><use href="#i-search"/></svg>Procurar</button>
     <div class="search hidden" id="searchBox"><svg style="width:16px;height:16px;color:var(--mut)"><use href="#i-search"/></svg><input id="searchIn" placeholder="Procurar nas conversas" aria-label="Procurar"></div>
-    <button id="membersBtn"><svg class="ico"><use href="#i-users"/></svg>Membros do conselho</button>
-    <button id="attachNav"><svg class="ico"><use href="#i-clip"/></svg>Anexar fotos</button>
+    <button id="membersBtn" class="hidden"><svg class="ico"><use href="#i-users"/></svg>Membros do conselho</button>
+    <button id="attachNav" class="hidden"><svg class="ico"><use href="#i-clip"/></svg>Anexar fotos</button>
   </nav>
   <div class="rhw"><button class="rh" id="recentToggle">Recentes <svg><use href="#i-chev"/></svg></button><button class="ib rf" id="recentFilter" title="Procurar" aria-label="Procurar nas conversas"><svg style="width:15px;height:15px"><use href="#i-filter"/></svg></button></div>
   <div class="recent" id="recent"></div>
@@ -556,7 +587,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
     <span class="sp" id="underSp"></span>
     <button class="pick" id="modelPick"><b id="pickName">Conselho</b><span class="m" id="pickEffort">1 rodada</span></button>
     <button class="pick" id="modePick"><b id="modeTxt">Auto</b></button>
-    <button class="pick pcpill" id="pcPill"><span class="dot"></span><span id="pcPillTxt">Conectar PC</span></button>
+    <button class="pick pcpill hidden" id="pcPill"><span class="dot"></span><span id="pcPillTxt">Conectar PC</span></button>
   </div>
 </div>
 <input type="file" id="file" accept="image/*,.txt,.md,.markdown,.csv,.tsv,.json,.xml,.html,.htm,.css,.js,.mjs,.ts,.jsx,.tsx,.py,.java,.c,.cpp,.h,.hpp,.cs,.go,.rs,.rb,.php,.sql,.yaml,.yml,.toml,.ini,.log,.sh,.bat,.ps1,.kt,.swift,.vue,.svelte,.lua,.r,.srt,.vtt" multiple hidden>
@@ -1133,7 +1164,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
     var cop = mode === "copilot";
     $("segChat").classList.toggle("on", !cop); $("segCopilot").classList.toggle("on", cop);
     $("greetStar").classList.toggle("hidden", cop); $("greetHelm").classList.toggle("hidden", !cop);
-    $("modelPick").classList.toggle("hidden", cop); $("modePick").classList.toggle("hidden", cop); $("pcPill").classList.remove("hidden");
+    $("modelPick").classList.toggle("hidden", cop); $("modePick").classList.toggle("hidden", cop); $("pcPill").classList.add("hidden");
     $("disc").textContent = cop ? "O copiloto age no seu navegador. Confira antes de enviar e-mails e mensagens." : "O IA Council é uma IA e pode cometer erros. Confira informações importantes.";
     setGreet();
     if (!keep) goHome(); else place($("chat").classList.contains("hidden") ? "home" : "dock");
@@ -1155,9 +1186,13 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
       '<div class="hd">' + esc(location.host) + "</div>" +
       '<button class="it" data-a="src">' + ic("code") + "Código-fonte no GitHub</button>" +
       '<button class="it" data-a="about">' + ic("info") + "Como funciona</button>" +
+      '<button class="it" data-a="ext">' + ic("globe") + 'Extensão para navegador<span class="r">' + (EXT.ready ? "ativa" : "") + "</span></button>" +
+      (D ? "" : '<button class="it" data-a="app">' + ic("monitor") + "App para Windows</button>") +
       (D ? "<hr>" + '<button class="it" data-a="upd">' + ic("retry") + 'Procurar atualizações<span class="r">' + esc(pc.version ? "app " + pc.version : "") + "</span></button>" +
         (sget(PERMK) === "always" ? '<button class="it" data-a="perm">' + ic("monitor") + "Pedir permissão antes de mexer no PC</button>" : "") : ""));
     p.querySelector('[data-a="src"]').onclick = function () { closePop(); window.open("https://github.com/JornalOlhe/council", "_blank", "noopener"); };
+    p.querySelector('[data-a="ext"]').onclick = function () { closePop(); openExt(); };
+    var ba = p.querySelector('[data-a="app"]'); if (ba) ba.onclick = function () { closePop(); openPC(); };
     p.querySelector('[data-a="about"]').onclick = function () { closePop(); goHome(); ta.value = "Como funciona o IA Council?"; autosize(); updSend(); };
     var bu = p.querySelector('[data-a="upd"]');
     if (bu) bu.onclick = function () {
@@ -1954,6 +1989,13 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
     function paint(t) {
       if (!t || closed || (myId && t.id !== myId)) return;
       if (t.shot && t.shot !== lastShot) { lastShot = t.shot; wrap.classList.remove("hidden"); img.src = t.shot; }
+      if (t.cur && t.status === "running") {
+        var cu = wrap.querySelector(".acur");
+        if (!cu) { cu = document.createElement("div"); cu.className = "acur"; cu.innerHTML = '<i></i><svg width="20" height="24" viewBox="0 0 22 26"><path d="M2 1.5v20.2l5.6-5.2 3.6 8.3 3.7-1.6-3.6-8.1 7.7-.3z" fill="#d97757" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg><b>digitando…</b>'; wrap.appendChild(cu); }
+        cu.style.left = (t.cur.x * 100).toFixed(2) + "%"; cu.style.top = (t.cur.y * 100).toFixed(2) + "%";
+        cu.classList.toggle("typ", t.cur.mode === "type");
+        if (t.cur.mode === "click" && cu.dataset.n !== String(t.cur.n)) { cu.dataset.n = t.cur.n; cu.classList.remove("clk"); void cu.offsetWidth; cu.classList.add("clk"); }
+      } else if (t.status !== "running") { var cx = wrap.querySelector(".acur"); if (cx) cx.remove(); }
       if (t.url) { obs.classList.remove("hidden"); obs.textContent = "🌐 " + (t.title ? t.title + " — " : "") + t.url.replace(/^https?:\/\/(www\.)?/, "").slice(0, 90); }
       alog.innerHTML = (t.lines || []).map(function (l) { return '<div class="ln' + (l.kind ? " " + l.kind : "") + '">' + (l.kind === "err" ? "<span>⚠</span>" : '<svg><use href="#i-check"/></svg>') + "<span>" + esc(l.t) + "</span></div>"; }).join("") +
         (t.status === "running" && t.now ? '<div class="ln cur"><svg class="star spinstar" style="color:var(--ac)"><use href="#i-star"/></svg><span>' + esc(t.now) + "</span></div>" : "");
@@ -2042,6 +2084,13 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
 
   // ----- executar e desenhar ações -----
   // ---------- arquivos gerados pelo Copiloto (zip, docx, pdf, txt…) — tudo no navegador, sem servidor ----------
+  var THEMES = {
+    laranja: { name: "Laranja", a: "D97757", d: "B5532F", s: "FBEDE6" },
+    azul: { name: "Azul", a: "2F6FED", d: "1D4FB8", s: "E8F0FE" },
+    verde: { name: "Verde", a: "1F9D57", d: "157A43", s: "E6F5EC" },
+    roxo: { name: "Roxo", a: "7C4DDB", d: "5B33B0", s: "F0EAFC" },
+    minimal: { name: "Minimal", a: "2B2A28", d: "111111", s: "F1F0EC" },
+  };
   var MAKE = (function () {
     var enc = new TextEncoder(), CRC = null;
     function crc32(u8) {
@@ -2074,19 +2123,23 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
         if (/^\s*```/.test(l)) { if (code) { out.push({ t: "code", x: code.join("\n") }); code = null; } else code = []; continue; }
         if (code) { code.push(l); continue; }
         if (!l.trim()) { out.push({ t: "gap" }); continue; }
-        if ((m = /^(#{1,3})\s+(.*)$/.exec(l))) { out.push({ t: "h" + m[1].length, x: m[2] }); continue; }
+        if ((m = /^(#{1,4})\s+(.*)$/.exec(l))) { out.push({ t: "h" + Math.min(3, m[1].length), x: m[2] }); continue; }
         if (/^\s*\|.*\|\s*$/.test(l)) {
           var rows = [];
           while (i < L.length && /^\s*\|.*\|\s*$/.test(L[i])) {
             var r = L[i].trim().slice(1, -1).split("|").map(function (c) { return c.trim(); });
             if (!r.every(function (c) { return /^:?-{2,}:?$/.test(c); })) rows.push(r); i++;
           }
-          i--; out.push({ t: "table", rows: rows }); continue;
+          i--; if (rows.length) out.push({ t: "table", rows: rows }); continue;
+        }
+        if ((m = /^\s*>\s?(.*)$/.exec(l))) {
+          var q = [m[1]]; while (i + 1 < L.length && /^\s*>/.test(L[i + 1])) { i++; q.push(L[i].replace(/^\s*>\s?/, "")); }
+          out.push({ t: "quote", x: q.join(" ").trim() }); continue;
         }
         if ((m = /^\s*[-*•]\s+(.*)$/.exec(l))) { out.push({ t: "li", x: m[1] }); continue; }
         if ((m = /^\s*(\d+)[.)]\s+(.*)$/.exec(l))) { out.push({ t: "li", x: m[2], n: m[1] }); continue; }
         if (/^\s*(---+|\*\*\*+)\s*$/.test(l)) { out.push({ t: "hr" }); continue; }
-        out.push({ t: "p", x: l.replace(/^>\s?/, "") });
+        out.push({ t: "p", x: l });
       }
       if (code) out.push({ t: "code", x: code.join("\n") });
       return out;
@@ -2095,51 +2148,70 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
       var out = [];
       String(x).split(/(\*\*[^*]+\*\*)/).forEach(function (p) {
         if (!p) return; var b = /^\*\*[\s\S]*\*\*$/.test(p);
-        out.push({ b: b, text: (b ? p.slice(2, -2) : p).replace(/`([^`]+)`/g, "$1").replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1 ($2)").replace(/(^|[^*\w])\*([^*\n]+)\*/g, "$1$2") });
+        out.push({ b: b, text: (b ? p.slice(2, -2) : p).replace(/`([^`]+)`/g, "$1").replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1 ($2)").replace(/(^|[^*\w])\*([^*\n]+)\*/g, "$1$2").replace(/\p{Extended_Pictographic}️?/gu, "") });
       });
       return out;
     }
+    function today() { return new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" }); }
     function xe(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, ""); }
-    function docx(title, src) {
-      function para(x, style) {
-        return "<w:p>" + (style ? '<w:pPr><w:pStyle w:val="' + style + '"/></w:pPr>' : "") + runs(x).map(function (r) {
-          return "<w:r>" + (r.b ? "<w:rPr><w:b/></w:rPr>" : "") + '<w:t xml:space="preserve">' + xe(r.text) + "</w:t></w:r>"; }).join("") + "</w:p>";
+
+    // ===== DOCX com tema, rodapé com página, tabelas e caixas de destaque =====
+    function docx(title, src, th, sub) {
+      th = THEMES[th] || THEMES.laranja;
+      function rr(r, extra) { return "<w:r>" + (r.b || extra ? "<w:rPr>" + (r.b ? "<w:b/>" : "") + (extra || "") + "</w:rPr>" : "") + '<w:t xml:space="preserve">' + xe(r.text) + "</w:t></w:r>"; }
+      function para(x, style, extra, ppr) {
+        return "<w:p>" + (style || ppr ? "<w:pPr>" + (style ? '<w:pStyle w:val="' + style + '"/>' : "") + (ppr || "") + "</w:pPr>" : "") + runs(x).map(function (r) { return rr(r, extra); }).join("") + "</w:p>";
       }
       var body = [];
-      if (title) body.push(para(title, "Title"));
+      if (title) {
+        body.push(para(title, "Title"));
+        body.push(para((sub ? sub + "  ·  " : "") + today(), "Subtitle"));
+      }
       blocks(src).forEach(function (b) {
         if (b.t === "gap") return;
-        if (b.t === "hr") body.push('<w:p><w:pPr><w:pBdr><w:bottom w:val="single" w:sz="6" w:space="1" w:color="BFBFBF"/></w:pBdr></w:pPr></w:p>');
+        if (b.t === "hr") body.push('<w:p><w:pPr><w:pBdr><w:bottom w:val="single" w:sz="6" w:space="1" w:color="' + th.a + '"/></w:pBdr></w:pPr></w:p>');
         else if (/^h\d$/.test(b.t)) body.push(para(b.x, "Heading" + b.t[1]));
-        else if (b.t === "li") body.push(para((b.n ? b.n + ". " : "• ") + b.x, "ListParagraph"));
+        else if (b.t === "li") body.push(b.n ? para(b.n + ".  " + b.x, "ListParagraph") : "<w:p><w:pPr><w:pStyle w:val=\"ListParagraph\"/></w:pPr>" + rr({ text: "●  " }, '<w:color w:val="' + th.a + '"/><w:sz w:val="16"/>') + runs(b.x).map(function (r) { return rr(r); }).join("") + "</w:p>");
+        else if (b.t === "quote") body.push(para(b.x, "Callout"));
         else if (b.t === "code") b.x.split("\n").forEach(function (l) { body.push('<w:p><w:pPr><w:pStyle w:val="Code"/></w:pPr><w:r><w:t xml:space="preserve">' + xe(l) + "</w:t></w:r></w:p>"); });
         else if (b.t === "table") {
-          var bd = ["top", "left", "bottom", "right", "insideH", "insideV"].map(function (s) { return "<w:" + s + ' w:val="single" w:sz="4" w:color="BFBFBF"/>'; }).join("");
-          body.push('<w:tbl><w:tblPr><w:tblW w:w="5000" w:type="pct"/><w:tblBorders>' + bd + "</w:tblBorders></w:tblPr>" + b.rows.map(function (r, ri) {
-            return "<w:tr>" + r.map(function (c) { return "<w:tc>" + (ri === 0 ? '<w:tcPr><w:shd w:val="clear" w:color="auto" w:fill="F2EFE8"/></w:tcPr>' : "") + para(ri === 0 ? "**" + c.replace(/\*\*/g, "") + "**" : c) + "</w:tc>"; }).join("") + "</w:tr>";
-          }).join("") + "</w:tbl>", "<w:p/>");
+          var bd = ["top", "left", "bottom", "right", "insideH", "insideV"].map(function (s) { return "<w:" + s + ' w:val="single" w:sz="4" w:color="D9D6CF"/>'; }).join("");
+          body.push('<w:tbl><w:tblPr><w:tblW w:w="5000" w:type="pct"/><w:tblBorders>' + bd + '</w:tblBorders><w:tblCellMar><w:top w:w="80" w:type="dxa"/><w:left w:w="120" w:type="dxa"/><w:bottom w:w="80" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tblCellMar></w:tblPr>' + b.rows.map(function (r, ri) {
+            var fill = ri === 0 ? th.a : ri % 2 === 0 ? th.s : "FFFFFF";
+            return "<w:tr>" + (ri === 0 ? "<w:trPr><w:tblHeader/></w:trPr>" : "") + r.map(function (c) {
+              return '<w:tc><w:tcPr><w:shd w:val="clear" w:color="auto" w:fill="' + fill + '"/></w:tcPr>' +
+                (ri === 0 ? para(c.replace(/\*\*/g, ""), "TableText", '<w:b/><w:color w:val="FFFFFF"/>') : para(c, "TableText")) + "</w:tc>";
+            }).join("") + "</w:tr>";
+          }).join("") + "</w:tbl>", '<w:p><w:pPr><w:spacing w:after="60"/></w:pPr></w:p>');
         } else body.push(para(b.x));
       });
-      var W = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"';
+      var W = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"';
       var doc = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document ' + W + "><w:body>" + body.join("") +
-        '<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1418" w:right="1418" w:bottom="1418" w:left="1418" w:header="709" w:footer="709" w:gutter="0"/></w:sectPr></w:body></w:document>';
+        '<w:sectPr><w:footerReference w:type="default" r:id="rId2"/><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1300" w:right="1300" w:bottom="1300" w:left="1300" w:header="600" w:footer="600" w:gutter="0"/></w:sectPr></w:body></w:document>';
+      var footer = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:ftr ' + W + '><w:p><w:pPr><w:pBdr><w:top w:val="single" w:sz="4" w:space="6" w:color="' + th.a + '"/></w:pBdr><w:tabs><w:tab w:val="right" w:pos="9300"/></w:tabs></w:pPr>' +
+        '<w:r><w:rPr><w:color w:val="8A8780"/><w:sz w:val="17"/></w:rPr><w:t xml:space="preserve">' + xe(title || "Documento") + '</w:t></w:r><w:r><w:rPr><w:color w:val="8A8780"/><w:sz w:val="17"/></w:rPr><w:tab/><w:t xml:space="preserve">Página </w:t></w:r>' +
+        '<w:r><w:rPr><w:color w:val="8A8780"/><w:sz w:val="17"/></w:rPr><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:rPr><w:color w:val="8A8780"/><w:sz w:val="17"/></w:rPr><w:instrText xml:space="preserve"> PAGE </w:instrText></w:r><w:r><w:rPr><w:color w:val="8A8780"/><w:sz w:val="17"/></w:rPr><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:rPr><w:color w:val="8A8780"/><w:sz w:val="17"/></w:rPr><w:t>1</w:t></w:r><w:r><w:rPr><w:color w:val="8A8780"/><w:sz w:val="17"/></w:rPr><w:fldChar w:fldCharType="end"/></w:r></w:p></w:ftr>';
       function st(id, name, rpr, ppr) { return '<w:style w:type="paragraph" w:styleId="' + id + '"><w:name w:val="' + name + '"/><w:basedOn w:val="Normal"/><w:qFormat/>' + (ppr ? "<w:pPr>" + ppr + "</w:pPr>" : "") + "<w:rPr>" + rpr + "</w:rPr></w:style>"; }
-      var styles = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles ' + W + '><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri"/><w:sz w:val="22"/><w:lang w:val="pt-BR"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="120" w:line="276" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults>' +
+      var styles = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles ' + W + '><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri"/><w:color w:val="2B2A28"/><w:sz w:val="22"/><w:lang w:val="pt-BR"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="140" w:line="288" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults>' +
         '<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:qFormat/></w:style>' +
-        st("Title", "Title", '<w:b/><w:sz w:val="44"/><w:color w:val="1F1E1D"/>', '<w:spacing w:after="240"/>') +
-        st("Heading1", "heading 1", '<w:b/><w:sz w:val="32"/><w:color w:val="C4633F"/>', '<w:keepNext/><w:spacing w:before="320" w:after="120"/><w:outlineLvl w:val="0"/>') +
-        st("Heading2", "heading 2", '<w:b/><w:sz w:val="27"/><w:color w:val="1F1E1D"/>', '<w:keepNext/><w:spacing w:before="240" w:after="100"/><w:outlineLvl w:val="1"/>') +
-        st("Heading3", "heading 3", '<w:b/><w:sz w:val="23"/><w:color w:val="444444"/>', '<w:keepNext/><w:spacing w:before="200" w:after="80"/><w:outlineLvl w:val="2"/>') +
-        st("ListParagraph", "List Paragraph", "", '<w:ind w:left="360"/><w:spacing w:after="60"/>') +
-        st("Code", "Code", '<w:rFonts w:ascii="Consolas" w:hAnsi="Consolas"/><w:sz w:val="19"/>', '<w:spacing w:after="0"/><w:shd w:val="clear" w:color="auto" w:fill="F4F4F4"/>') + "</w:styles>";
+        st("Title", "Title", '<w:rFonts w:ascii="Calibri Light" w:hAnsi="Calibri Light"/><w:b/><w:sz w:val="52"/><w:color w:val="' + th.d + '"/>', '<w:spacing w:after="40"/>') +
+        st("Subtitle", "Subtitle", '<w:color w:val="8A8780"/><w:sz w:val="21"/>', '<w:pBdr><w:bottom w:val="single" w:sz="12" w:space="8" w:color="' + th.a + '"/></w:pBdr><w:spacing w:after="320"/>') +
+        st("Heading1", "heading 1", '<w:b/><w:sz w:val="32"/><w:color w:val="' + th.d + '"/>', '<w:keepNext/><w:spacing w:before="360" w:after="120"/><w:outlineLvl w:val="0"/>') +
+        st("Heading2", "heading 2", '<w:b/><w:sz w:val="26"/><w:color w:val="1F1E1D"/>', '<w:keepNext/><w:pBdr><w:left w:val="single" w:sz="24" w:space="6" w:color="' + th.a + '"/></w:pBdr><w:spacing w:before="280" w:after="100"/><w:outlineLvl w:val="1"/>') +
+        st("Heading3", "heading 3", '<w:b/><w:sz w:val="23"/><w:color w:val="' + th.a + '"/>', '<w:keepNext/><w:spacing w:before="200" w:after="80"/><w:outlineLvl w:val="2"/>') +
+        st("ListParagraph", "List Paragraph", "", '<w:ind w:left="400" w:hanging="260"/><w:spacing w:after="70"/>') +
+        st("Callout", "Callout", '<w:color w:val="2B2A28"/>', '<w:pBdr><w:left w:val="single" w:sz="24" w:space="8" w:color="' + th.a + '"/></w:pBdr><w:shd w:val="clear" w:color="auto" w:fill="' + th.s + '"/><w:ind w:left="180" w:right="180"/><w:spacing w:before="120" w:after="200"/>') +
+        st("TableText", "Table Text", "", '<w:spacing w:after="0" w:line="252" w:lineRule="auto"/>') +
+        st("Code", "Code", '<w:rFonts w:ascii="Consolas" w:hAnsi="Consolas"/><w:sz w:val="19"/>', '<w:spacing w:after="0"/><w:shd w:val="clear" w:color="auto" w:fill="F4F4F2"/>') + "</w:styles>";
       return zip([
-        { name: "[Content_Types].xml", data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>' },
+        { name: "[Content_Types].xml", data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/></Types>' },
         { name: "_rels/.rels", data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>' },
-        { name: "word/_rels/document.xml.rels", data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>' },
-        { name: "word/document.xml", data: doc }, { name: "word/styles.xml", data: styles },
+        { name: "word/_rels/document.xml.rels", data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/></Relationships>' },
+        { name: "word/document.xml", data: doc }, { name: "word/styles.xml", data: styles }, { name: "word/footer1.xml", data: footer },
       ]);
     }
-    // PDF com fontes padrão (Helvetica/Courier), acentos em WinAnsi, quebra de linha e de página
+
+    // ===== PDF com capa colorida, tabelas zebradas, caixas de destaque e rodapé =====
     var WIN = { 0x20AC: 128, 0x201A: 130, 0x201E: 132, 0x2026: 133, 0x2022: 149, 0x2013: 150, 0x2014: 151, 0x2018: 145, 0x2019: 146, 0x201C: 147, 0x201D: 148, 0x2122: 153 };
     function win(s) {
       var o = "";
@@ -2148,15 +2220,17 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
     }
     function cw(ch, bold, mono) {
       if (mono) return 0.6;
-      var w = " ".indexOf(ch) >= 0 ? 0.278 : "iljtfI.,;:'|!".indexOf(ch) >= 0 ? 0.28 : "mwMW@".indexOf(ch) >= 0 ? 0.85 : /[0-9]/.test(ch) ? 0.556 : /[A-ZÀ-Ý]/.test(ch) ? 0.68 : 0.53;
-      return bold ? w * 1.06 : w;
+      var w = ch === " " ? 0.278 : "iljtfI.,;:'|!".indexOf(ch) >= 0 ? 0.28 : "mwMW@".indexOf(ch) >= 0 ? 0.85 : /[0-9]/.test(ch) ? 0.556 : /[A-ZÀ-Ý]/.test(ch) ? 0.68 : 0.53;
+      return bold ? w * 1.07 : w;
     }
-    function pdf(title, src) {
-      var PW = 595, PH = 842, M = 56, pages = [], cur = null, y = 0;
+    function rgb(hex) { return [0, 2, 4].map(function (i) { return (parseInt(hex.substr(i, 2), 16) / 255).toFixed(3); }).join(" "); }
+    function pdf(title, src, thName, sub) {
+      var th = THEMES[thName] || THEMES.laranja, A = rgb(th.a), Dk = rgb(th.d), S = rgb(th.s), INK = "0.169 0.165 0.157", MUT = "0.54 0.53 0.5";
+      var PW = 595, PH = 842, M = 54, BOT = 64, pages = [], cur = null, y = 0;
       function page() { cur = []; pages.push(cur); y = PH - M; }
-      function need(h) { if (!cur || y - h < M) page(); }
+      function need(h) { if (!cur || y - h < BOT) page(); }
       function width(t, size, bold, mono) { var w = 0; for (var ch of t) w += cw(ch, bold, mono); return w * size; }
-      function lines(tokens, size, maxW, mono) { // tokens: [{text,b}] -> linhas de palavras
+      function wrap(tokens, size, maxW, mono) {
         var out = [], line = [], lw = 0;
         tokens.forEach(function (r) {
           r.text.split(/(\s+)/).forEach(function (w) {
@@ -2170,39 +2244,72 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
         if (line.length) out.push(line);
         return out;
       }
+      function textLine(ln, x, yy, size, color, bold, mono) {
+        var s = "BT " + color + " rg " + x.toFixed(1) + " " + yy.toFixed(1) + " Td ", curF = null;
+        ln.forEach(function (w) { var f = mono ? "F3" : w.b || bold ? "F2" : "F1"; if (f !== curF) { s += "/" + f + " " + size + " Tf "; curF = f; } s += "(" + win(w.text) + ") Tj "; });
+        cur.push(s + "ET");
+      }
+      function rect(x, yy, w, h, fill) { cur.push(fill + " rg " + x.toFixed(1) + " " + yy.toFixed(1) + " " + w.toFixed(1) + " " + h.toFixed(1) + " re f"); }
+      function hline(x1, x2, yy, color, wd) { cur.push(color + " RG " + (wd || 0.6) + " w " + x1 + " " + yy.toFixed(1) + " m " + x2 + " " + yy.toFixed(1) + " l S"); }
       function draw(tokens, size, x, opt) {
-        opt = opt || {}; var lh = size * (opt.lh || 1.42), ls = lines(tokens, size, PW - M - x, opt.mono);
-        ls.forEach(function (ln) {
-          need(lh); y -= lh;
-          var s = "BT " + (opt.color || "0.12 0.12 0.11") + " rg " + x + " " + y.toFixed(1) + " Td ";
-          var curB = null; ln.forEach(function (w) { var f = opt.mono ? "F3" : w.b || opt.bold ? "F2" : "F1"; if (f !== curB) { s += "/" + f + " " + size + " Tf "; curB = f; } s += "(" + win(w.text) + ") Tj "; });
-          cur.push(s + "ET");
-        });
+        opt = opt || {}; var lh = size * (opt.lh || 1.45), ls = wrap(tokens, size, (opt.right || PW - M) - x, opt.mono);
+        ls.forEach(function (ln) { need(lh); y -= lh; textLine(ln, x, y + size * 0.28, size, opt.color || INK, opt.bold, opt.mono); });
       }
       page();
-      if (title) { draw([{ text: title, b: true }], 21, M, { bold: true }); y -= 6; cur.push("0.85 0.47 0.34 RG 1.2 w " + M + " " + y.toFixed(1) + " m " + (PW - M) + " " + y.toFixed(1) + " l S"); y -= 12; }
+      // capa: faixa colorida no topo da 1ª página
+      if (title) {
+        var tl = wrap([{ text: title, b: true }], 24, PW - 2 * M), bandH = 40 + tl.length * 30 + (sub ? 22 : 0) + 20 + 26;
+        rect(0, PH - bandH, PW, bandH, A); rect(0, PH - bandH - 5, PW, 5, Dk);
+        var ty = PH - 40;
+        tl.forEach(function (ln) { ty -= 30; textLine(ln, M, ty, 24, "1 1 1", true); });
+        if (sub) { ty -= 22; textLine([{ text: sub }], M, ty, 12, "1 1 1"); }
+        ty -= 20; textLine([{ text: today().toUpperCase() }], M, ty, 8.5, "1 1 1", true);
+        y = PH - bandH - 30;
+      }
       blocks(src).forEach(function (b) {
-        if (b.t === "gap") { y -= 5; return; }
-        if (b.t === "hr") { need(14); y -= 8; cur.push("0.75 0.75 0.75 RG 0.6 w " + M + " " + y.toFixed(1) + " m " + (PW - M) + " " + y.toFixed(1) + " l S"); y -= 6; return; }
-        if (/^h\d$/.test(b.t)) { var sz = { h1: 16.5, h2: 13.5, h3: 12 }[b.t]; y -= sz * 0.6; need(sz * 3); draw(runs(b.x).map(function (r) { return { text: r.text, b: true }; }), sz, M, { bold: true, color: b.t === "h1" ? "0.77 0.39 0.25" : "0.12 0.12 0.11" }); y -= 3; return; }
-        if (b.t === "li") { var y0 = y; draw([{ text: b.n ? b.n + "." : "•", b: false }], 11, M + 6); y = y0; draw(runs(b.x), 11, M + 22); y -= 1; return; }
-        if (b.t === "code") { b.x.split("\n").forEach(function (l) { draw([{ text: l || " ", b: false }], 9.2, M + 8, { mono: true, lh: 1.35, color: "0.2 0.2 0.2" }); }); y -= 4; return; }
-        if (b.t === "table") {
-          var n = Math.max.apply(null, b.rows.map(function (r) { return r.length; })), colW = (PW - 2 * M) / n;
-          b.rows.forEach(function (r, ri) {
-            var tops = y, low = y;
-            for (var c = 0; c < n; c++) {
-              y = tops; var save = PW; PW = M + colW * (c + 1) + M - 6; // limita a largura da coluna
-              draw(runs(ri === 0 ? "**" + String(r[c] || "").replace(/\*\*/g, "") + "**" : (r[c] || "")), 9.8, M + colW * c + 4, { lh: 1.35 });
-              PW = save; low = Math.min(low, y);
-            }
-            y = low - 4; cur.push("0.8 0.8 0.8 RG 0.5 w " + M + " " + y.toFixed(1) + " m " + (PW - M) + " " + y.toFixed(1) + " l S");
-          });
-          y -= 8; return;
+        if (b.t === "gap") { y -= 4; return; }
+        if (b.t === "hr") { need(16); y -= 8; hline(M, PW - M, y, A, 0.8); y -= 8; return; }
+        if (b.t === "h1") { y -= 10; need(48); draw(runs(b.x).map(function (r) { return { text: r.text, b: true }; }), 17, M, { bold: true, color: Dk }); y -= 4; hline(M, M + 46, y, A, 2); y -= 8; return; }
+        if (b.t === "h2") { y -= 8; need(40); var y0 = y; draw(runs(b.x).map(function (r) { return { text: r.text, b: true }; }), 13.5, M + 10, { bold: true }); rect(M, y + 2, 3.2, y0 - y - 4, A); y -= 4; return; }
+        if (b.t === "h3") { y -= 4; need(30); draw(runs(b.x).map(function (r) { return { text: r.text, b: true }; }), 11.8, M, { bold: true, color: A }); y -= 2; return; }
+        if (b.t === "li") {
+          need(16); var yb = y;
+          if (b.n) textLine([{ text: b.n + ".", b: true }], M + 4, y - 11 * 1.45 + 11 * 0.28, 11, A, true);
+          else rect(M + 6, y - 11 * 1.45 + 11 * 0.28 + 2.6, 4, 4, A);
+          y = yb; draw(runs(b.x), 11, M + 22); y -= 2; return;
         }
-        draw(runs(b.x), 11, M); y -= 3;
+        if (b.t === "quote") {
+          var ql = wrap(runs(b.x), 10.8, PW - 2 * M - 30), qh = ql.length * 10.8 * 1.45 + 18;
+          need(qh + 8); y -= 6;
+          rect(M, y - qh, PW - 2 * M, qh, S); rect(M, y - qh, 3.5, qh, A);
+          var qy = y - 9; ql.forEach(function (ln) { qy -= 10.8 * 1.45; textLine(ln, M + 16, qy + 10.8 * 0.28, 10.8, INK); });
+          y -= qh + 10; return;
+        }
+        if (b.t === "code") {
+          var cl = b.x.split("\n"), chh = cl.length * 9.2 * 1.4 + 14; need(Math.min(chh, 300)); y -= 4;
+          if (chh < PH - 2 * M) rect(M, y - chh, PW - 2 * M, chh, "0.955 0.955 0.945");
+          y -= 7; cl.forEach(function (l) { draw([{ text: l || " " }], 9.2, M + 10, { mono: true, lh: 1.4, color: "0.2 0.2 0.2" }); }); y -= 12; return;
+        }
+        if (b.t === "table") {
+          var n = Math.max.apply(null, b.rows.map(function (r) { return r.length; })), tw = PW - 2 * M, size = 9.8, lh = size * 1.38, pad = 6;
+          // larguras proporcionais ao conteúdo
+          var need0 = []; for (var c = 0; c < n; c++) need0[c] = Math.max.apply(null, b.rows.map(function (r) { return Math.min(220, width(String(r[c] || "").replace(/\*\*/g, ""), size, false) + 14); })) || 40;
+          var tot = need0.reduce(function (a, v) { return a + v; }, 0), cws = need0.map(function (v) { return Math.max(48, v / tot * tw); });
+          var sc = tw / cws.reduce(function (a, v) { return a + v; }, 0); cws = cws.map(function (v) { return v * sc; });
+          y -= 4;
+          b.rows.forEach(function (r, ri) {
+            var cells = [], h = 0;
+            for (var c = 0; c < n; c++) { var t = ri === 0 ? [{ text: String(r[c] || "").replace(/\*\*/g, ""), b: true }] : runs(r[c] || ""); var ls = wrap(t, size, cws[c] - 2 * pad); cells.push(ls); h = Math.max(h, ls.length * lh); }
+            h += 2 * pad - 2; need(h);
+            rect(M, y - h, tw, h, ri === 0 ? A : ri % 2 === 0 ? S : "1 1 1");
+            var x = M;
+            cells.forEach(function (ls, c) { var cy = y - pad + 1; ls.forEach(function (ln) { cy -= lh; textLine(ln, x + pad, cy + size * 0.3, size, ri === 0 ? "1 1 1" : INK, ri === 0); }); x += cws[c]; });
+            y -= h; hline(M, PW - M, y, "0.86 0.85 0.82", 0.5);
+          });
+          y -= 12; return;
+        }
+        draw(runs(b.x), 11, M); y -= 4;
       });
-      // monta o arquivo
       var objs = [], N = pages.length;
       objs[1] = "<< /Type /Catalog /Pages 2 0 R >>";
       objs[2] = "<< /Type /Pages /Kids [" + pages.map(function (_, i) { return (6 + i * 2) + " 0 R"; }).join(" ") + "] /Count " + N + " >>";
@@ -2210,7 +2317,10 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
       objs[4] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>";
       objs[5] = "<< /Type /Font /Subtype /Type1 /BaseFont /Courier /Encoding /WinAnsiEncoding >>";
       pages.forEach(function (ops, i) {
-        var stream = ops.concat(["BT /F1 8.5 Tf 0.55 0.55 0.55 rg " + (PW / 2 - 10) + " 30 Td (" + (i + 1) + " / " + N + ") Tj ET"]).join("\n");
+        var pg = "Página " + (i + 1) + " de " + N, ft = [A + " RG 0.8 w " + M + " 42 m " + (PW - M) + " 42 l S",
+          "BT /F1 8.5 Tf " + MUT + " rg " + M + " 28 Td (" + win((title || "Documento").slice(0, 70)) + ") Tj ET",
+          "BT /F1 8.5 Tf " + MUT + " rg " + (PW - M - width(pg, 8.5)).toFixed(1) + " 28 Td (" + win(pg) + ") Tj ET"];
+        var stream = ops.concat(ft).join("\n");
         objs[6 + i * 2] = "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 " + PW + " " + PH + "] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents " + (7 + i * 2) + " 0 R >>";
         objs[7 + i * 2] = "<< /Length " + stream.length + " >>\nstream\n" + stream + "\nendstream";
       });
@@ -2224,8 +2334,8 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
     var MIME = { txt: "text/plain", md: "text/markdown", csv: "text/csv", html: "text/html", json: "application/json" };
     function build(a) {
       if (a.format === "zip") return zip(a.files.map(function (f) { return { name: f.name, data: f.content }; }));
-      if (a.format === "docx") { var b = docx(a.title, a.content); return new Blob([b], { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" }); }
-      if (a.format === "pdf") return pdf(a.title, a.content);
+      if (a.format === "docx") { var b = docx(a.title, a.content, a.theme, a.subtitle); return new Blob([b], { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" }); }
+      if (a.format === "pdf") return pdf(a.title, a.content, a.theme, a.subtitle);
       return new Blob([(a.format === "csv" ? "﻿" : "") + a.content], { type: (MIME[a.format] || "text/plain") + ";charset=utf-8" });
     }
     return { build: build, zip: zip, pdf: pdf, docx: docx };
@@ -2235,10 +2345,79 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
     var u = URL.createObjectURL(blob), l = document.createElement("a"); l.href = u; l.download = name; document.body.appendChild(l); l.click(); l.remove();
     setTimeout(function () { URL.revokeObjectURL(u); }, 30000);
   }
+  var IMG_STYLES = {
+    nenhum: ["Original", ""],
+    realista: ["Realista", ", ultra realistic photograph, 85mm lens, natural light, sharp focus, high detail"],
+    cinematico: ["Cinemático", ", cinematic film still, dramatic lighting, anamorphic, rich color grading, depth of field"],
+    anime: ["Anime", ", anime style illustration, vibrant colors, clean line art, studio quality"],
+    "3d": ["3D", ", 3D render, pixar style, soft global illumination, octane render, cute and polished"],
+    aquarela: ["Aquarela", ", watercolor painting, soft washes, paper texture, delicate brush strokes"],
+    ilustracao: ["Ilustração", ", flat vector illustration, bold shapes, modern palette, editorial style"],
+    pixel: ["Pixel art", ", 16-bit pixel art, retro game style, crisp pixels"],
+    logo: ["Logo", ", minimalist flat vector logo, simple geometric shapes, centered on plain white background, no text"],
+  };
+  var IMG_SIZES = { quadrado: ["1:1", 1024, 1024], paisagem: ["16:9", 1344, 768], retrato: ["9:16", 768, 1344] };
   function imageURL(a, seed) {
-    return "https://image.pollinations.ai/prompt/" + encodeURIComponent(a.prompt) + "?width=" + (a.width || 1024) + "&height=" + (a.height || 1024) + "&nologo=true&seed=" + seed;
+    var st = IMG_STYLES[a.style] || IMG_STYLES.nenhum;
+    return "https://image.pollinations.ai/prompt/" + encodeURIComponent(a.prompt + st[1]) + "?width=" + (a.width || 1024) + "&height=" + (a.height || 1024) + "&model=flux&enhance=true&nologo=true&seed=" + seed;
   }
 
+  var FCOL = { pdf: "#d9534f", docx: "#2f6fed", txt: "#6b6a66", md: "#6b6a66", csv: "#1f9d57", html: "#e07a2f", json: "#8a6d3b", zip: "#7c4ddb" };
+  function viewer(title, buttons) {
+    var m = document.createElement("div"); m.className = "modal viewer";
+    m.innerHTML = '<div class="mbox"><div class="mhead"><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span><span class="vbtns" style="display:flex;gap:6px"></span><button class="ib vx" aria-label="Fechar"><svg class="ico"><use href="#i-x"/></svg></button></div><div class="vbody"></div></div>';
+    m.querySelector(".mhead span").textContent = title;
+    (buttons || []).forEach(function (b) { m.querySelector(".vbtns").appendChild(b); });
+    function close() { m.remove(); document.removeEventListener("keydown", esc1); }
+    function esc1(e) { if (e.key === "Escape") close(); }
+    m.querySelector(".vx").onclick = close; m.addEventListener("click", function (e) { if (e.target === m) close(); });
+    document.addEventListener("keydown", esc1); document.body.appendChild(m);
+    return { el: m, body: m.querySelector(".vbody"), close: close };
+  }
+  function csvTable(t) {
+    var rows = t.trim().split(/\r?\n/).map(function (l) { var out = [], cur = "", q = false; for (var i = 0; i < l.length; i++) { var ch = l[i]; if (ch === '"') { if (q && l[i + 1] === '"') { cur += '"'; i++; } else q = !q; } else if ((ch === "," || ch === ";") && !q) { out.push(cur); cur = ""; } else cur += ch; } out.push(cur); return out; });
+    return "<table>" + rows.map(function (r, i) { return "<tr>" + r.map(function (c) { return (i ? "<td>" : "<th>") + esc(c) + (i ? "</td>" : "</th>"); }).join("") + "</tr>"; }).join("") + "</table>";
+  }
+  function fileCard(box, a) {
+    var fc = document.createElement("div"); fc.className = "fcard"; box.appendChild(fc);
+    var themed = a.format === "pdf" || a.format === "docx";
+    function render() {
+      var blob = null, err = "";
+      try { blob = MAKE.build(a); } catch (e) { err = e.message; }
+      var info = err ? "Não consegui montar: " + err : (a.format || "").toUpperCase() + " · " + fmtSize(blob.size) + (a.format === "zip" ? " · " + a.files.length + " arquivo" + (a.files.length > 1 ? "s" : "") : "") + (a.title ? " · " + a.title : "");
+      fc.innerHTML = '<div class="fh"><div class="fico" style="background:' + (FCOL[a.format] || "#555") + '">' + esc((a.format || "").toUpperCase()) + '</div><div class="ft"><b></b><span></span></div></div>' +
+        (themed ? '<div class="chips th">' + Object.keys(THEMES).map(function (k) { return '<button class="chip' + (k === (a.theme || "laranja") ? " on" : "") + '" data-t="' + k + '"><span class="sw" style="background:#' + THEMES[k].a + '"></span>' + THEMES[k].name + "</button>"; }).join("") + "</div>" : "") +
+        '<div class="fb" style="padding-top:10px"><button class="btn" data-a="view">Visualizar</button>' + (a.format === "zip" ? "" : '<button class="btn" data-a="edit">Editar</button>') + '<button class="btn" data-a="copy">Copiar texto</button><span style="flex:1"></span><button class="btn pri" data-a="dl">Baixar</button></div>' +
+        (blob && (a.format === "pdf" || a.format === "html") ? '<div class="thumb"><iframe tabindex="-1"></iframe></div>' : "");
+      fc.querySelector(".ft b").textContent = a.name; fc.querySelector(".ft span").textContent = info;
+      if (blob && a.format === "pdf") { var u = URL.createObjectURL(blob); fc.querySelector(".thumb iframe").src = u + "#toolbar=0&navpanes=0&view=FitH"; }
+      if (blob && a.format === "html") fc.querySelector(".thumb iframe").srcdoc = a.content;
+      Array.prototype.forEach.call(fc.querySelectorAll(".th .chip"), function (c) { c.onclick = function () { a.theme = c.dataset.t; saveHist(); render(); }; });
+      var th = fc.querySelector(".thumb"); if (th) th.onclick = function () { view(); };
+      fc.querySelector('[data-a="view"]').onclick = view;
+      var eb = fc.querySelector('[data-a="edit"]'); if (eb) eb.onclick = edit;
+      fc.querySelector('[data-a="copy"]').onclick = function () { copy(a.format === "zip" ? a.files.map(function (f) { return "// " + f.name + "\n" + f.content; }).join("\n\n") : a.content, "Conteúdo copiado"); };
+      fc.querySelector('[data-a="dl"]').onclick = function () { if (blob) { saveBlob(MAKE.build(a), a.name); toast("Baixado: " + a.name); } };
+    }
+    function view() {
+      var dl = document.createElement("button"); dl.className = "btn pri"; dl.textContent = "Baixar"; dl.onclick = function () { saveBlob(MAKE.build(a), a.name); };
+      var v = viewer(a.name, [dl]), b = v.body;
+      if (a.format === "pdf") { var f = document.createElement("iframe"); f.src = URL.createObjectURL(MAKE.build(a)); b.appendChild(f); }
+      else if (a.format === "html") { var h = document.createElement("iframe"); h.setAttribute("sandbox", "allow-scripts"); h.srcdoc = a.content; b.appendChild(h); }
+      else if (a.format === "csv") { b.innerHTML = '<div class="vdoc">' + csvTable(a.content) + "</div>"; }
+      else if (a.format === "zip") { b.innerHTML = '<div class="vtree"></div>'; b.firstChild.textContent = a.files.map(function (f) { return "📄 " + f.name + "\n" + f.content.slice(0, 4000); }).join("\n\n────────\n\n"); }
+      else if (a.format === "json" || a.format === "txt") { b.innerHTML = '<div class="vtree"></div>'; b.firstChild.textContent = a.content; }
+      else { var th = THEMES[a.theme] || THEMES.laranja; b.innerHTML = '<div class="vdoc md" style="--vth:#' + th.d + '">' + (a.title ? "<h1>" + esc(a.title) + "</h1>" + (a.subtitle ? '<p style="color:#888;margin-top:-6px">' + esc(a.subtitle) + "</p>" : "") : "") + md(a.content) + "</div>"; }
+    }
+    function edit() {
+      var save = document.createElement("button"); save.className = "btn pri"; save.textContent = "Salvar e gerar";
+      var v = viewer("Editar " + a.name, [save]), t = document.createElement("textarea");
+      t.value = a.content; t.spellcheck = false; v.body.replaceWith(t);
+      save.onclick = function () { a.content = t.value; saveHist(); render(); v.close(); toast("Arquivo atualizado"); };
+      setTimeout(function () { t.focus(); }, 30);
+    }
+    render();
+  }
   function runActions(box, data, auto) {
     var navDone = false;
     data.actions.forEach(function (a, idx) {
@@ -2288,39 +2467,35 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
       } else if (a.type === "image") {
         card.remove();
         if (!a.seed) { a.seed = Math.floor(Math.random() * 1e9); saveHist(); }
+        if (!IMG_STYLES[a.style]) a.style = "nenhum";
         var gi = document.createElement("div"); gi.className = "genimg";
-        gi.innerHTML = '<div class="gi"><div class="gl"><span><svg class="star spinstar" style="width:18px;height:18px;color:var(--ac)"><use href="#i-star"/></svg><br>Gerando a imagem…</span></div><img alt="" style="opacity:0"></div>' +
-          '<div class="gb"><span></span><button class="btn">Outra versão</button><button class="btn pri">Baixar</button></div>';
+        var sizeKey = a.width > a.height ? "paisagem" : a.height > a.width ? "retrato" : "quadrado";
+        gi.innerHTML = '<div class="gi"><div class="gl"></div><img alt="" style="opacity:0"></div>' +
+          '<div class="chips st">' + Object.keys(IMG_STYLES).map(function (k) { return '<button class="chip' + (k === a.style ? " on" : "") + '" data-s="' + k + '">' + IMG_STYLES[k][0] + "</button>"; }).join("") + "</div>" +
+          '<div class="chips sz">' + Object.keys(IMG_SIZES).map(function (k) { return '<button class="chip' + (k === sizeKey ? " on" : "") + '" data-z="' + k + '">' + IMG_SIZES[k][0] + "</button>"; }).join("") + "</div>" +
+          '<div class="gb"><span></span><button class="btn">↻ Outra versão</button><button class="btn pri">Baixar</button></div>';
         var im = gi.querySelector("img"), gl = gi.querySelector(".gl"), gbs = gi.querySelectorAll(".gb button");
         gi.querySelector(".gb span").textContent = a.prompt; gi.querySelector(".gb span").title = a.prompt;
         var loadImg = function () {
-          gl.style.display = ""; gl.innerHTML = '<span><svg class="star spinstar" style="width:18px;height:18px;color:var(--ac)"><use href="#i-star"/></svg><br>Gerando a imagem…</span>'; im.style.opacity = 0;
+          var ratio = (a.height || 1024) / (a.width || 1024); gi.querySelector(".gi").style.aspectRatio = (a.width || 1024) + "/" + (a.height || 1024);
+          gl.style.display = ""; gl.innerHTML = '<span><svg class="star spinstar" style="width:20px;height:20px;color:var(--ac)"><use href="#i-star"/></svg><br>Gerando ' + esc(IMG_STYLES[a.style][0].toLowerCase()) + "…</span>"; im.style.opacity = 0;
           im.onload = function () { gl.style.display = "none"; im.style.opacity = 1; };
-          im.onerror = function () { gl.innerHTML = '<span>Não consegui gerar agora (o gerador gratuito está ocupado).<br><button class="btn" style="margin-top:8px">Tentar de novo</button></span>'; gl.querySelector("button").onclick = loadImg; };
-          im.src = imageURL(a, a.seed); im.alt = a.prompt;
+          im.onerror = function () { gl.innerHTML = '<span>O gerador gratuito está ocupado.<br><button class="btn" style="margin-top:8px">Tentar de novo</button></span>'; gl.querySelector("button").onclick = function () { a.seed++; loadImg(); }; };
+          im.src = imageURL(a, a.seed); im.alt = a.prompt; void ratio;
         };
+        Array.prototype.forEach.call(gi.querySelectorAll(".st .chip"), function (c) { c.onclick = function () {
+          gi.querySelector(".st .on").classList.remove("on"); c.classList.add("on"); a.style = c.dataset.s; saveHist(); loadImg(); }; });
+        Array.prototype.forEach.call(gi.querySelectorAll(".sz .chip"), function (c) { c.onclick = function () {
+          gi.querySelector(".sz .on").classList.remove("on"); c.classList.add("on"); var z = IMG_SIZES[c.dataset.z]; a.width = z[1]; a.height = z[2]; saveHist(); loadImg(); }; });
+        im.onclick = function () { var lb = document.createElement("div"); lb.className = "lbox"; lb.innerHTML = "<img>"; lb.querySelector("img").src = im.src; lb.onclick = function () { lb.remove(); }; document.body.appendChild(lb); };
         gbs[0].onclick = function () { a.seed = Math.floor(Math.random() * 1e9); saveHist(); loadImg(); };
         gbs[1].onclick = function () {
-          fetch(im.src).then(function (r) { return r.blob(); }).then(function (b) { saveBlob(b, "imagem-" + a.seed + ".jpg"); }, function () { window.open(im.src, "_blank"); });
+          fetch(im.src).then(function (r) { return r.blob(); }).then(function (bl) { saveBlob(bl, "imagem-" + a.style + "-" + a.seed + ".jpg"); }, function () { window.open(im.src, "_blank"); });
         };
         box.appendChild(gi); loadImg();
       } else if (a.type === "file") {
-        var blob = null;
-        try { blob = MAKE.build(a); } catch (e) { setStatus("Não consegui montar o arquivo: " + e.message, "bad"); return; }
-        setStatus((a.format || "").toUpperCase() + " · " + fmtSize(blob.size) + (a.format === "zip" ? " · " + a.files.length + " arquivo" + (a.files.length > 1 ? "s" : "") : ""), "okk");
-        if (/^(txt|md|csv|html|json|zip)$/.test(a.format)) {
-          var vb = document.createElement("button"); vb.className = "btn"; vb.textContent = "Ver";
-          vb.onclick = function () {
-            var pv = card.nextElementSibling && card.nextElementSibling.classList.contains("fprev") ? card.nextElementSibling : null;
-            if (pv) { pv.remove(); return; }
-            pv = document.createElement("pre"); pv.className = "fprev";
-            pv.textContent = a.format === "zip" ? a.files.map(function (f) { return "── " + f.name + "\n" + f.content.slice(0, 1500); }).join("\n\n") : a.content.slice(0, 20000);
-            card.after(pv);
-          };
-          row.appendChild(vb);
-        }
-        btn.textContent = "Baixar"; btn.className = "btn pri"; btn.onclick = function () { saveBlob(MAKE.build(a), a.name); setStatus("Baixado: " + a.name, "okk"); };
-        row.appendChild(btn);
+        card.remove();
+        fileCard(box, a);
       } else if (a.type === "web") {
         card.remove();
         if (data.webLog && data.webLog.status !== "running") {

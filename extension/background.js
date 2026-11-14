@@ -30,7 +30,7 @@ const READ_PAGE = `(() => {
     if (n >= 140) break;
   }
   const text = ((document.body && document.body.innerText) || "").replace(/\\n{3,}/g, "\\n\\n").slice(0, 7000);
-  return { url: location.href, title: document.title, scrollY: Math.round(scrollY), scrollMax: Math.max(0, document.documentElement.scrollHeight - vh), elements: out, text };
+  return { vw, vh, url: location.href, title: document.title, scrollY: Math.round(scrollY), scrollMax: Math.max(0, document.documentElement.scrollHeight - vh), elements: out, text };
 })()`;
 
 const KEYS = {
@@ -90,8 +90,8 @@ let task = null; // tarefa atual (uma de cada vez)
 // ---------- eventos para o site (todas as abas do IA Council) ----------
 function publicState() {
   if (!task) return null;
-  const { id, goal, steps, lines, status, now, waiting, answer, plan, shot, url, title } = task;
-  return { id, goal, steps, lines, status, now, waiting, answer, plan, shot, url, title };
+  const { id, goal, steps, lines, status, now, waiting, answer, plan, shot, url, title, cur } = task;
+  return { id, goal, steps, lines, status, now, waiting, answer, plan, shot, url, title, cur };
 }
 async function emit() {
   const st = publicState();
@@ -122,6 +122,29 @@ async function ensureTab() {
   await chrome.storage.session.set({ groupId, windowId: tab.windowId });
   task.tabId = tab.id;
   return tab.id;
+}
+
+// Nunca levar o usuário para a aba do Council (ele continua onde está), a não ser que peça "Ver aba" ou precise logar
+async function keepFocus() {
+  if (!task || task.shown || task.tabId == null) return;
+  const t = await chrome.tabs.get(task.tabId).catch(() => null);
+  if (!t || !t.active) return;
+  const back = task.originTab != null ? await chrome.tabs.get(task.originTab).catch(() => null) : null;
+  if (back && back.windowId === t.windowId) await chrome.tabs.update(back.id, { active: true }).catch(() => {});
+  else { // a aba do site está em outra janela: deixa a aba anterior desta janela ativa
+    const [other] = (await chrome.tabs.query({ windowId: t.windowId })).filter((x) => x.id !== t.id && x.groupId !== t.groupId).sort((a, b) => (b.lastAccessed || 0) - (a.lastAccessed || 0));
+    if (other) await chrome.tabs.update(other.id, { active: true }).catch(() => {});
+  }
+}
+// tira um print depois de agir (o chat mostra a aba ao vivo, com o cursor)
+async function liveShot() {
+  if (!task || task.tabId == null) return;
+  try {
+    const m = await cdp(task.tabId, "Page.getLayoutMetrics"); const vp = m.cssVisualViewport || m.visualViewport;
+    const scale = Math.min(1, 1100 / Math.max(1, vp.clientWidth));
+    const shot = await Promise.race([cdp(task.tabId, "Page.captureScreenshot", { format: "jpeg", quality: 55, clip: { x: vp.pageX, y: vp.pageY, width: vp.clientWidth, height: vp.clientHeight, scale } }), sleep(2000).then(() => null)]);
+    if (shot && shot.data) { task.shot = "data:image/jpeg;base64," + shot.data; emit(); }
+  } catch {}
 }
 
 // ---------- depuração (CDP) ----------
@@ -183,6 +206,7 @@ async function snapshot(tabId) {
     ]);
     if (shot && shot.data) image = "data:image/jpeg;base64," + shot.data;
   } catch {}
+  if (task && page.vw) task.vp = [page.vw, page.vh];
   page.image = image; // em segundo plano o print pode falhar: segue só com o texto e os elementos
   return page;
 }
@@ -195,7 +219,12 @@ async function center(tabId, id) {
   return r;
 }
 async function pointTo(tabId, x, y, mode) {
-  if (task) task.cursor = [x, y];
+  if (task) {
+    task.cursor = [x, y];
+    const vp = task.vp || (await evaluate(tabId, "[innerWidth, innerHeight]").catch(() => null)) || [1280, 800];
+    task.cur = { x: x / vp[0], y: y / vp[1], mode: mode || "", n: (task.cur ? task.cur.n : 0) + 1 };
+    emit();
+  }
   await evaluate(tabId, CURSOR(x, y, "")).catch(() => {});
   await sleep(430); // o usuário vê o cursor indo até o alvo
   if (mode) await evaluate(tabId, CURSOR(null, null, mode)).catch(() => {});
@@ -336,7 +365,7 @@ async function runTask(t) {
         return finish("done", "✓ " + plan.say, "", plan.answer);
       }
       if (a.type === "ask_user") {
-        task.steps.push("Pediu ajuda: " + plan.say);
+        task.steps.push("Pediu ajuda: " + plan.say); task.shown = true;
         await chrome.tabs.update(task.tabId, { active: true }).catch(() => {});
         const tab = await chrome.tabs.get(task.tabId).catch(() => null);
         if (tab) chrome.windows.update(tab.windowId, { focused: true }).catch(() => {});
@@ -356,7 +385,7 @@ async function runTask(t) {
       if (task.stop) return finish("stopped", "Parado por você.", "err");
       if (!task.opened) {
         setNow("Abrindo a aba no grupo Council…");
-        await ensureTab(); await attach(task.tabId); task.opened = true;
+        await ensureTab(); await keepFocus(); await attach(task.tabId); task.opened = true; await keepFocus();
         addLine("Abri uma aba no grupo Council (você continua aqui; clique em “Ver aba” para acompanhar)");
       }
       setNow(plan.say);
@@ -369,6 +398,7 @@ async function runTask(t) {
         }
         const line = plan.say + (did.length ? " (" + did.join(", ") + ")" : "");
         addLine(line); task.steps.push(line); task.failed = 0;
+        await keepFocus(); await liveShot();
       } catch (e) {
         addLine("Não deu certo: " + e.message, "err"); task.failed = (task.failed || 0) + 1;
         task.steps.push("FALHOU (" + (did.length ? "fez " + did.join(", ") + "; depois " : "") + a.type + "): " + e.message);
@@ -396,7 +426,7 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
       const goal = String(msg.goal || "").slice(0, 1200);
       if (!goal) return { error: "objetivo vazio" };
       const id = String(msg.id || Date.now());
-      runTask({ id, goal, request: String(msg.request || "").slice(0, 2000), context: String(msg.context || "").slice(0, 2000) });
+      runTask({ id, originTab: sender.tab ? sender.tab.id : null, goal, request: String(msg.request || "").slice(0, 2000), context: String(msg.context || "").slice(0, 2000) });
       return { ok: true, id };
     }
     if (msg.type === "stop") { if (task && task.status === "running") { task.stop = true; const w = waiters.get(task.id); if (w) { waiters.delete(task.id); w(false); } } return { ok: true }; }
@@ -408,6 +438,7 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
     }
     if (msg.type === "show") {
       if (task && task.tabId != null) {
+        task.shown = true;
         await chrome.tabs.update(task.tabId, { active: true }).catch(() => {});
         const tab = await chrome.tabs.get(task.tabId).catch(() => null);
         if (tab) await chrome.windows.update(tab.windowId, { focused: true }).catch(() => {});
