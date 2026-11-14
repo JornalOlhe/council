@@ -4,6 +4,9 @@ Várias IAs (cada uma com sua chave) respondem ao seu prompt, **debatem entre si
 
 Stack: `index.html` (JS puro) + `api/council.js` (Node 20, sem dependências). Sem build.
 
+## Copiloto dentro da conversa
+Não existe mais aba separada: na conversa normal, pedidos de AÇÃO ("pesquise X e me diga", "abra…", "gere uma imagem", "crie um pdf", "me lembre…") vão para o Copiloto; perguntas vão para o Conselho. Para decidir rápido, o agente de navegador usa o Groq com a lista de elementos da página e chama a visão do Gemini só quando a página é visual ou um passo falhou; outro modelo verifica o resultado.
+
 ## Copiloto: imagens e arquivos
 - `{"type":"image"}` gera imagens grátis (Pollinations, sem chave), com "Outra versão" e "Baixar".
 - `{"type":"file"}` cria **PDF, DOCX, TXT, MD, CSV, HTML, JSON e ZIP** no próprio navegador (sem servidor): o PDF usa fontes padrão com acentos, o DOCX tem estilos de título/lista/tabela, o ZIP guarda vários arquivos (ex.: um site).
@@ -22,6 +25,8 @@ Você pede em português e ele faz:
 Igual ao Claude in Chrome: o Copiloto abre um **grupo de abas laranja "Council"** no navegador do usuário e controla as abas por depuração (`chrome.debugger`), sem mexer no mouse. A tarefa roda no service worker da extensão, então **continua mesmo se você sair da aba do site**; ao voltar, o site mostra o andamento/resultado.
 - Instalação: baixar `/extension/ia-council-extension.zip` → extrair → `brave://extensions` (ou `chrome://extensions`) → Modo do desenvolvedor → Carregar sem compactação.
 - **Permissão por site** (como o Claude in Chrome): antes de agir num site novo, pergunta "Permitir sempre / Só desta vez / Não permitir". As escolhas ficam em `chrome.storage.local`.
+- **Cursor laranja da IA**: um cursor animado mostra onde ela vai clicar (com onda no clique) e onde está digitando.
+- **A aba só abre depois da permissão** e abre em segundo plano (você não é levado para ela; use "Ver aba").
 - **Visual de depuração**: borda laranja pulsando + pílula "Council · passo atual · Parar" na própria aba (o Parar usa `Runtime.addBinding`).
 - **Divisão de trabalho entre modelos**: o planejador (Groq) escolhe as ações, o modelo de visão (Gemini) vê a página e decide cada passo, e um VERIFICADOR (outro modelo) confere o resultado antes de terminar; se não aprovar, a tarefa continua.
 - O site fala com a extensão por `content.js` (só no domínio oficial); a extensão só aceita mensagens desse domínio.

@@ -486,7 +486,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
   <div class="sh">
     <button class="ib" id="collapse" title="Recolher barra lateral" aria-label="Recolher barra lateral"><svg class="ico"><use href="#i-panel"/></svg></button>
     <div class="wordmark">IA Council</div>
-    <div class="seg">
+    <div class="seg hidden">
       <button class="ib on" id="segChat" title="Conselho" aria-label="Conselho de IAs"><svg style="width:16px;height:16px"><use href="#i-chat"/></svg></button>
       <button class="ib" id="segCopilot" title="Copiloto" aria-label="Copiloto"><svg class="helm"><use href="#i-helmet"/></svg></button>
     </div>
@@ -556,7 +556,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
     <span class="sp" id="underSp"></span>
     <button class="pick" id="modelPick"><b id="pickName">Conselho</b><span class="m" id="pickEffort">1 rodada</span></button>
     <button class="pick" id="modePick"><b id="modeTxt">Auto</b></button>
-    <button class="pick pcpill hidden" id="pcPill"><span class="dot"></span><span id="pcPillTxt">Conectar PC</span></button>
+    <button class="pick pcpill" id="pcPill"><span class="dot"></span><span id="pcPillTxt">Conectar PC</span></button>
   </div>
 </div>
 <input type="file" id="file" accept="image/*,.txt,.md,.markdown,.csv,.tsv,.json,.xml,.html,.htm,.css,.js,.mjs,.ts,.jsx,.tsx,.py,.java,.c,.cpp,.h,.hpp,.cs,.go,.rs,.rb,.php,.sql,.yaml,.yml,.toml,.ini,.log,.sh,.bat,.ps1,.kt,.swift,.vue,.svelte,.lua,.r,.srt,.vtt" multiple hidden>
@@ -658,7 +658,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
       // escolhas antigas de modelos pagos/especiais voltam para o padrão grátis
       Object.keys(prefs.models).forEach(function (k) { if (/computer-use|deep-research|(^|-)pro($|-)|ultra-?\d|preview-\d{2}-\d{4}/i.test(prefs.models[k]) && !/nemotron/i.test(prefs.models[k])) delete prefs.models[k]; });
     }
-    if (pp && pp.app === "copilot") prefs.app = "copilot";
+    // o Copiloto agora faz parte da conversa normal (não há mais aba separada)
   } catch (e) {}
   function savePrefs() { sset(PREF, JSON.stringify(prefs)); }
   var toastT;
@@ -1133,7 +1133,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
     var cop = mode === "copilot";
     $("segChat").classList.toggle("on", !cop); $("segCopilot").classList.toggle("on", cop);
     $("greetStar").classList.toggle("hidden", cop); $("greetHelm").classList.toggle("hidden", !cop);
-    $("modelPick").classList.toggle("hidden", cop); $("modePick").classList.toggle("hidden", cop); $("pcPill").classList.toggle("hidden", !cop);
+    $("modelPick").classList.toggle("hidden", cop); $("modePick").classList.toggle("hidden", cop); $("pcPill").classList.remove("hidden");
     $("disc").textContent = cop ? "O copiloto age no seu navegador. Confira antes de enviar e-mails e mensagens." : "O IA Council é uma IA e pode cometer erros. Confira informações importantes.";
     setGreet();
     if (!keep) goHome(); else place($("chat").classList.contains("hidden") ? "home" : "dock");
@@ -1254,19 +1254,19 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
     return t.querySelector(".amsg");
   }
   function renderTurn(h, t, k, el, auto) {
-    var job = jobs[h.id + ":" + k];
-    if (job) { if (h.kind === "copilot") el.innerHTML = copThinking(job.now); else progress(el, job.done, job.now); return; }
+    var job = jobs[h.id + ":" + k], kd = t.kind || h.kind;
+    if (job) { if (kd === "copilot") el.innerHTML = copThinking(job.now); else progress(el, job.done, job.now); return; }
     if (!t.data) { el.innerHTML = '<div class="err">Esta resposta foi interrompida (a página foi fechada ou recarregada antes de terminar). Envie de novo.</div>'; return; }
     if (t.data.error) {
       el.innerHTML = '<div class="err">' + esc(t.data.error) + "</div>" + (t.data.errors || []).map(function (x) { return '<div class="warn">' + esc(x.name) + " — " + esc(x.stage) + ": " + esc(x.error) + "</div>"; }).join("");
       return;
     }
-    if (h.kind === "copilot") renderCop(el, t.data, auto); else render(el, t.data, t.prompt);
+    if (kd === "copilot") renderCop(el, t.data, auto); else render(el, t.data, t.prompt);
   }
   function showEntry(id) {
     var h = byId(id); if (!h) return;
     curId = id; $("chat").innerHTML = ""; $("chat").classList.add("hidden");
-    if ((h.kind === "copilot") !== (appMode === "copilot")) setApp(h.kind === "copilot" ? "copilot" : "council", true);
+    if (appMode !== "council") setApp("council", true);
     ensureChat(h.title || shortTitle(h.prompt));
     turnsOf(h).forEach(function (t, k) { renderTurn(h, t, k, addTurn(t.prompt, [], t.files, k), false); });
     renderRecent(); updSend();
@@ -1275,12 +1275,12 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
   // Abre (ou cria) a conversa e registra um turno pendente; devolve o necessário para o trabalho em segundo plano
   function beginTurn(kind, prompt, imgs, fnames) {
     var h = cur();
-    if (!h || (h.kind || "council") !== kind) {
+    if (!h) {
       h = { id: uid(), kind: kind, prompt: prompt, title: shortTitle(prompt), turns: [], ts: Date.now() };
       history.unshift(h); curId = h.id;
       $("chat").innerHTML = ""; $("chat").classList.add("hidden");
     }
-    var t = { prompt: prompt, files: fnames && fnames.length ? fnames : undefined, data: null };
+    var t = { prompt: prompt, kind: kind, files: fnames && fnames.length ? fnames : undefined, data: null };
     h.turns.push(t); h.ts = Date.now(); toTop(h);
     var k = h.turns.length - 1;
     ensureChat(h.title || shortTitle(prompt));
@@ -1303,7 +1303,8 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
   function withContext(prompt) {
     var h = cur(); if (!h) return prompt;
     var ctx = turnsOf(h).filter(function (t) { return t.data && !t.data.error; }).slice(-2).map(function (t) {
-      return "Usuário: " + t.prompt + "\nResposta: " + String((t.data && t.data.final) || "").slice(0, 1500);
+      var d = t.data || {};
+      return "Usuário: " + t.prompt + "\nResposta: " + String(d.final || (d.webLog && d.webLog.answer) || d.say || d.imageAnswer || "").slice(0, 1500);
     }).join("\n\n");
     var full = "CONVERSA ANTERIOR (contexto):\n" + ctx + "\n\nNOVA MENSAGEM DO USUÁRIO:\n" + prompt;
     return full.length > 39000 ? "…" + full.slice(full.length - 38990) : full;
@@ -1332,13 +1333,25 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
     if (!fl.length) return prompt;
     return prompt + "\n\n---\nARQUIVOS ANEXADOS PELO USUÁRIO:\n" + fl.map(function (f) { return "### " + f.name + "\n```\n" + f.text + "\n```"; }).join("\n\n");
   }
+  // Decide sozinho: pedido de AÇÃO (pesquisar e trazer, abrir, gerar imagem/arquivo, lembrete, PC…) vai para o Copiloto;
+  // pergunta/conversa vai para o Conselho. Tudo na mesma conversa.
+  function isAction(text) {
+    var s = text.trim().toLowerCase().replace(/^(por favor|pfv|pf|ei|ô|oi|council|copiloto|ia)[,!.\s]+/, "");
+    if (s.length > 700 || files.length || images.length) return false;
+    if (/\b(no meu (pc|computador|notebook)|use o mouse|mexa no (mouse|pc)|minha tela)\b/.test(s)) return true;
+    if (/^(pesquis\w*|procur\w*|busqu\w*|busca\w*|googl\w*|abr[aei]\w*|abre|entr[ae]\w* (no|na|em)|acess\w*|v[aá] (para|pro|pra|no|na|at[eé])|ach[ae]\w*|encontr\w*|toc[ae]\w*|toque|coloc\w* (a |o |um |uma )?(m[uú]sica|v[ií]deo|playlist)|me lembr\w*|lembre-me|cri[ae]\w* (um |uma )?(lembrete|alarme|timer)|compar[ae]\w* (os |as )?pre[çc]|vej[ae] (o |a |os |as )?(pre[çc]o|previs[aã]o|clima|cota[çc][aã]o|placar|resultado|not[ií]cia|v[ií]deo|canal)|verifiqu\w*|confir[ae] (o |a )?(pre[çc]o|hor[aá]rio)|baix[ae]\w*|preench\w*|cadastr\w*|reserv\w*|cliq\w*|clica|digit\w*|mand[ae] (uma? )?(mensagem|msg|e-?mail|whats)|envi[ae] (uma? )?(mensagem|msg|e-?mail|whats)|tir[ae] (um )?print|olh[ae] (a )?minha tela)/.test(s)) return true;
+    if (/\b(ger[ae]\w*|cri[ae]\w*|fa[çc]a\w*|faz|monte|desenh\w*|me d[aêe]|quero)\s+(um |uma |o |a |\d+ )?([\wçãéíóú-]+ ){0,3}(imagem|imagens|foto|desenho|logo|logotipo|ilustra[çc][aã]o|wallpaper|papel de parede|pdf|docx?|word|arquivo|planilha|csv|zip|txt|json)\b/.test(s)) return true;
+    if (/\b(me (retorne|traga|diga|mostre|passe)|e me (diga|traga|retorne|mostre|fala|passa))\b/.test(s) && /\b(pesquis|procur|busc|site|google|youtube|mercado ?livre|amazon|shopee|pre[çc]o|not[ií]cia|wikip)/.test(s)) return true;
+    return false;
+  }
   function send() {
-    if (appMode === "copilot") return sendCop();
-    var prompt = ta.value.trim(); if (!prompt || (curId && hasPending(curId))) return;
+    var prompt0 = ta.value.trim();
+    if (appMode === "copilot" || (prompt0 && isAction(prompt0))) return sendCop();
+    var prompt = prompt0; if (!prompt || (curId && hasPending(curId))) return;
     var sent = images.slice(), fl = files.slice(), rounds = prefs.rounds, mode = prefs.mode;
     var L = leaderMember();
     var full = withFiles(prompt, fl);
-    var ctxPrompt = cur() && cur().kind !== "copilot" ? withContext(full) : full;
+    var ctxPrompt = cur() ? withContext(full) : full;
     var base = { prompt: ctxPrompt, effort: prefs.effort, mode: mode, leader: L ? L.name : "", models: prefs.models,
       now: new Date().toLocaleString("pt-BR", { weekday: "long", year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" }),
       tz: (Intl.DateTimeFormat().resolvedOptions().timeZone || "") };
@@ -1977,7 +1990,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
     EXT.listeners.push(onEv);
     if (attachId) { extCall({ type: "status" }).then(function (r) { paint(r.task); }, function () {}); return; }
     var alogStart = document.createElement("div"); alogStart.className = "ln cur";
-    alogStart.innerHTML = '<svg class="star spinstar" style="color:var(--ac)"><use href="#i-star"/></svg><span>Abrindo a aba no grupo Council…</span>'; alog.appendChild(alogStart);
+    alogStart.innerHTML = '<svg class="star spinstar" style="color:var(--ac)"><use href="#i-star"/></svg><span>Planejando… (a aba só abre depois que você permitir)</span>'; alog.appendChild(alogStart);
     var id = "t" + Date.now().toString(36);
     myId = id; log.extId = id; saveHist();
     extCall({ type: "start", id: id, goal: goal, request: data.request || goal, context: data.ctx || "" }).catch(function (e) {
@@ -2372,8 +2385,8 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
     // Com a extensão (ou o app), pesquisar/abrir algo específico vira tarefa supervisionada: ela navega, confere e responde
     if (local && agent && webish(local, text)) local = toWeb(text);
     var prev = cur(), hist = [];
-    if (prev && prev.kind === "copilot") turnsOf(prev).filter(function (t) { return t.data && !t.data.error; }).slice(-3).forEach(function (t) {
-      hist.push({ role: "user", text: t.prompt }); hist.push({ role: "assistant", text: t.data.say || t.data.imageAnswer || "" });
+    if (prev) turnsOf(prev).filter(function (t) { return t.data && !t.data.error; }).slice(-3).forEach(function (t) {
+      var d = t.data; hist.push({ role: "user", text: t.prompt }); hist.push({ role: "assistant", text: String(d.final || (d.webLog && d.webLog.answer) || d.say || d.imageAnswer || "").slice(0, 1200) });
     });
     var T = beginTurn("copilot", text, sentImgs), h = T.h, k = T.k;
     ta.value = ""; images = []; files = []; renderThumbs(); autosize();
@@ -2431,7 +2444,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
     p.querySelector('[data-a="del"]').onclick = function () { closePop(); var h = cur(); if (h) { history.splice(history.indexOf(h), 1); saveHist(); } goHome(); };
   };
 
-  renderRecent(); if (prefs.app === "copilot") setApp("copilot"); autosize(); updSend(); ta.focus();
+  renderRecent(); if (prefs.app === "copilot") setApp("council"); autosize(); updSend(); ta.focus();
 })();
 </script>
 </body>

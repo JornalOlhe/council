@@ -66,6 +66,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   assert.equal(events.at(-1).waiting.kind, "site", "pede permissão antes de usar o site");
   assert.equal(events.at(-1).waiting.msg, "google.com");
   assert.ok(!cmds.some((c) => c.startsWith("Page.navigate")), "não navega antes da permissão");
+  assert.ok(!cmds.includes("attach 7"), "não abre a aba antes da permissão");
   await send({ type: "answer", choice: "always" });
   for (let i = 0; i < 100 && !(events.at(-1).waiting && events.at(-1).waiting.kind === "confirm"); i++) await wait(20);
   assert.equal(events.at(-1).waiting.kind, "confirm");
@@ -84,6 +85,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   assert.ok(last.lines.some((l) => /não aprovou/.test(l.t)) && last.lines.some((l) => /Conferido por/.test(l.t)), "verificador recusou e depois aprovou");
   assert.deepEqual((await send({ type: "perms" })).sites, ["google.com"]);
   assert.ok(cmds.includes("Runtime.addBinding"), "botão Parar na própria aba");
+  assert.ok(cmds.filter((c) => c === "Runtime.evaluate").length > 0);
   console.log("✓ tarefa completa na aba Council (grupo laranja, navegar, digitar, confirmar, resposta, desconectar)");
   // parar no meio
   plans = [{ say: "Vou esperar.", action: { type: "wait", seconds: 1 }, then: [] }, { say: "x", action: { type: "wait", seconds: 1 } }, { say: "x", action: { type: "wait", seconds: 1 } }];

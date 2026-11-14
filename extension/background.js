@@ -56,7 +56,31 @@ const GLOW = `(() => { if (document.getElementById("iac-glow")) return; const s 
   b.textContent = "Council"; sp.textContent = window.__iacNow || "trabalhando nesta aba…"; bt.textContent = "Parar";
   bt.onclick = () => { try { window.__iacStop("stop"); } catch (e) {} sp.textContent = "parando…"; };
   p.append(dot, b, sp, bt); (document.body || document.documentElement).appendChild(p); })()`;
-const UNGLOW = `(() => { ["iac-glow", "iac-pill"].forEach((id) => { const e = document.getElementById(id); if (e) e.remove(); }); })()`;
+// Cursor laranja da IA: mostra onde ela vai clicar/digitar
+const CURSOR = (x, y, mode) => `(() => {
+  let c = document.getElementById("iac-cursor");
+  if (!c) {
+    if (!document.getElementById("iac-cstyle")) { const s = document.createElement("style"); s.id = "iac-cstyle";
+      s.textContent = '#iac-cursor{position:fixed;left:0;top:0;z-index:2147483647;pointer-events:none;transition:transform .42s cubic-bezier(.3,.8,.3,1);will-change:transform}' +
+        '#iac-cursor svg{display:block;filter:drop-shadow(0 2px 5px rgba(0,0,0,.45)) drop-shadow(0 0 7px rgba(217,119,87,.75))}' +
+        '#iac-cursor .rp{position:absolute;left:-14px;top:-14px;width:30px;height:30px;border-radius:50%;border:2.5px solid #d97757;opacity:0}' +
+        '#iac-cursor.clk .rp{animation:iacr .55s ease-out}@keyframes iacr{0%{opacity:1;transform:scale(.3)}100%{opacity:0;transform:scale(1.6)}}' +
+        '#iac-cursor .tg{position:absolute;left:20px;top:18px;background:#d97757;color:#fff;font:600 11px/1 system-ui,Segoe UI,sans-serif;padding:4px 7px;border-radius:6px;white-space:nowrap;opacity:0;transition:opacity .2s}' +
+        '#iac-cursor.typ .tg{opacity:1}';
+      (document.head || document.documentElement).appendChild(s); }
+    c = document.createElement("div"); c.id = "iac-cursor";
+    const ns = "http://www.w3.org/2000/svg", svg = document.createElementNS(ns, "svg"), p = document.createElementNS(ns, "path");
+    svg.setAttribute("width", "22"); svg.setAttribute("height", "26"); svg.setAttribute("viewBox", "0 0 22 26");
+    p.setAttribute("d", "M2 1.5v20.2l5.6-5.2 3.6 8.3 3.7-1.6-3.6-8.1 7.7-.3z"); p.setAttribute("fill", "#d97757"); p.setAttribute("stroke", "#fff"); p.setAttribute("stroke-width", "1.6"); p.setAttribute("stroke-linejoin", "round");
+    svg.appendChild(p); const rp = document.createElement("div"); rp.className = "rp"; const tg = document.createElement("div"); tg.className = "tg"; tg.textContent = "digitando…";
+    c.append(rp, svg, tg); (document.body || document.documentElement).appendChild(c);
+    const o = window.__iacXY || [innerWidth / 2, innerHeight / 2]; c.style.transform = "translate(" + o[0] + "px," + o[1] + "px)"; c.getBoundingClientRect();
+  }
+  ${x == null ? "" : `window.__iacXY = [${x}, ${y}]; c.style.transform = "translate(${x}px,${y}px)";`}
+  c.classList.toggle("typ", ${JSON.stringify(mode || "")} === "type");
+  if (${JSON.stringify(mode || "")} === "click") { c.classList.remove("clk"); void c.offsetWidth; c.classList.add("clk"); }
+})()`;
+const UNGLOW = `(() => { ["iac-glow", "iac-pill", "iac-cursor", "iac-cstyle"].forEach((id) => { const e = document.getElementById(id); if (e) e.remove(); }); })()`;
 const pillText = (t) => `(() => { window.__iacNow = ${JSON.stringify(String(t || "").slice(0, 140))}; const s = document.querySelector("#iac-pill span"); if (s) s.textContent = window.__iacNow; })()`;
 
 const short = (m) => { m = String(m || "IA").replace(/^.*\//, "").replace(/:free$/, ""); return /gemini/i.test(m) ? "Gemini" : /gpt-oss/i.test(m) ? "GPT-OSS (Groq)" : /nemotron/i.test(m) ? "Nemotron" : /llama/i.test(m) ? "Llama" : m.slice(0, 30); };
@@ -89,7 +113,7 @@ async function ensureTab() {
   const st = await chrome.storage.session.get(["groupId", "windowId"]).catch(() => ({}));
   let windowId = st.windowId;
   if (windowId != null && !(await chrome.windows.get(windowId).catch(() => null))) windowId = null;
-  const tab = await chrome.tabs.create({ url: "about:blank", active: true, ...(windowId != null ? { windowId } : {}) });
+  const tab = await chrome.tabs.create({ url: "about:blank", active: false, ...(windowId != null ? { windowId } : {}) });
   let groupId = st.groupId;
   const g = groupId != null ? await chrome.tabGroups.get(groupId).catch(() => null) : null;
   if (g && g.windowId === tab.windowId) await chrome.tabs.group({ groupId, tabIds: [tab.id] });
@@ -135,14 +159,15 @@ chrome.tabs.onRemoved.addListener((tabId) => { if (task && tabId === task.tabId)
 
 async function waitReady(tabId, ms = 10000) {
   const end = Date.now() + ms;
-  await sleep(300);
+  await sleep(200);
   while (Date.now() < end) {
     const st = await evaluate(tabId, "document.readyState").catch(() => "loading");
     if (st === "complete" || st === "interactive") break;
     await sleep(300);
   }
-  await sleep(400);
+  await sleep(250);
   await evaluate(tabId, GLOW).catch(() => {});
+  await evaluate(tabId, CURSOR(null, null, "")).catch(() => {});
 }
 
 async function snapshot(tabId) {
@@ -151,10 +176,10 @@ async function snapshot(tabId) {
   try {
     const m = await cdp(tabId, "Page.getLayoutMetrics");
     const vp = m.cssVisualViewport || m.visualViewport;
-    const scale = Math.min(1, 1280 / Math.max(1, vp.clientWidth));
+    const scale = Math.min(1, 1100 / Math.max(1, vp.clientWidth));
     const shot = await Promise.race([
       cdp(tabId, "Page.captureScreenshot", { format: "jpeg", quality: 60, clip: { x: vp.pageX, y: vp.pageY, width: vp.clientWidth, height: vp.clientHeight, scale } }),
-      sleep(6000).then(() => null),
+      sleep(3000).then(() => null),
     ]);
     if (shot && shot.data) image = "data:image/jpeg;base64," + shot.data;
   } catch {}
@@ -169,7 +194,14 @@ async function center(tabId, id) {
   if (!r) throw new Error("o elemento " + id + " não está mais na página (ela mudou)");
   return r;
 }
+async function pointTo(tabId, x, y, mode) {
+  if (task) task.cursor = [x, y];
+  await evaluate(tabId, CURSOR(x, y, "")).catch(() => {});
+  await sleep(430); // o usuário vê o cursor indo até o alvo
+  if (mode) await evaluate(tabId, CURSOR(null, null, mode)).catch(() => {});
+}
 async function click(tabId, x, y) {
+  await pointTo(tabId, x, y, "click");
   await cdp(tabId, "Input.dispatchMouseEvent", { type: "mouseMoved", x, y });
   await cdp(tabId, "Input.dispatchMouseEvent", { type: "mousePressed", x, y, button: "left", clickCount: 1 });
   await cdp(tabId, "Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button: "left", clickCount: 1 });
@@ -211,15 +243,16 @@ async function act(tabId, a) {
       if (!ok) throw new Error("não achei essa opção na lista");
       done = "escolheu “" + a.value + "”";
     } else {
-      await click(tabId, c.x, c.y); await sleep(120);
+      await click(tabId, c.x, c.y); await evaluate(tabId, CURSOR(null, null, "type")).catch(() => {}); await sleep(100);
       if (a.clear !== false) await evaluate(tabId, `(() => { const el = document.querySelector('[data-iac="${Number(a.id)}"]'); if (!el) return; el.focus();
         if ("value" in el && el.select) el.select(); else { const s = getSelection(), r = document.createRange(); r.selectNodeContents(el); s.removeAllRanges(); s.addRange(r); } })()`);
       await cdp(tabId, "Input.insertText", { text: String(a.text || "").slice(0, 3000) });
       if (a.enter) { await sleep(150); await key(tabId, "enter"); }
+      await evaluate(tabId, CURSOR(null, null, "")).catch(() => {});
       done = "digitou “" + String(a.text || "").slice(0, 50) + "”" + (a.enter ? " + Enter" : "");
     }
   } else throw new Error("ação desconhecida: " + t);
-  await sleep(450);
+  await sleep(300);
   const after = await evaluate(tabId, "location.href").catch(() => before);
   if (after !== before) await waitReady(tabId);
   return done;
@@ -241,7 +274,6 @@ async function siteAllowed(host) {
 }
 async function askSite(host) {
   if (await siteAllowed(host)) return true;
-  await chrome.tabs.update(task.tabId, { active: true }).catch(() => {});
   const choice = await askUser("site", host);
   if (!choice) return false;
   task.allowed.add(host);
@@ -272,20 +304,19 @@ async function runTask(t) {
     emit();
   };
   try {
-    const tabId = await ensureTab();
-    await attach(tabId);
+    // a aba só é criada DEPOIS da permissão do primeiro site
     while (true) {
       if (task.stop) return finish("stopped", "Parado por você.", "err");
       if (step >= MAX_STEPS) return finish("max", "Parei depois de " + MAX_STEPS + " passos. Peça para continuar se precisar.", "err");
-      if (task.tabId == null) return finish("stopped", "A aba do Council foi fechada.", "err");
+      if (task.tabId == null && task.opened) return finish("stopped", "A aba do Council foi fechada.", "err");
       if (task.detached) { task.detached = null; await attach(task.tabId).catch(() => {}); }
       step++;
-      setNow(step === 1 ? "Abrindo o navegador…" : "Lendo a página… (passo " + step + ")");
-      const page = await snapshot(task.tabId);
+      setNow(step === 1 ? "Planejando…" : "Lendo a página… (passo " + step + ")");
+      const page = task.opened ? await snapshot(task.tabId) : { url: "", title: "", elements: [], text: "", image: null };
       task.shot = page.image; task.url = page.url; task.title = page.title;
       setNow("Entendendo a página e decidindo o próximo passo…");
       const r = await fetch(API, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
-        stage: "web", rejections: task.rejections, goal: task.goal, request: task.request || task.goal, context: task.context || "", plan: task.plan, steps: task.steps,
+        stage: "web", rejections: task.rejections, failed: task.failed || 0, goal: task.goal, request: task.request || task.goal, context: task.context || "", plan: task.plan, steps: task.steps,
         page: { url: page.url, title: page.title, elements: page.elements, text: page.text, scrollY: page.scrollY, scrollMax: page.scrollMax }, image: page.image }) });
       const plan = await r.json().catch(() => ({ error: "resposta inválida do servidor" }));
       if (!r.ok) throw new Error(plan.error || "Erro " + r.status);
@@ -323,6 +354,11 @@ async function runTask(t) {
       const host = a.type === "navigate" ? hostOf(a.url) : hostOf(page.url);
       if (host && !(await askSite(host))) return finish("stopped", "Você não permitiu o Council em " + host + ".", "err");
       if (task.stop) return finish("stopped", "Parado por você.", "err");
+      if (!task.opened) {
+        setNow("Abrindo a aba no grupo Council…");
+        await ensureTab(); await attach(task.tabId); task.opened = true;
+        addLine("Abri uma aba no grupo Council (você continua aqui; clique em “Ver aba” para acompanhar)");
+      }
       setNow(plan.say);
       const did = [];
       try {
@@ -332,12 +368,12 @@ async function runTask(t) {
           if (d) did.push(d);
         }
         const line = plan.say + (did.length ? " (" + did.join(", ") + ")" : "");
-        addLine(line); task.steps.push(line);
+        addLine(line); task.steps.push(line); task.failed = 0;
       } catch (e) {
-        addLine("Não deu certo: " + e.message, "err");
+        addLine("Não deu certo: " + e.message, "err"); task.failed = (task.failed || 0) + 1;
         task.steps.push("FALHOU (" + (did.length ? "fez " + did.join(", ") + "; depois " : "") + a.type + "): " + e.message);
       }
-      await sleep(200);
+      await sleep(60);
     }
   } catch (e) {
     return finish("error", (e && e.message) || "Falha inesperada.", "err");
