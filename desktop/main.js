@@ -5,6 +5,8 @@ const { app, BrowserWindow, ipcMain, desktopCapturer, screen, clipboard, globalS
 const { spawn } = require("child_process");
 const path = require("path");
 const control = require("./control.js");
+const { CopilotBrowser } = require("./web.js");
+const browser = new CopilotBrowser();
 
 const SITE = process.env.IA_COUNCIL_URL || "https://council-one-sigma.vercel.app";
 const ORIGIN = new URL(SITE).origin;
@@ -112,6 +114,13 @@ ipcMain.handle("pc:act", async (e, a) => {
   }
   return { ok: true, done: control.describe(a) };
 });
+
+// ---------- Navegador do Copiloto (janela própria, sem mexer no mouse do usuário) ----------
+ipcMain.handle("web:open", async (e, url) => { guard(e); return browser.open(String(url || "")); });
+ipcMain.handle("web:snapshot", async (e) => { guard(e); return browser.snapshot(); });
+ipcMain.handle("web:act", async (e, a) => { guard(e); return browser.act(a || {}); });
+ipcMain.handle("web:working", async (e, on, status) => { guard(e); await browser.setWorking(!!on, String(status || "").slice(0, 80)); return true; });
+ipcMain.handle("web:show", (e, focus) => { guard(e); browser.show(!!focus); return true; });
 
 // ---------- atualização automática do app (GitHub Releases) ----------
 function sendUpdate(st) {

@@ -25,7 +25,8 @@
       "preload.js",
       "control.js",
       "input.ps1",
-      "icon.png"
+      "icon.png",
+      "web.js"
     ],
     "asarUnpack": [
       "input.ps1"

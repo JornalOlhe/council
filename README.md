@@ -14,6 +14,12 @@ Você pede em português e ele faz:
 - **No site (qualquer navegador):** abre abas e pesquisa (Google, YouTube, Maps, Mercado Livre, Spotify…), abre sites, cria lembretes com alarme, copia textos e prepara e-mails e WhatsApp.
 - **No app IA Council para Windows:** além disso, vê a tela, **identifica cada elemento** (botões, campos, ícones), **troca de apps e abas, move o mouse e digita** até cumprir o pedido — como os apps de desktop do Claude e do ChatGPT. Sem código de pareamento.
 
+### Navegador do Copiloto (no app)
+Como o Claude in Chrome: o Copiloto ganha uma **janela de navegador só dele** e faz tarefas em sites (pesquisar e trazer a resposta, comparar preços, preencher formulários) **sem mexer no seu mouse/teclado** — você assiste ou continua usando o PC.
+- O app controla a janela por dentro (`desktop/web.js`): lê a página (lista numerada de botões/links/campos + texto) e tira print; `/api/copilot` (estágio `web`) escolhe a ação; o app clica/digita com eventos internos do navegador.
+- Logins feitos nessa janela ficam salvos (sessão própria). Quando precisa de você (login, captcha, senha), ele para, traz a janela para frente e espera "Já fiz, continuar".
+- Borda laranja na página enquanto trabalha; não digita em campos de senha; pede confirmação antes de comprar/enviar.
+
 ### App para Windows (`desktop/`)
 - Electron que abre o site oficial numa janela própria e expõe `window.iaDesktop` (print da tela, ações de mouse/teclado, modo painel) **só para o site oficial**.
 - Mouse e teclado via `input.ps1` (PowerShell + `user32.dll`, sem dependências nativas); acentos são digitados colando pela área de transferência.

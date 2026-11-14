@@ -1,6 +1,6 @@
 // node tests/copilot.test.mjs
 import assert from "node:assert/strict";
-const { default: copilot, sanitizePlan, sanitizeAct } = await import("../api/copilot.js");
+const { default: copilot, sanitizePlan, sanitizeAct, sanitizeWeb } = await import("../api/copilot.js");
 const { default: transcribe, cleanTranscript } = await import("../api/transcribe.js");
 
 let reply = "", calls = [], groqAudio = { status: 200, text: "olá mundo" };
@@ -112,6 +112,26 @@ await t("cota do Gemini esgotada (429): troca de modelo e continua", async () =>
   assert.equal(r.json.provider, "OpenRouter");
   assert.ok(tried.filter((m) => /gemini|gemma/.test(m)).length >= 3, "tentou vários Gemini antes");
   assert.equal(r.json.plan, "1) abrir");
+});
+await t("navegador do Copiloto: escolhe elemento da lista e traz a resposta", async () => {
+  reply = '{"plan":"1) buscar 2) ler","say":"Vou buscar.","action":{"type":"type","id":3,"text":"preço ps5","enter":true},"then":[{"type":"wait","seconds":1}]}';
+  const r = await run(copilot, { stage: "web", goal: "ver o preço do PS5", request: "pesquise o preço do ps5 e me diga",
+    page: { url: "https://www.google.com", title: "Google", elements: [{ id: 3, kind: "campo:text", label: "Pesquisar" }], text: "Google" } });
+  assert.equal(r.code, 200);
+  assert.deepEqual(r.json.action, { type: "type", id: 3, text: "preço ps5", enter: true });
+  assert.equal(r.json.then[0].type, "wait");
+});
+await t("navegador do Copiloto: bloqueia ações perigosas", async () => {
+  assert.equal(sanitizeWeb({ action: { type: "navigate", url: "javascript:alert(1)" } }).action.type, "ask_user");
+  assert.equal(sanitizeWeb({ action: { type: "navigate", url: "g1.globo.com" } }).action.url, "https://g1.globo.com/");
+  assert.equal(sanitizeWeb({ action: { type: "click" } }).action.type, "ask_user");
+  assert.equal(sanitizeWeb({ action: { type: "key", key: "F12" } }).action.type, "ask_user");
+  assert.equal(sanitizeWeb({ action: { type: "done" }, answer: "R$ 3.999 na Amazon" }).answer, "R$ 3.999 na Amazon");
+});
+await t("plano usa o navegador do Copiloto só no app", async () => {
+  reply = '{"say":"Vou pesquisar.","actions":[{"type":"web","goal":"Pesquisar o preço do PS5 e trazer o menor"}]}';
+  const r = await run(copilot, { stage: "plan", text: "veja o preço do ps5 e me diga o menor", app: true });
+  assert.equal(r.json.actions[0].type, "web");
 });
 await t("áudio inválido = 400", async () => {
   assert.equal((await run(transcribe, { audio: "data:text/plain;base64,AAAA" })).code, 400);

@@ -12,5 +12,12 @@ contextBridge.exposeInMainWorld("iaDesktop", {
   updateState: () => ipcRenderer.invoke("app:update-state").catch(clean),
   checkUpdate: () => ipcRenderer.invoke("app:check-update").catch(clean),
   installUpdate: () => ipcRenderer.invoke("app:install-update").catch(clean),
+  web: {
+    open: (url) => ipcRenderer.invoke("web:open", url).catch(clean),
+    snapshot: () => ipcRenderer.invoke("web:snapshot").catch(clean),
+    act: (a) => ipcRenderer.invoke("web:act", a).catch(clean),
+    working: (on, status) => ipcRenderer.invoke("web:working", !!on, status || "").catch(clean),
+    show: (focus) => ipcRenderer.invoke("web:show", !!focus).catch(clean),
+  },
   onUpdate: (cb) => { ipcRenderer.on("app:update", (_e, st) => cb(st)); },
 });

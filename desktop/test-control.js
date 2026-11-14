@@ -13,4 +13,8 @@ assert.throws(() => c.plan({ type: "key", key: "rm -rf" }, 1, 1), /tecla desconh
 assert.throws(() => c.plan({ type: "shell", cmd: "del" }, 1, 1), /ação desconhecida/);
 assert.throws(() => c.plan({ type: "click" }, 1, 1), /ponto inválido/);
 assert.strictEqual(c.vk("F5"), 0x74);
-console.log("12 testes do controle do PC passaram");
+const { keyCode } = (() => { const m = require("module"); const orig = m._load; m._load = function (r, ...x) { return r === "electron" ? {} : orig.call(this, r, ...x); }; const w = require("./web.js"); m._load = orig; return w; })();
+assert.strictEqual(keyCode("Enter"), "Enter");
+assert.strictEqual(keyCode("arrowdown"), "Down");
+assert.throws(() => keyCode("ctrl+alt+del"), /não permitida/);
+console.log("15 testes do controle do PC e do navegador passaram");

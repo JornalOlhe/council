@@ -262,6 +262,7 @@ body.collapsed #openSide{display:grid}
 .agent .ah{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--line)}
 .agent .ah b{flex:1;min-width:0;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .agent .ah .btn.stop{background:#5a2b26;color:#ffd7d1}
+.agent .ah .btn.show{font-size:13px}
 .agent .ah .btn.stop:hover{background:#6e332c}
 .shotwrap{position:relative;line-height:0;background:#000}
 .shotwrap img{width:100%;display:block}
@@ -502,6 +503,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
       <h1 class="greet"><svg class="star" id="greetStar"><use href="#i-star"/></svg><svg class="helm hidden" id="greetHelm"><use href="#i-helmet"/></svg><span id="greet"></span></h1>
       <div class="cw" id="homeSlot"></div>
       <div class="chips hidden" id="copChips">
+        <button data-p="Pesquise o preço do PlayStation 5 em 3 lojas e me diga qual é o mais barato"><svg><use href="#i-globe"/></svg>Comparar preços</button>
         <button data-p="Pesquise no YouTube música lo-fi para estudar"><svg><use href="#i-globe"/></svg>Lo-fi no YouTube</button>
         <button data-p="Abra o Bloco de Notas no meu PC e escreva uma lista de compras com arroz, feijão e café"><svg><use href="#i-monitor"/></svg>Usar meu PC</button>
         <button data-p="Olhe minha tela e me diga o que está aberto"><svg><use href="#i-monitor"/></svg>Olhar minha tela</button>
@@ -1432,6 +1434,8 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
     if (m) return searchPlan(engOf(m[1]), cleanQ(m[2]));
     m = /^(?:to[cq]\w*|coloc\w*|bot\w*|ouvir|quero ouvir)\s+(.+?)\s+(?:no|na)\s+(spotify|youtube)$/i.exec(s);
     if (m) return searchPlan(engOf(m[2]), cleanQ(m[1]));
+    // pedidos para trazer informação / fazer algo num site: deixa a IA planejar (no app ela usa o navegador do Copiloto)
+    if (/\b(e me (diga|fala|mostr\w*|cont\w*|traga|passa)|me (diga|fala|traga) (o|a|qual|quanto)|resum\w*|compar\w*|qual (é |o |a )?(o |a )?(melhor|mais barat\w*|menor)|preench\w*|cadastr\w*|compr[ae]\w*|reserv\w*|liste|encontre o|quanto custa|cotação)\b/i.test(s)) return null;
     // pesquisas
     m = /^(?:pesquis\w*|procur\w*|bus[cq]\w*|googl\w*|ach\w*|encontr\w*|mostr\w*|me mostr\w*)\s+(.+)$/i.exec(s);
     if (m) {
@@ -1476,6 +1480,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
     if (a.type === "timer") return ["alarm", "Lembrete em " + fmtDur(a.seconds), a.label];
     if (a.type === "screen") return ["monitor", "Ver sua tela", a.question];
     if (a.type === "pc") return ["monitor", "No seu PC", a.goal];
+    if (a.type === "web") return ["globe", "No navegador do Copiloto", a.goal];
     return ["globe", a.type, ""];
   }
   function openURL(url) {
@@ -1719,6 +1724,124 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
     D.updateState().then(function (st) { upd.app = st; showUpd(); }, function () {});
   }
 
+  // ----- Navegador do Copiloto: tarefas em sites numa janela própria (sem mexer no mouse do usuário) -----
+  var webBusy = null;
+  function runWeb(goal, box, data) {
+    var MAX = 30, W = D && D.web;
+    var log = data.webLog = { goal: goal, steps: [], status: "running" };
+    var card = document.createElement("div"); card.className = "agent";
+    card.innerHTML = '<div class="ah"><svg class="ico" style="color:var(--ac)"><use href="#i-globe"/></svg><b>No navegador do Copiloto: ' + esc(goal) +
+      '</b><button class="btn show">Ver janela</button><button class="btn stop">Parar</button></div>' +
+      '<div class="shotwrap hidden"><img alt="Navegador do Copiloto"></div><div class="obs hidden"></div><div class="alog"></div>';
+    box.appendChild(card);
+    var stopBtn = card.querySelector(".stop"), showBtn = card.querySelector(".show"), wrap = card.querySelector(".shotwrap"), img = wrap.querySelector("img"),
+      obs = card.querySelector(".obs"), alog = card.querySelector(".alog"), stopped = false, step = 0, lastUrl = "";
+    function line(t, cls) { var d = document.createElement("div"); d.className = "ln" + (cls ? " " + cls : ""); d.innerHTML = (cls === "err" ? "<span>⚠</span>" : '<svg><use href="#i-check"/></svg>') + "<span>" + esc(t) + "</span>"; alog.appendChild(d); alog.scrollTop = alog.scrollHeight; }
+    function nowLine(t) { var d = card.querySelector(".ln.cur"); if (!d) { d = document.createElement("div"); d.className = "ln cur"; alog.appendChild(d); } d.innerHTML = '<svg class="star spinstar" style="color:var(--ac)"><use href="#i-star"/></svg><span>' + esc(t) + "</span>"; alog.scrollTop = alog.scrollHeight; }
+    function clearNow() { var d = card.querySelector(".ln.cur"); if (d) d.remove(); }
+    function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+    function finish(status, msg, cls, answer) {
+      clearNow(); log.status = status; log.result = msg; if (answer) log.answer = answer;
+      [stopBtn].forEach(function (b) { if (b.parentNode) b.remove(); });
+      line(msg, cls);
+      if (answer) { var a = document.createElement("div"); a.className = "md"; a.style.cssText = "padding:4px 12px 12px"; a.innerHTML = md(answer); card.appendChild(a); }
+      if (webBusy === card) webBusy = null;
+      W.working(false).catch(function () {});
+      saveHist(); renderRecent();
+    }
+    function askUser(msg, yes, no) {
+      return new Promise(function (resolve) {
+        var q = document.createElement("div"); q.className = "aq";
+        q.innerHTML = "<span>" + esc(msg) + '</span><button class="btn pri">' + esc(yes) + '</button><button class="btn">' + esc(no) + "</button>";
+        card.appendChild(q);
+        var bs = q.querySelectorAll("button"), done = function (v) { if (q.parentNode) q.remove(); resolve(v); };
+        bs[0].onclick = function () { done(true); }; bs[1].onclick = function () { done(false); };
+        stopBtn.addEventListener("click", function () { done(false); }, { once: true });
+      });
+    }
+    function showShot(page, plan) {
+      if (!page.image) return;
+      wrap.classList.remove("hidden"); img.src = page.image;
+      Array.prototype.forEach.call(wrap.querySelectorAll(".mk"), function (m) { m.remove(); });
+      var a = plan && plan.action, pt = null;
+      if (a && a.id != null) (page.elements || []).forEach(function (e) { if (e.id === a.id) pt = e.point; });
+      else if (a && a.point) pt = a.point;
+      if (pt) { var t = document.createElement("div"); t.className = "mk tg"; t.style.left = pt[1] / 10 + "%"; t.style.top = pt[0] / 10 + "%"; wrap.appendChild(t); }
+      if (plan && plan.observation) { obs.classList.remove("hidden"); obs.textContent = "👁 " + plan.observation; }
+    }
+    function describe(a, page) {
+      var lab = "";
+      if (a.id != null) (page.elements || []).forEach(function (e) { if (e.id === a.id) lab = e.label; });
+      return a.type === "navigate" ? "abriu " + a.url.replace(/^https?:\/\/(www\.)?/, "").slice(0, 60) : a.type === "click" ? "clicou" + (lab ? " em “" + lab.slice(0, 40) + "”" : "") :
+        a.type === "type" ? "digitou “" + a.text.slice(0, 50) + "”" + (a.enter ? " + Enter" : "") : a.type === "select" ? "escolheu “" + a.value + "”" :
+        a.type === "key" ? "apertou " + a.key : a.type === "scroll" ? "rolou a página" : a.type === "back" ? "voltou" : a.type === "wait" ? "esperou" : a.type;
+    }
+    if (webBusy) { finish("error", "O navegador do Copiloto já está ocupado com outra tarefa. Espere ou clique em Parar nela.", "err"); return; }
+    webBusy = card;
+    stopBtn.onclick = function () { stopped = true; stopBtn.disabled = true; stopBtn.textContent = "Parando…"; };
+    showBtn.onclick = function () { W.show(true); };
+    function loop() {
+      if (stopped) return finish("stopped", "Parado por você.", "err");
+      if (step >= MAX) return finish("max", "Parei depois de " + MAX + " passos. Peça para continuar se precisar.", "err");
+      step++;
+      nowLine(step === 1 ? "Abrindo o navegador do Copiloto…" : "Lendo a página… (passo " + step + ")");
+      var page;
+      return W.snapshot().then(function (pg) {
+        page = pg; showShot(page, null);
+        if (stopped) throw { stop: true };
+        nowLine("Entendendo a página e decidindo o próximo passo…");
+        return fetch("/api/copilot", { method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ stage: "web", goal: goal, request: data.request || goal, context: data.ctx || "", plan: log.plan || "", steps: log.steps,
+            page: { url: page.url, title: page.title, elements: page.elements, text: page.text, scrollY: page.scrollY, scrollMax: page.scrollMax }, image: page.image }) })
+          .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || "Erro " + r.status); return j; }); });
+      }).then(function (plan) {
+        if (stopped) throw { stop: true };
+        showShot(page, plan);
+        if (plan.plan && !log.plan) { log.plan = plan.plan; line("Plano: " + plan.plan); }
+        var a = plan.action;
+        if (a.type === "done") { log.steps.push(plan.say); return finish("done", "✓ " + plan.say, "", plan.answer); }
+        if (a.type === "ask_user") {
+          clearNow(); log.steps.push("Pediu ajuda: " + plan.say); W.show(true);
+          return askUser("✋ " + plan.say + " (faça na janela do navegador do Copiloto)", "Já fiz, continuar", "Encerrar").then(function (go) {
+            if (!go || stopped) return finish("stopped", "Encerrado.", "err");
+            log.steps.push("O usuário resolveu na janela e pediu para continuar.");
+            return loop();
+          });
+        }
+        var ok = plan.confirm ? (clearNow(), W.show(false), askUser("⚠ " + plan.confirm, "Pode fazer", "Não")) : Promise.resolve(true);
+        return ok.then(function (yes) {
+          if (stopped) throw { stop: true };
+          if (!yes) { log.steps.push("Usuário NÃO autorizou: " + plan.say); return finish("stopped", "Cancelado: você não autorizou.", "err"); }
+          nowLine(plan.say); W.working(true, plan.say.slice(0, 60)).catch(function () {});
+          var seq = [a].concat(plan.then || []), did = [];
+          return seq.reduce(function (p, x) {
+            return p.then(function () { if (stopped) throw { stop: true }; return W.act(x).then(function () { if (x.type !== "wait") did.push(describe(x, page)); }); });
+          }, Promise.resolve()).then(function () {
+            clearNow(); var t = plan.say + " (" + did.join(", ") + ")"; line(t); log.steps.push(t);
+            return wait(250).then(loop);
+          }, function (e) {
+            if (e && e.stop) throw e;
+            clearNow(); line("Não deu certo: " + e.message, "err");
+            log.steps.push("FALHOU (" + (did.length ? "fez " + did.join(", ") + "; depois " : "") + describe(a, page) + "): " + e.message);
+            return loop();
+          });
+        });
+      }).catch(function (e) {
+        if (e && e.stop) return finish("stopped", "Parado por você.", "err");
+        return finish("error", (e && e.message) || "Falha inesperada.", "err");
+      });
+    }
+    W.working(true, "começando").then(function () { loop(); }, function () { loop(); });
+  }
+  function webNeeded(box, goal) {
+    var card = document.createElement("div"); card.className = "acard";
+    card.innerHTML = '<span class="ai">' + ic("globe") + '</span><span class="at"><b>Para eu fazer isso sozinho num site, use o app IA Council</b><span>No app, o Copiloto tem um navegador só dele e faz a tarefa enquanto você assiste.</span></span>';
+    var b = document.createElement("button"); b.className = "btn"; b.textContent = "Abrir pesquisa";
+    b.onclick = function () { openURL(ENG.google[1](goal)); };
+    var c = document.createElement("button"); c.className = "btn pri"; c.textContent = "Baixar o app"; c.onclick = openPC;
+    card.appendChild(b); card.appendChild(c); box.appendChild(card);
+  }
+
   function pcNeeded(box, retry) {
     var card = document.createElement("div"); card.className = "acard";
     card.innerHTML = '<span class="ai">' + ic("monitor") + '</span><span class="at"><b>Para mexer no seu PC, use o app IA Council para Windows</b><span>No navegador, nenhum site consegue controlar o mouse. No app, sim — é só instalar e pedir de novo.</span></span>';
@@ -1778,6 +1901,18 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
           }).catch(function (e) { st.textContent = e.message || "Não consegui ver a tela."; st.className = "bad"; });
         };
         if (pc.connected) look(); else pcCheck().then(function (ok) { if (ok) look(); else pcNeeded(box, look); });
+      } else if (a.type === "web") {
+        card.remove();
+        if (data.webLog && data.webLog.status !== "running") {
+          var pw = document.createElement("div"); pw.className = "agent";
+          pw.innerHTML = '<div class="ah"><svg class="ico" style="color:var(--ac)"><use href="#i-globe"/></svg><b>No navegador do Copiloto: ' + esc(a.goal) + '</b></div><div class="alog">' +
+            data.webLog.steps.map(function (t) { return '<div class="ln"><svg><use href="#i-check"/></svg><span>' + esc(t) + "</span></div>"; }).join("") +
+            '<div class="ln' + (data.webLog.status === "done" ? "" : " err") + '"><span>' + esc(data.webLog.result || "") + "</span></div></div>" +
+            (data.webLog.answer ? '<div class="md" style="padding:4px 12px 12px">' + md(data.webLog.answer) + "</div>" : "");
+          box.appendChild(pw); return;
+        }
+        if (!auto) return;
+        if (D && D.web) runWeb(a.goal, box, data); else webNeeded(box, a.goal);
       } else if (a.type === "pc") {
         card.remove();
         if (data.pcLog && data.pcLog.status !== "running") {
@@ -1829,7 +1964,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
     var work = sentImgs.length
       ? askAboutImage(text, sentImgs[0]).then(function (j) { return { imageAnswer: j.answer, actions: [], by: "Gemini", model: j.model }; })
       : fetch("/api/copilot", { method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ stage: "plan", text: text, history: hist, pc: pc.connected, now: new Date().toLocaleString("pt-BR"), tz: (Intl.DateTimeFormat().resolvedOptions().timeZone || "") }) })
+          body: JSON.stringify({ stage: "plan", text: text, history: hist, pc: pc.connected, app: !!(D && D.web), now: new Date().toLocaleString("pt-BR"), tz: (Intl.DateTimeFormat().resolvedOptions().timeZone || "") }) })
           .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || "Erro " + r.status); return j; }); });
     work.then(function (data) { data.request = text; data.ctx = ctxTxt; finishTurn(job, h, k, data); }, function (e) { finishTurn(job, h, k, { error: e.message || "Falha de rede." }); });
   }
