@@ -39,6 +39,9 @@ async function syncExt(manual) {
   } catch (e) { extState.error = e.message; if (manual) throw e; }
   return extState;
 }
+// conversa por voz: atalho global (funciona jogando) e a janela não fecha enquanto estiver ligada
+let voiceOn = false;
+ipcMain.handle("voice:active", (e, on) => { guard(e); voiceOn = !!on; if (tray) tray.setToolTip(voiceOn ? "Jarvis · ouvindo você (Ctrl+Shift+J desliga)" : "Jarvis"); return true; });
 ipcMain.handle("ext:info", (e) => { guard(e); return extState; });
 ipcMain.handle("ext:sync", async (e) => { guard(e); return syncExt(true); });
 ipcMain.handle("ext:open", (e) => { guard(e); shell.openPath(EXT_DIR); return true; });
@@ -260,12 +263,12 @@ html,body{margin:0;height:100%;background:transparent;overflow:hidden;font-famil
 .t{position:fixed;top:10px;left:50%;transform:translateX(-50%);background:#1f1e1dee;color:#f5f4ef;border:1px solid #d97757;border-radius:999px;padding:6px 14px;font-size:13px;display:flex;gap:8px;align-items:center;box-shadow:0 6px 24px #0007}
 .d{width:8px;height:8px;border-radius:50%;background:#d97757;animation:b 1s infinite}@keyframes b{50%{opacity:.3}}
 #c{position:fixed;left:0;top:0;transition:transform .45s cubic-bezier(.3,.8,.3,1);opacity:0}
-#c.on{opacity:1}#c svg{display:block;filter:drop-shadow(0 2px 6px rgba(0,0,0,.5)) drop-shadow(0 0 9px rgba(217,119,87,.85))}
-#c .r{position:absolute;left:-18px;top:-18px;width:38px;height:38px;border-radius:50%;border:3px solid #d97757;opacity:0}
+#c.on{opacity:1}#c svg{display:block;filter:drop-shadow(0 1px 3px rgba(0,0,0,.45))}
+#c .r{position:absolute;left:-11px;top:-11px;width:24px;height:24px;border-radius:50%;background:rgba(217,119,87,.45);opacity:0}
 #c.k .r{animation:rp .6s ease-out}@keyframes rp{0%{opacity:1;transform:scale(.3)}100%{opacity:0;transform:scale(1.7)}}
-#c .tg{position:absolute;left:26px;top:24px;background:#d97757;color:#fff;font:600 12px/1 "Segoe UI",sans-serif;padding:5px 8px;border-radius:7px;white-space:nowrap;opacity:0}#c.ty .tg{opacity:1}
+#c .tg{position:absolute;left:17px;top:23px;background:#d97757;color:#fff;font:600 12px/1 "Segoe UI",sans-serif;padding:4px 8px;border-radius:3px 9px 9px 9px;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.35)}#c.ty .tg:after{content:" · digitando"}
 </style></head><body><div class="g"></div><div class="t"><span class="d"></span>Jarvis está controlando seu PC · <b>Ctrl+Shift+Q</b> para parar</div>
-<div id="c"><div class="r"></div><svg width="28" height="33" viewBox="0 0 22 26"><path d="M2 1.5v20.2l5.6-5.2 3.6 8.3 3.7-1.6-3.6-8.1 7.7-.3z" fill="#d97757" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg><div class="tg">digitando…</div></div>
+<div id="c"><div class="r"></div><svg width="22" height="27" viewBox="0 0 18 22"><path d="M2 2v16.5l4.3-4.1 2.9 6.6 2.6-1.1-2.9-6.5h6.1z" fill="#d97757" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg><div class="tg">Jarvis</div></div>
 <script>window.mv=function(x,y,m){var c=document.getElementById("c");c.classList.add("on");if(x!=null)c.style.transform="translate("+x+"px,"+y+"px)";c.classList.toggle("ty",m==="type");if(m==="click"){c.classList.remove("k");void c.offsetWidth;c.classList.add("k");}}</script></body></html>`;
 // cursor laranja da IA na tela (por cima de tudo, fora dos prints)
 async function aiCursor(point, mode) {
@@ -339,6 +342,7 @@ function createWindow() {
     if (input.type === "keyDown" && input.key === "F5") win.webContents.reload();
     if (input.type === "keyDown" && input.control && input.shift && input.key.toLowerCase() === "i") win.webContents.toggleDevTools();
   });
+  win.on("close", (e) => { if (voiceOn && !app.isQuitting) { e.preventDefault(); win.hide(); } }); // conversa por voz continua com a janela escondida
   win.on("closed", () => { browser.attached = false; browser.onResize = null; browser.working = false; });
   win.loadURL(SITE);
 }
@@ -349,6 +353,10 @@ app.whenReady().then(() => {
     let ok = false;
     try { ok = new URL(details.requestingUrl || wc.getURL()).origin === ORIGIN; } catch {}
     cb(ok && ["media", "notifications", "clipboard-read", "clipboard-sanitized-write", "fullscreen"].includes(perm));
+  });
+  globalShortcut.register("CommandOrControl+Shift+J", () => {
+    if (!win || win.isDestroyed()) { createWindow(); win.webContents.once("did-finish-load", () => setTimeout(() => win.webContents.send("voice:toggle"), 1500)); return; }
+    win.webContents.send("voice:toggle");
   });
   globalShortcut.register(STOP_SHORTCUT, () => {
     stopFlag = true;

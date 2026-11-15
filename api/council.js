@@ -283,6 +283,8 @@ async function ask(p, system, user, deadline, eff, maxTokens, images = [], depth
 // ---------- roteamento: conversa x conselho ----------
 const CASUAL = /^\s*(oi+|ol[aá]+|opa+|e a[ií]|eai|hey|hi|hello|bom dia|boa tarde|boa noite|tudo (bem|bom|certo)\??|como vai\??|obrigad[oa]s?|valeu+|vlw|blz|beleza|ok+|okay|show|top|legal|massa|teste|testando|kk+|haha+|rs+|tchau|at[eé] mais|quem [eé] voc[eê]s?\??|o que voc[eê]s? (faz|fazem)\??)[\s!.?,\p{Extended_Pictographic}]*$/iu;
 
+// Conversa por voz: a resposta vai ser FALADA
+const VOICE_RULE = "\n\nMODO VOZ: sua resposta será lida em voz alta para o usuário (ele pode estar jogando ou ocupado). Fale como numa conversa: 1 a 4 frases curtas e naturais, SEM markdown, sem listas, sem títulos, sem emojis, sem links. Números e siglas do jeito que se fala.";
 // Perguntas simples do dia a dia: o presidente responde sozinho, com dados reais (hora, data, clima)
 const QUICK = new RegExp([
   "que horas?", "quantas horas", "horas s[aã]o", "hora (atual|certa|agora)", "que dia (é|e) hoje", "hoje (é|e) que dia", "data de hoje", "qual (é |e )?a data",
@@ -445,7 +447,7 @@ export default async function handler(req, res) {
           if (images.length && p.kind !== "gemini") continue;
           try {
             const text = await ask(p,
-              `Você é o Jarvis, um assistente formado por um conselho de IAs (${team}). Responda SEMPRE em português do Brasil, de forma natural, cordial e direta, como um assistente de conversa. Para saudações, papo casual e perguntas simples (hora, data, clima, contas), responda em 1 ou 2 frases. Não use títulos nem listas a menos que ajudem. Não invente fatos: para hora, data e clima use SOMENTE os dados reais abaixo. Se a pessoa pedir algo que mereça análise profunda, responda o essencial e sugira mandar a pergunta completa para o conselho debater.${facts ? "\n\n" + facts : ""}`,
+              `Você é o Jarvis, um assistente formado por um conselho de IAs (${team}). Responda SEMPRE em português do Brasil, de forma natural, cordial e direta, como um assistente de conversa. Para saudações, papo casual e perguntas simples (hora, data, clima, contas), responda em 1 ou 2 frases. Não use títulos nem listas a menos que ajudem. Não invente fatos: para hora, data e clima use SOMENTE os dados reais abaixo. Se a pessoa pedir algo que mereça análise profunda, responda o essencial e sugira mandar a pergunta completa para o conselho debater.${body.voice ? VOICE_RULE : ""}${facts ? "\n\n" + facts : ""}`,
               prompt, deadline, mode === "quick" ? eff : EFFORTS.low, mode === "quick" ? eff.tokens : 1500, images);
             return send(200, { ...info, mode: "chat", final: text, judge: p.name, judgeModel: p.lastUsed || p.model, errors });
           } catch (e) {
@@ -504,7 +506,7 @@ export default async function handler(req, res) {
     }
 
     // ===== FINAL =====
-    const finalPrompt = `${context}\n\nPOSIÇÕES FINAIS DOS MEMBROS:\n${fmt(positions)}\n\nVocê é o PRESIDENTE do conselho. Pese a qualidade dos argumentos (não o número de votos), corrija erros, não esconda divergências reais e responda em markdown (até ${eff.words[2]} palavras), neste formato exato:\n\n## Decisão\n## Confiança\n(0–100% e por quê)\n## Onde o conselho concorda\n## Onde divergiu e como resolvi\n## Próximos passos\n## Limitações e alertas`;
+    const finalPrompt = body.voice ? `${context}\n\nPOSIÇÕES FINAIS DOS MEMBROS:\n${fmt(positions)}\n\nVocê é o PRESIDENTE do conselho (o Jarvis). Pese os argumentos e dê a DECISÃO final.${VOICE_RULE} Diga a decisão, o principal motivo e, se houver, a divergência mais importante.` : `${context}\n\nPOSIÇÕES FINAIS DOS MEMBROS:\n${fmt(positions)}\n\nVocê é o PRESIDENTE do conselho. Pese a qualidade dos argumentos (não o número de votos), corrija erros, não esconda divergências reais e responda em markdown (até ${eff.words[2]} palavras), neste formato exato:\n\n## Decisão\n## Confiança\n(0–100% e por quê)\n## Onde o conselho concorda\n## Onde divergiu e como resolvi\n## Próximos passos\n## Limitações e alertas`;
     const order = [leader, ...providers.filter((p) => p !== leader)];
     for (const p of order) {
       try {

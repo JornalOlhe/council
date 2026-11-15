@@ -406,7 +406,7 @@ export default async function handler(req, res) {
     const tz = str(body.tz, 60) || "America/Sao_Paulo";
     const hist = (Array.isArray(body.history) ? body.history : []).slice(-6)
       .map((h) => `${h && h.role === "assistant" ? "Copiloto" : "Usuário"}: ${str(h && h.text, 1200)}`).join("\n");
-    const user = (hist ? `CONVERSA ANTERIOR:\n${hist}\n\n` : "") + `PEDIDO DO USUÁRIO:\n${text}`;
+    const user = (hist ? `CONVERSA ANTERIOR:\n${hist}\n\n` : "") + `PEDIDO DO USUÁRIO:\n${text}` + (body.voice ? "\n\n(MODO VOZ: o campo \"say\" será falado em voz alta — 1 ou 2 frases curtas, sem markdown.)" : "");
     const order = [
       ...providers.filter((p) => p.name === "Groq"),
       ...providers.filter((p) => p.name !== "Groq" && p.kind !== "gemini"),

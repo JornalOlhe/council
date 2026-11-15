@@ -61,20 +61,19 @@ const CURSOR = (x, y, mode) => `(() => {
   let c = document.getElementById("iac-cursor");
   if (!c) {
     if (!document.getElementById("iac-cstyle")) { const s = document.createElement("style"); s.id = "iac-cstyle";
-      s.textContent = '#iac-cursor{position:fixed;left:0;top:0;z-index:2147483647;pointer-events:none;transition:transform .42s cubic-bezier(.3,.8,.3,1);will-change:transform}' +
-        '#iac-cursor svg{display:block;filter:drop-shadow(0 2px 5px rgba(0,0,0,.45)) drop-shadow(0 0 7px rgba(217,119,87,.75))}' +
-        '#iac-cursor .rp{position:absolute;left:-14px;top:-14px;width:30px;height:30px;border-radius:50%;border:2.5px solid #d97757;opacity:0}' +
-        '#iac-cursor.clk .rp{animation:iacr .55s ease-out}@keyframes iacr{0%{opacity:1;transform:scale(.3)}100%{opacity:0;transform:scale(1.6)}}' +
-        '#iac-cursor .tg{position:absolute;left:20px;top:18px;background:#d97757;color:#fff;font:600 11px/1 system-ui,Segoe UI,sans-serif;padding:4px 7px;border-radius:6px;white-space:nowrap;opacity:0;transition:opacity .2s}' +
-        '#iac-cursor.typ .tg{opacity:1}#iac-cursor .w{transition:opacity .3s}#iac-cursor.think .w{animation:iacw 1.6s ease-in-out infinite}' +
-        '@keyframes iacw{0%{transform:translate(0,0)}25%{transform:translate(14px,6px)}50%{transform:translate(6px,16px)}75%{transform:translate(-8px,7px)}100%{transform:translate(0,0)}}' +
-        '#iac-cursor.idle .w{opacity:.55}';
+      s.textContent = '#iac-cursor{position:fixed;left:0;top:0;z-index:2147483647;pointer-events:none;transition:transform .5s cubic-bezier(.22,.9,.3,1)}' +
+    '#iac-cursor svg{display:block;filter:drop-shadow(0 1px 2px rgba(0,0,0,.35))}' +
+    '#iac-cursor .rp{position:absolute;left:-9px;top:-9px;width:20px;height:20px;border-radius:50%;background:rgba(217,119,87,.4);opacity:0}' +
+    '#iac-cursor.clk .rp{animation:iacr .5s ease-out}@keyframes iacr{0%{opacity:1;transform:scale(.4)}100%{opacity:0;transform:scale(1.9)}}' +
+    '#iac-cursor .tg{position:absolute;left:14px;top:19px;background:#d97757;color:#fff;font:600 11px/1 system-ui,Segoe UI,sans-serif;padding:4px 7px;border-radius:3px 9px 9px 9px;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:opacity .3s}' +
+    '#iac-cursor.typ .tg:after{content:" · digitando"}#iac-cursor.think .tg:after{content:" · lendo…"}' +
+    '#iac-cursor .w{transition:opacity .3s}#iac-cursor.idle .w,#iac-cursor.idle .tg{opacity:.45}';
       (document.head || document.documentElement).appendChild(s); }
     c = document.createElement("div"); c.id = "iac-cursor";
     const ns = "http://www.w3.org/2000/svg", svg = document.createElementNS(ns, "svg"), p = document.createElementNS(ns, "path");
-    svg.setAttribute("width", "26"); svg.setAttribute("height", "31"); svg.setAttribute("viewBox", "0 0 22 26");
-    p.setAttribute("d", "M2 1.5v20.2l5.6-5.2 3.6 8.3 3.7-1.6-3.6-8.1 7.7-.3z"); p.setAttribute("fill", "#d97757"); p.setAttribute("stroke", "#fff"); p.setAttribute("stroke-width", "1.6"); p.setAttribute("stroke-linejoin", "round");
-    svg.appendChild(p); const rp = document.createElement("div"); rp.className = "rp"; const tg = document.createElement("div"); tg.className = "tg"; tg.textContent = "digitando…";
+    svg.setAttribute("width", "18"); svg.setAttribute("height", "22"); svg.setAttribute("viewBox", "0 0 18 22");
+    p.setAttribute("d", "M2 2v16.5l4.3-4.1 2.9 6.6 2.6-1.1-2.9-6.5h6.1z"); p.setAttribute("fill", "#d97757"); p.setAttribute("stroke", "#fff"); p.setAttribute("stroke-width", "1.5"); p.setAttribute("stroke-linejoin", "round");
+    svg.appendChild(p); const rp = document.createElement("div"); rp.className = "rp"; const tg = document.createElement("div"); tg.className = "tg"; tg.textContent = "Jarvis";
     const wr = document.createElement("div"); wr.className = "w"; wr.append(svg);
     c.append(rp, wr, tg); (document.body || document.documentElement).appendChild(c);
     const o = window.__iacXY || [innerWidth * 0.55, innerHeight * 0.35]; c.style.transform = "translate(" + o[0] + "px," + o[1] + "px)"; c.getBoundingClientRect();

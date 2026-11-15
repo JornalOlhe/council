@@ -29,5 +29,7 @@ contextBridge.exposeInMainWorld("iaDesktop", {
     sync: () => ipcRenderer.invoke("ext:sync").catch(clean),
     open: () => ipcRenderer.invoke("ext:open").catch(clean),
   },
+  voiceActive: (on) => ipcRenderer.invoke("voice:active", !!on).catch(() => {}),
+  onVoiceToggle: (cb) => { ipcRenderer.on("voice:toggle", () => cb()); },
   onUpdate: (cb) => { ipcRenderer.on("app:update", (_e, st) => cb(st)); },
 });
