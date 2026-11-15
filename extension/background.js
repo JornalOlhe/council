@@ -66,21 +66,26 @@ const CURSOR = (x, y, mode) => `(() => {
         '#iac-cursor .rp{position:absolute;left:-14px;top:-14px;width:30px;height:30px;border-radius:50%;border:2.5px solid #d97757;opacity:0}' +
         '#iac-cursor.clk .rp{animation:iacr .55s ease-out}@keyframes iacr{0%{opacity:1;transform:scale(.3)}100%{opacity:0;transform:scale(1.6)}}' +
         '#iac-cursor .tg{position:absolute;left:20px;top:18px;background:#d97757;color:#fff;font:600 11px/1 system-ui,Segoe UI,sans-serif;padding:4px 7px;border-radius:6px;white-space:nowrap;opacity:0;transition:opacity .2s}' +
-        '#iac-cursor.typ .tg{opacity:1}';
+        '#iac-cursor.typ .tg{opacity:1}#iac-cursor .w{transition:opacity .3s}#iac-cursor.think .w{animation:iacw 1.6s ease-in-out infinite}' +
+        '@keyframes iacw{0%{transform:translate(0,0)}25%{transform:translate(14px,6px)}50%{transform:translate(6px,16px)}75%{transform:translate(-8px,7px)}100%{transform:translate(0,0)}}' +
+        '#iac-cursor.idle .w{opacity:.55}';
       (document.head || document.documentElement).appendChild(s); }
     c = document.createElement("div"); c.id = "iac-cursor";
     const ns = "http://www.w3.org/2000/svg", svg = document.createElementNS(ns, "svg"), p = document.createElementNS(ns, "path");
-    svg.setAttribute("width", "22"); svg.setAttribute("height", "26"); svg.setAttribute("viewBox", "0 0 22 26");
+    svg.setAttribute("width", "26"); svg.setAttribute("height", "31"); svg.setAttribute("viewBox", "0 0 22 26");
     p.setAttribute("d", "M2 1.5v20.2l5.6-5.2 3.6 8.3 3.7-1.6-3.6-8.1 7.7-.3z"); p.setAttribute("fill", "#d97757"); p.setAttribute("stroke", "#fff"); p.setAttribute("stroke-width", "1.6"); p.setAttribute("stroke-linejoin", "round");
     svg.appendChild(p); const rp = document.createElement("div"); rp.className = "rp"; const tg = document.createElement("div"); tg.className = "tg"; tg.textContent = "digitando…";
-    c.append(rp, svg, tg); (document.body || document.documentElement).appendChild(c);
-    const o = window.__iacXY || [innerWidth / 2, innerHeight / 2]; c.style.transform = "translate(" + o[0] + "px," + o[1] + "px)"; c.getBoundingClientRect();
+    const wr = document.createElement("div"); wr.className = "w"; wr.append(svg);
+    c.append(rp, wr, tg); (document.body || document.documentElement).appendChild(c);
+    const o = window.__iacXY || [innerWidth * 0.55, innerHeight * 0.35]; c.style.transform = "translate(" + o[0] + "px," + o[1] + "px)"; c.getBoundingClientRect();
   }
   ${x == null ? "" : `window.__iacXY = [${x}, ${y}]; c.style.transform = "translate(${x}px,${y}px)";`}
-  c.classList.toggle("typ", ${JSON.stringify(mode || "")} === "type");
+  c.classList.remove("idle"); c.classList.toggle("typ", ${JSON.stringify(mode || "")} === "type"); c.classList.toggle("think", ${JSON.stringify(mode || "")} === "think");
   if (${JSON.stringify(mode || "")} === "click") { c.classList.remove("clk"); void c.offsetWidth; c.classList.add("clk"); }
 })()`;
-const UNGLOW = `(() => { ["iac-glow", "iac-pill", "iac-cursor", "iac-cstyle"].forEach((id) => { const e = document.getElementById(id); if (e) e.remove(); }); })()`;
+// ao terminar: some a borda e a pílula; o cursor laranja FICA (mais claro) onde parou
+const UNGLOW = `(() => { ["iac-glow", "iac-pill"].forEach((id) => { const e = document.getElementById(id); if (e) e.remove(); });
+  const c = document.getElementById("iac-cursor"); if (c) { c.classList.remove("think", "typ"); c.classList.add("idle"); } })()`;
 const pillText = (t) => `(() => { window.__iacNow = ${JSON.stringify(String(t || "").slice(0, 140))}; const s = document.querySelector("#iac-pill span"); if (s) s.textContent = window.__iacNow; })()`;
 
 const short = (m) => { m = String(m || "IA").replace(/^.*\//, "").replace(/:free$/, ""); return /gemini/i.test(m) ? "Gemini" : /gpt-oss/i.test(m) ? "GPT-OSS (Groq)" : /nemotron/i.test(m) ? "Nemotron" : /llama/i.test(m) ? "Llama" : m.slice(0, 30); };
@@ -351,6 +356,7 @@ async function runTask(t) {
       if (task.detached) { task.detached = null; await attach(task.tabId).catch(() => {}); }
       step++;
       setNow(step === 1 ? "Planejando…" : "Lendo a página… (passo " + step + ")");
+      if (task.opened) evaluate(task.tabId, CURSOR(null, null, "think")).catch(() => {}); // o cursor "procura" enquanto ela lê e decide
       const page = task.opened ? await snapshot(task.tabId) : { url: "", title: "", elements: [], text: "", image: null };
       task.shot = page.image; task.url = page.url; task.title = page.title;
       setNow("Entendendo a página e decidindo o próximo passo…");

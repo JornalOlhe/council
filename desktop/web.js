@@ -15,7 +15,7 @@ function keyCode(k) {
 }
 
 // Visual igual ao Claude in Chrome / extensão: borda laranja, pílula "Jarvis · passo · Parar" e cursor laranja
-const GLOW = `(() => { if (document.getElementById("iac-glow")) return; const s = document.createElement("style"); s.id = "iac-glow";
+const GLOW = `(() => { if (document.getElementById("iac-pill")) return; { const old = document.getElementById("iac-glow"); if (old) old.remove(); } const s = document.createElement("style"); s.id = "iac-glow";
   s.textContent = 'html::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:2147483646;box-shadow:inset 0 0 0 3px #d97757,inset 0 0 34px 6px rgba(217,119,87,.5);animation:iacg 2.4s ease-in-out infinite}' +
     '@keyframes iacg{50%{box-shadow:inset 0 0 0 2px #d97757,inset 0 0 18px 2px rgba(217,119,87,.35)}}' +
     '#iac-pill{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:2147483647;display:flex;align-items:center;gap:10px;padding:7px 7px 7px 14px;border-radius:999px;background:#262624;color:#f3f1ea;font:500 13px/1.2 system-ui,Segoe UI,sans-serif;box-shadow:0 8px 28px rgba(0,0,0,.35),0 0 0 1px rgba(217,119,87,.7)}' +
@@ -26,26 +26,31 @@ const GLOW = `(() => { if (document.getElementById("iac-glow")) return; const s 
     '#iac-cursor svg{display:block;filter:drop-shadow(0 2px 5px rgba(0,0,0,.45)) drop-shadow(0 0 7px rgba(217,119,87,.75))}' +
     '#iac-cursor .rp{position:absolute;left:-14px;top:-14px;width:30px;height:30px;border-radius:50%;border:2.5px solid #d97757;opacity:0}' +
     '#iac-cursor.clk .rp{animation:iacr .55s ease-out}@keyframes iacr{0%{opacity:1;transform:scale(.3)}100%{opacity:0;transform:scale(1.6)}}' +
-    '#iac-cursor .tg{position:absolute;left:20px;top:18px;background:#d97757;color:#fff;font:600 11px/1 system-ui,sans-serif;padding:4px 7px;border-radius:6px;white-space:nowrap;opacity:0}#iac-cursor.typ .tg{opacity:1}';
+    '#iac-cursor .tg{position:absolute;left:24px;top:22px;background:#d97757;color:#fff;font:600 11px/1 system-ui,sans-serif;padding:4px 7px;border-radius:6px;white-space:nowrap;opacity:0}#iac-cursor.typ .tg{opacity:1}' + '#iac-cursor .w{transition:opacity .3s}#iac-cursor.think .w{animation:iacw 1.6s ease-in-out infinite}' + '@keyframes iacw{0%{transform:translate(0,0)}25%{transform:translate(14px,6px)}50%{transform:translate(6px,16px)}75%{transform:translate(-8px,7px)}100%{transform:translate(0,0)}}' + '#iac-cursor.idle .w{opacity:.55}#iac-cursor.idle .w svg{filter:drop-shadow(0 2px 4px rgba(0,0,0,.4))}';
   (document.head || document.documentElement).appendChild(s);
   const p = document.createElement("div"); p.id = "iac-pill";
   const dot = document.createElement("i"), b = document.createElement("b"), sp = document.createElement("span"), bt = document.createElement("button");
   b.textContent = "Jarvis"; sp.textContent = window.__iacNow || "trabalhando nesta janela…"; bt.textContent = "Parar";
   bt.onclick = () => { console.log("__iacStop__"); sp.textContent = "parando…"; };
   p.append(dot, b, sp, bt); (document.body || document.documentElement).appendChild(p);
+  if (document.getElementById("iac-cursor")) { document.getElementById("iac-cursor").classList.remove("idle"); return; }
   const c = document.createElement("div"); c.id = "iac-cursor";
   const ns = "http://www.w3.org/2000/svg", svg = document.createElementNS(ns, "svg"), pa = document.createElementNS(ns, "path");
-  svg.setAttribute("width", "22"); svg.setAttribute("height", "26"); svg.setAttribute("viewBox", "0 0 22 26");
+  svg.setAttribute("width", "26"); svg.setAttribute("height", "31"); svg.setAttribute("viewBox", "0 0 22 26");
   pa.setAttribute("d", "M2 1.5v20.2l5.6-5.2 3.6 8.3 3.7-1.6-3.6-8.1 7.7-.3z"); pa.setAttribute("fill", "#d97757"); pa.setAttribute("stroke", "#fff"); pa.setAttribute("stroke-width", "1.6"); pa.setAttribute("stroke-linejoin", "round");
   svg.appendChild(pa); const rp = document.createElement("div"); rp.className = "rp"; const tg = document.createElement("div"); tg.className = "tg"; tg.textContent = "digitando…";
-  c.append(rp, svg, tg); (document.body || document.documentElement).appendChild(c);
-  const o = window.__iacXY || [innerWidth / 2, innerHeight / 2]; c.style.transform = "translate(" + o[0] + "px," + o[1] + "px)";
+  const wr = document.createElement("div"); wr.className = "w"; wr.append(svg);
+  c.append(rp, wr, tg); (document.body || document.documentElement).appendChild(c);
+  const o = window.__iacXY || [innerWidth * 0.55, innerHeight * 0.35]; c.style.transform = "translate(" + o[0] + "px," + o[1] + "px)";
 })()`;
-const UNGLOW = `(() => { ["iac-glow", "iac-pill", "iac-cursor"].forEach((id) => { const e = document.getElementById(id); if (e) e.remove(); }); })()`;
+// ao terminar: some a borda e a pílula, o cursor laranja FICA (mais claro) onde parou
+const UNGLOW = `(() => { const pl = document.getElementById("iac-pill"); if (pl) pl.remove();
+  const g = document.getElementById("iac-glow"); if (g) g.textContent = g.textContent.replace(/html::after\\{[^}]*\\}/, "");
+  const c = document.getElementById("iac-cursor"); if (c) { c.classList.remove("think", "typ"); c.classList.add("idle"); } })()`;
 const pillText = (t) => `(() => { window.__iacNow = ${JSON.stringify(String(t || "").slice(0, 140))}; const s = document.querySelector("#iac-pill span"); if (s) s.textContent = window.__iacNow; })()`;
 const moveCursor = (x, y, mode) => `(() => { const c = document.getElementById("iac-cursor"); if (!c) return;
   ${x == null ? "" : `window.__iacXY = [${x}, ${y}]; c.style.transform = "translate(${x}px,${y}px)";`}
-  c.classList.toggle("typ", ${JSON.stringify(mode || "")} === "type");
+  c.classList.remove("idle"); c.classList.toggle("typ", ${JSON.stringify(mode || "")} === "type"); c.classList.toggle("think", ${JSON.stringify(mode || "")} === "think");
   if (${JSON.stringify(mode || "")} === "click") { c.classList.remove("clk"); void c.offsetWidth; c.classList.add("clk"); } })()`;
 
 // Lê a página: elementos clicáveis/preenchíveis visíveis (com número), texto e posição
@@ -178,6 +183,7 @@ class CopilotBrowser {
     if (!this.attached) this.attach();
     const wc = this.view.webContents;
     if (!wc.getURL() || wc.getURL() === "about:blank") return { url: "about:blank", title: "", elements: [], text: "", image: null, empty: true };
+    this.js(moveCursor(null, null, "think"), 1500).catch(() => {}); // o cursor "procura" pela página enquanto ela lê
     const page = await this.js(READ_PAGE, 8000).catch(() => ({ url: wc.getURL(), title: wc.getTitle(), elements: [], text: "" }));
     const cap = () => Promise.race([wc.capturePage(), new Promise((r) => setTimeout(() => r(null), 4000))]);
     let img = await cap();
