@@ -1,4 +1,4 @@
-// Ponte entre o site do IA Council e a extensão (só roda no site oficial).
+// Ponte entre o site do Jarvis e a extensão (só roda no site oficial).
 (() => {
   const VERSION = chrome.runtime.getManifest().version;
   window.addEventListener("message", (e) => {

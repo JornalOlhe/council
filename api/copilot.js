@@ -1,4 +1,4 @@
-// IA Council — Copiloto
+// Jarvis — Copiloto
 // POST { stage: "plan", text, now, tz, history }  -> { say, actions[] }   (o site executa as ações)
 // POST { stage: "see", question, image }          -> { answer }           (Gemini olha a captura da tela)
 import { ask, askVision, buildProviders, EFFORTS } from "./council.js";
@@ -14,7 +14,7 @@ const KEYS = new Set(["enter", "tab", "esc", "escape", "backspace", "delete", "s
   "f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8", "f9", "f10", "f11", "f12", "volumeup", "volumedown", "volumemute", "playpause",
   ..."abcdefghijklmnopqrstuvwxyz0123456789".split(""), "-", "=", ",", ".", "/", ";", "'", "[", "]", "\\", "`", "+"]);
 
-const PLAN_SYSTEM = (now, tz, pc, app) => `Você é o COPILOTO do IA Council, um assistente que FAZ coisas no navegador do usuário. Responda SEMPRE em português do Brasil.
+const PLAN_SYSTEM = (now, tz, pc, app) => `Você é o COPILOTO do Jarvis, um assistente que FAZ coisas no navegador do usuário. Responda SEMPRE em português do Brasil.
 Data e hora atuais do usuário: ${now} (fuso ${tz}).
 
 Você pode executar estas ações (o site do usuário executa por você):
@@ -35,7 +35,7 @@ ${app ? `- {"type":"web","goal":"..."}  usa o NAVEGADOR DO COPILOTO (uma janela 
 
 REGRAS DE PRECISÃO:
 - Faça EXATAMENTE o que foi pedido, nem mais nem menos. Uma ação por tarefa do pedido, na ordem certa.
-- Se o usuário quer uma INFORMAÇÃO da internet ("pesquise X e me diga", "qual o preço", "me retorne", "veja se") ${app ? 'use "web" com um goal completo: o que buscar, onde, e EXATAMENTE o que trazer na resposta (formato, quantidade, campos).' : 'use "search" e diga em "say" que a extensão IA Council deixa você buscar e trazer a resposta sozinho.'}
+- Se o usuário quer uma INFORMAÇÃO da internet ("pesquise X e me diga", "qual o preço", "me retorne", "veja se") ${app ? 'use "web" com um goal completo: o que buscar, onde, e EXATAMENTE o que trazer na resposta (formato, quantidade, campos).' : 'use "search" e diga em "say" que a extensão Jarvis deixa você buscar e trazer a resposta sozinho.'}
 - "say" curto (1-2 frases) dizendo o que vai acontecer. Não invente resultados que ainda não foram buscados.
 LEIA O PEDIDO COM ATENÇÃO: entenda a intenção real, todas as partes (se houver "e depois", "também", listas), nomes, textos exatos, quantidades e horários. Não ignore nenhuma parte; se o pedido tiver várias tarefas, inclua uma ação para cada. Textos que o usuário quer escritos/enviados devem ir EXATAMENTE como ele pediu. Se algo essencial estiver ambíguo, pergunte em "say" (sem ações) em vez de chutar.
 Não finja que fez algo que não está nas ações. Se o usuário só quer ABRIR uma pesquisa ou site para ele mesmo ver, use "search"/"open". ${app ? 'Se ele quer que VOCÊ faça algo em um site ou traga uma informação de lá (ex.: "pesquise e me diga", "compare", "preencha", "veja o preço"), use "web".' : ""} Use "pc" para mexer em programas, no Windows, em arquivos, ou quando pedirem explicitamente para usar o mouse/teclado.
@@ -128,7 +128,7 @@ Ações possíveis:
 - {"type":"done"}   objetivo cumprido (explique o resultado em "say")
 - {"type":"ask_user"}   precisa do usuário (login, senha, captcha, escolha pessoal, algo ambíguo) — explique em "say"
 
-Um painel pequeno do IA Council (você mesmo, com o botão "Parar") fica no canto inferior direito por cima de tudo: IGNORE-o, não clique nem digite nele.
+Um painel pequeno do Jarvis (você mesmo, com o botão "Parar") fica no canto inferior direito por cima de tudo: IGNORE-o, não clique nem digite nele.
 Para trocar de app use {"type":"hotkey","keys":["alt","tab"]} ou clique no ícone na barra de tarefas; para trocar de aba no navegador use Ctrl+Tab ou clique na aba.
 Dicas: no Windows, para abrir um programa use {"type":"key","key":"win"} e depois digite o nome com enter. No navegador, Ctrl+L foca a barra de endereço. Confira na captura se a ação anterior funcionou antes de repetir; se não mudou nada, tente outro caminho. Não repita a mesma ação mais de 2 vezes.
 
@@ -193,7 +193,7 @@ export function sanitizeAct(raw) {
   return out;
 }
 
-const WEB_SYSTEM = `Você é o AGENTE DE NAVEGADOR do IA Council. Você controla uma aba do navegador do usuário para cumprir o PEDIDO dele com precisão total. Responda em português do Brasil.
+const WEB_SYSTEM = `Você é o AGENTE DE NAVEGADOR do Jarvis. Você controla uma aba do navegador do usuário para cumprir o PEDIDO dele com precisão total. Responda em português do Brasil.
 A cada passo você recebe: URL e título da página, a LISTA DE ELEMENTOS visíveis com número [id], um trecho do TEXTO da página e o histórico de passos. Devolva a PRÓXIMA ação (e, quando não precisar ver a página de novo, mais ações em "then").
 
 MÉTODO (siga sempre):

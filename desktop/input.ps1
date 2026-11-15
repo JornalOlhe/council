@@ -1,4 +1,4 @@
-# IA Council — controle de mouse e teclado no Windows (lê um comando por linha, responde OK/ERR)
+# Jarvis — controle de mouse e teclado no Windows (lê um comando por linha, responde OK/ERR)
 $ErrorActionPreference = "Stop"
 Add-Type -TypeDefinition @"
 using System;

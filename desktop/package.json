@@ -1,8 +1,8 @@
 {
-  "name": "ia-council-desktop",
-  "productName": "IA Council",
+  "name": "jarvis-desktop",
+  "productName": "Jarvis",
   "version": "1.0.0",
-  "description": "IA Council para Windows: o conselho de IAs e o Copiloto que mexe no seu PC.",
+  "description": "Jarvis para Windows: o conselho de IAs e o Copiloto que mexe no seu PC.",
   "author": "JornalOlhe",
   "license": "MIT",
   "private": true,
@@ -19,7 +19,7 @@
   },
   "build": {
     "appId": "com.jornalolhe.iacouncil",
-    "productName": "IA Council",
+    "productName": "Jarvis",
     "files": [
       "main.js",
       "preload.js",
@@ -45,14 +45,14 @@
         }
       ],
       "icon": "icon.ico",
-      "artifactName": "IA-Council-Setup.${ext}"
+      "artifactName": "Jarvis-Setup.${ext}"
     },
     "nsis": {
       "oneClick": true,
       "perMachine": false,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "IA Council",
+      "shortcutName": "Jarvis",
       "runAfterFinish": true
     },
     "publish": [

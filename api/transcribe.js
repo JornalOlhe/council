@@ -1,4 +1,4 @@
-// IA Council — transcrição de voz
+// Jarvis — transcrição de voz
 // POST { audio: "data:audio/webm;base64,..." } -> { text }
 // Usa o Whisper do Groq (grátis). Sem Groq, usa o Gemini, que também entende áudio.
 import { ask, buildProviders, EFFORTS } from "./council.js";

@@ -1,4 +1,4 @@
-# IA Council
+# Jarvis
 
 Várias IAs (cada uma com sua chave) respondem ao seu prompt, **debatem entre si** e um **presidente** sintetiza a decisão final. Aceita até 4 fotos (o Gemini atua como "olho" e descreve as imagens para as demais).
 
@@ -19,13 +19,13 @@ No seletor de modelos dá para trocar o presidente, o **esforço** (Baixo/Médio
 ## Copiloto (botão do capacete)
 Você pede em português e ele faz:
 - **No site (qualquer navegador):** abre abas e pesquisa (Google, YouTube, Maps, Mercado Livre, Spotify…), abre sites, cria lembretes com alarme, copia textos e prepara e-mails e WhatsApp.
-- **No app IA Council para Windows:** além disso, vê a tela, **identifica cada elemento** (botões, campos, ícones), **troca de apps e abas, move o mouse e digita** até cumprir o pedido — como os apps de desktop do Claude e do ChatGPT. Sem código de pareamento.
+- **No app Jarvis para Windows:** além disso, vê a tela, **identifica cada elemento** (botões, campos, ícones), **troca de apps e abas, move o mouse e digita** até cumprir o pedido — como os apps de desktop do Claude e do ChatGPT. Sem código de pareamento.
 
-### Extensão IA Council (Brave/Chrome/Edge) — `extension/`
-Igual ao Claude in Chrome: o Copiloto abre um **grupo de abas laranja "Council"** no navegador do usuário e controla as abas por depuração (`chrome.debugger`), sem mexer no mouse. A tarefa roda no service worker da extensão, então **continua mesmo se você sair da aba do site**; ao voltar, o site mostra o andamento/resultado.
-- Instalação: baixar `/extension/ia-council-extension.zip` → extrair → `brave://extensions` (ou `chrome://extensions`) → Modo do desenvolvedor → Carregar sem compactação.
+### Extensão Jarvis (Brave/Chrome/Edge) — `extension/`
+Igual ao Claude in Chrome: o Copiloto abre um **grupo de abas laranja "Jarvis"** no navegador do usuário e controla as abas por depuração (`chrome.debugger`), sem mexer no mouse. A tarefa roda no service worker da extensão, então **continua mesmo se você sair da aba do site**; ao voltar, o site mostra o andamento/resultado.
+- Instalação: baixar `/extension/jarvis-extension.zip` → extrair → `brave://extensions` (ou `chrome://extensions`) → Modo do desenvolvedor → Carregar sem compactação.
 - **Permissão por site** (como o Claude in Chrome): antes de agir num site novo, pergunta "Permitir sempre / Só desta vez / Não permitir". As escolhas ficam em `chrome.storage.local`.
-- **Atualização automática**: o app para Windows guarda a extensão em `%USERPROFILE%\IA-Council-Extensao`, fica na bandeja (inicia com o Windows) e baixa cada versão nova do site (`/extension/version.json`). A extensão confere o `manifest.json` do disco a cada minuto e se recarrega sozinha (`chrome.runtime.reload`), reconectando as abas do site.
+- **Atualização automática**: o app para Windows guarda a extensão em `%USERPROFILE%\Jarvis-Extensao (ou a pasta antiga IA-Council-Extensao, se já existir)`, fica na bandeja (inicia com o Windows) e baixa cada versão nova do site (`/extension/version.json`). A extensão confere o `manifest.json` do disco a cada minuto e se recarrega sozinha (`chrome.runtime.reload`), reconectando as abas do site.
 - **Cursor laranja da IA**: um cursor animado mostra onde ela vai clicar (com onda no clique) e onde está digitando.
 - **A aba só abre depois da permissão** e abre em segundo plano (você não é levado para ela; use "Ver aba").
 - **Visual de depuração**: borda laranja pulsando + pílula "Council · passo atual · Parar" na própria aba (o Parar usa `Runtime.addBinding`).
@@ -44,7 +44,7 @@ Como o Claude in Chrome: o Copiloto ganha uma **janela de navegador só dele** e
 - Mouse e teclado via `input.ps1` (PowerShell + `user32.dll`, sem dependências nativas); acentos são digitados colando pela área de transferência.
 - A cada passo: print → `/api/copilot` (estágio `act`, Gemini) identifica os elementos e escolhe UMA ação → o app executa → repete (máx. 25).
 - Segurança: não digita senhas (para e pede), pede confirmação antes de enviar/comprar/apagar, ignora instruções que aparecem na tela. **Parar:** botão Parar, **Ctrl+Shift+Q** ou mouse no canto superior esquerdo.
-- O instalador `IA-Council-Setup.exe` é gerado pelo GitHub Actions (`.github/workflows/desktop.yml`) a cada mudança em `desktop/` e publicado em *Releases → desktop-latest*.
+- O instalador `Jarvis-Setup.exe` (com uma cópia `IA-Council-Setup.exe` para links antigos) é gerado pelo GitHub Actions (`.github/workflows/desktop.yml`) a cada mudança em `desktop/` e publicado em *Releases → desktop-latest*.
 
 ## Voz e anexos
 O microfone grava e transcreve com o Whisper do Groq (`/api/transcribe`), com o Gemini como reserva. O "+" aceita fotos e arquivos de texto, CSV e código.

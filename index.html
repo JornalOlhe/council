@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>IA Council</title>
+<title>Jarvis</title>
 <meta name="theme-color" content="#1f1e1d">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,500;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
-<meta name="description" content="IA Council: várias IAs respondem, debatem e um presidente decide. Com Copiloto que pesquisa, vê sua tela e mexe no seu PC.">
+<meta name="description" content="Jarvis: várias IAs respondem, debatem e um presidente decide. Com Copiloto que pesquisa, vê sua tela e mexe no seu PC.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg stroke='%23d97757' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M12 2v20M2 12h20M4.9 4.9l14.2 14.2M19.1 4.9 4.9 19.1'/%3E%3C/g%3E%3C/svg%3E">
 <style>
 :root{
@@ -539,7 +539,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
 <aside class="side" id="side">
   <div class="sh">
     <button class="ib" id="collapse" title="Recolher barra lateral" aria-label="Recolher barra lateral"><svg class="ico"><use href="#i-panel"/></svg></button>
-    <div class="wordmark">IA Council</div>
+    <div class="wordmark">Jarvis</div>
     <div class="seg hidden">
       <button class="ib on" id="segChat" title="Conselho" aria-label="Conselho de IAs"><svg style="width:16px;height:16px"><use href="#i-chat"/></svg></button>
       <button class="ib" id="segCopilot" title="Copiloto" aria-label="Copiloto"><svg class="helm"><use href="#i-helmet"/></svg></button>
@@ -565,7 +565,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
 </aside>
 <div class="scrim" id="scrim"></div>
 <aside class="cpanel hidden" id="cpPanel" aria-label="Navegador do Copiloto">
-  <div class="cptabs"><span class="cpgrp">Council</span><div class="cptab"><svg style="width:13px;height:13px;flex:none;color:#8f8c84"><use href="#i-globe"/></svg><span id="cpTab">Nova aba</span><i class="cpspin"></i></div></div>
+  <div class="cptabs"><span class="cpgrp">Jarvis</span><div class="cptab"><svg style="width:13px;height:13px;flex:none;color:#8f8c84"><use href="#i-globe"/></svg><span id="cpTab">Nova aba</span><i class="cpspin"></i></div></div>
   <div class="cph">
     <button class="ib" data-n="back" title="Voltar" aria-label="Voltar"><svg style="width:16px;height:16px;transform:rotate(180deg)"><use href="#i-right"/></svg></button>
     <button class="ib" data-n="forward" title="Avançar" aria-label="Avançar"><svg style="width:16px;height:16px"><use href="#i-right"/></svg></button>
@@ -574,7 +574,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
     <button class="ib" id="cpExt" title="Abrir no seu navegador" aria-label="Abrir no seu navegador"><svg style="width:15px;height:15px"><use href="#i-share"/></svg></button>
     <button class="ib" id="cpClose" title="Fechar painel" aria-label="Fechar painel"><svg class="ico"><use href="#i-x"/></svg></button>
   </div>
-  <div class="cpdbg"><span class="cpd"></span><span id="cpDbg">“IA Council” está depurando esta aba</span><button class="btn" id="cpStop">Parar</button></div>
+  <div class="cpdbg"><span class="cpd"></span><span id="cpDbg">“Jarvis” está depurando esta aba</span><button class="btn" id="cpStop">Parar</button></div>
   <div class="cpbody"><span>Carregando…</span></div>
 </aside>
 
@@ -619,7 +619,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
   <div class="under">
     <span class="uleft" id="uleft"></span>
     <button class="pick" id="photoPick" title="Anexar fotos"><svg style="width:16px;height:16px;color:var(--mut)"><use href="#i-clip"/></svg><span id="photoTxt">Fotos</span><svg style="width:10px;height:10px;color:var(--mut)"><use href="#i-chev"/></svg></button>
-    <span class="disc hidden" id="disc">O IA Council é uma IA e pode cometer erros. Confira informações importantes.</span>
+    <span class="disc hidden" id="disc">O Jarvis é uma IA e pode cometer erros. Confira informações importantes.</span>
     <span class="sp" id="underSp"></span>
     <button class="pick" id="modelPick"><b id="pickName">Conselho</b><span class="m" id="pickEffort">1 rodada</span></button>
     <button class="pick" id="modePick"><b id="modeTxt">Auto</b></button>
@@ -631,8 +631,8 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
   <div class="mbox auto" style="width:min(560px,100%)">
     <div class="mhead"><svg class="helm" style="width:24px;height:20px"><use href="#i-helmet"/></svg><span id="pcTitle">Usar o Copiloto no seu PC</span><span class="beta">Beta</span><button class="ib" id="pcClose" aria-label="Fechar"><svg class="ico"><use href="#i-x"/></svg></button></div>
     <div class="pcbody">
-      <p style="margin:0;color:var(--tx2)">Para trocar de apps e abas, mover o mouse e digitar em qualquer lugar do computador, use o <b>IA Council para Windows</b> — igual aos apps de desktop do Claude e do ChatGPT. Sem código, sem configuração.</p>
-      <div class="pcstep"><span class="n">1</span><div class="c"><b>Baixe e instale</b><p>Um instalador só. Abre sozinho quando termina.</p><a class="btn pri" id="pcDownload" href="https://github.com/JornalOlhe/council/releases/download/desktop-latest/IA-Council-Setup.exe">⬇ Baixar IA Council para Windows</a></div></div>
+      <p style="margin:0;color:var(--tx2)">Para trocar de apps e abas, mover o mouse e digitar em qualquer lugar do computador, use o <b>Jarvis para Windows</b> — igual aos apps de desktop do Claude e do ChatGPT. Sem código, sem configuração.</p>
+      <div class="pcstep"><span class="n">1</span><div class="c"><b>Baixe e instale</b><p>Um instalador só. Abre sozinho quando termina.</p><a class="btn pri" id="pcDownload" href="https://github.com/JornalOlhe/council/releases/download/desktop-latest/Jarvis-Setup.exe">⬇ Baixar Jarvis para Windows</a></div></div>
       <div class="pcstep"><span class="n">2</span><div class="c"><b>Se o Windows avisar</b><p>Como o app é novo, pode aparecer “O Windows protegeu o computador”. Clique em <b>Mais informações → Executar assim mesmo</b>.</p></div></div>
       <div class="pcstep"><span class="n">3</span><div class="c"><b>Peça no Copiloto</b><p>Ex.: “abra o Bloco de Notas e escreva minha lista de compras”, “troque para o Chrome e abra minha aba do YouTube”.</p></div></div>
       <div class="pcsafe">🔒 O copiloto <b>não digita senhas</b> e <b>pede confirmação</b> antes de enviar, comprar ou apagar. Durante a tarefa o app vira um painel pequeno no canto. <b>Para parar na hora:</b> botão Parar, <b>Ctrl+Shift+Q</b>, ou mouse no <b>canto superior esquerdo</b> da tela.</div>
@@ -641,14 +641,14 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
 </div>
 <div class="modal hidden" id="extModal" role="dialog" aria-modal="true" aria-labelledby="extTitle">
   <div class="mbox auto" style="width:min(560px,100%)">
-    <div class="mhead"><svg class="helm" style="width:24px;height:20px"><use href="#i-helmet"/></svg><span id="extTitle">Extensão IA Council</span><span class="beta">Beta</span><button class="ib" id="extClose" aria-label="Fechar"><svg class="ico"><use href="#i-x"/></svg></button></div>
+    <div class="mhead"><svg class="helm" style="width:24px;height:20px"><use href="#i-helmet"/></svg><span id="extTitle">Extensão Jarvis</span><span class="beta">Beta</span><button class="ib" id="extClose" aria-label="Fechar"><svg class="ico"><use href="#i-x"/></svg></button></div>
     <div class="pcbody">
-      <p style="margin:0;color:var(--tx2)">Igual ao Claude in Chrome: o Copiloto abre um <b>grupo de abas laranja “Council”</b> no seu navegador (Brave, Chrome ou Edge) e faz a tarefa sozinho — <b>continua mesmo se você sair desta aba</b>.</p>
-      <div class="pcstep" id="extAuto"><span class="n">★</span><div class="c"><b>Atualização automática</b><p id="extAutoTxt">Com o <b>app IA Council para Windows</b> instalado, ele guarda a extensão numa pasta fixa e baixa cada versão nova sozinho (fica pertinho do relógio, na bandeja). A extensão percebe e se recarrega — você nunca mais precisa baixar zip.</p><span id="extAutoBtns"><button class="btn pri" id="extGetApp">Baixar o app</button></span></div></div>
-      <div class="pcstep"><span class="n">1</span><div class="c"><b id="extStep1">Baixe e extraia</b><p id="extStep1Txt">Extraia o .zip numa pasta que você não vai apagar.</p><a class="btn" id="extZip" href="/extension/ia-council-extension.zip" download>⬇ Baixar extensão</a></div></div>
+      <p style="margin:0;color:var(--tx2)">Igual ao Claude in Chrome: o Copiloto abre um <b>grupo de abas laranja “Jarvis”</b> no seu navegador (Brave, Chrome ou Edge) e faz a tarefa sozinho — <b>continua mesmo se você sair desta aba</b>.</p>
+      <div class="pcstep" id="extAuto"><span class="n">★</span><div class="c"><b>Atualização automática</b><p id="extAutoTxt">Com o <b>app Jarvis para Windows</b> instalado, ele guarda a extensão numa pasta fixa e baixa cada versão nova sozinho (fica pertinho do relógio, na bandeja). A extensão percebe e se recarrega — você nunca mais precisa baixar zip.</p><span id="extAutoBtns"><button class="btn pri" id="extGetApp">Baixar o app</button></span></div></div>
+      <div class="pcstep"><span class="n">1</span><div class="c"><b id="extStep1">Baixe e extraia</b><p id="extStep1Txt">Extraia o .zip numa pasta que você não vai apagar.</p><a class="btn" id="extZip" href="/extension/jarvis-extension.zip" download>⬇ Baixar extensão</a></div></div>
       <div class="pcstep"><span class="n">2</span><div class="c"><b>Abra a página de extensões</b><p>Cole na barra de endereço: <code>brave://extensions</code> (no Chrome: <code>chrome://extensions</code>) e ative o <b>Modo do desenvolvedor</b> (canto superior direito).</p><button class="btn" id="extCopy">Copiar endereço</button></div></div>
       <div class="pcstep"><span class="n">3</span><div class="c"><b>Carregue a pasta</b><p>Clique em <b>Carregar sem compactação</b> e escolha a pasta extraída (a que tem o <b>manifest.json</b> dentro). Depois recarregue esta página (F5).</p></div></div>
-      <div class="pcsafe">🔒 Ela só aceita comandos deste site, trabalha só nas abas do grupo Council, não digita senhas e pede confirmação antes de comprar ou enviar. Enquanto trabalha, o navegador mostra o aviso de que a extensão está “depurando” a aba — é assim que ela clica e digita sem mexer no seu mouse.</div>
+      <div class="pcsafe">🔒 Ela só aceita comandos deste site, trabalha só nas abas do grupo Jarvis, não digita senhas e pede confirmação antes de comprar ou enviar. Enquanto trabalha, o navegador mostra o aviso de que a extensão está “depurando” a aba — é assim que ela clica e digita sem mexer no seu mouse.</div>
     </div>
   </div>
 </div>
@@ -1202,7 +1202,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
     $("segChat").classList.toggle("on", !cop); $("segCopilot").classList.toggle("on", cop);
     $("greetStar").classList.toggle("hidden", cop); $("greetHelm").classList.toggle("hidden", !cop);
     $("modelPick").classList.toggle("hidden", cop); $("modePick").classList.toggle("hidden", cop); $("pcPill").classList.add("hidden");
-    $("disc").textContent = cop ? "O copiloto age no seu navegador. Confira antes de enviar e-mails e mensagens." : "O IA Council é uma IA e pode cometer erros. Confira informações importantes.";
+    $("disc").textContent = cop ? "O copiloto age no seu navegador. Confira antes de enviar e-mails e mensagens." : "O Jarvis é uma IA e pode cometer erros. Confira informações importantes.";
     setGreet();
     if (!keep) goHome(); else place($("chat").classList.contains("hidden") ? "home" : "dock");
   }
@@ -1230,7 +1230,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
     p.querySelector('[data-a="src"]').onclick = function () { closePop(); window.open("https://github.com/JornalOlhe/council", "_blank", "noopener"); };
     p.querySelector('[data-a="ext"]').onclick = function () { closePop(); openExt(); };
     var ba = p.querySelector('[data-a="app"]'); if (ba) ba.onclick = function () { closePop(); openPC(); };
-    p.querySelector('[data-a="about"]').onclick = function () { closePop(); goHome(); ta.value = "Como funciona o IA Council?"; autosize(); updSend(); };
+    p.querySelector('[data-a="about"]').onclick = function () { closePop(); goHome(); ta.value = "Como funciona o Jarvis?"; autosize(); updSend(); };
     var bu = p.querySelector('[data-a="upd"]');
     if (bu) bu.onclick = function () {
       closePop(); toast("Procurando atualizações…"); checkWeb();
@@ -1297,7 +1297,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
     ["ttl", "shareBtn", "expandBtn"].forEach(function (id) { $(id).classList.toggle("hidden", !on); });
     $("top").classList.toggle("line", on);
     $("title").textContent = title || "";
-    document.title = title ? title + " – IA Council" : "IA Council";
+    document.title = title ? title + " – Jarvis" : "Jarvis";
   }
   function goHome() {
     curId = null; closeSide();
@@ -1672,14 +1672,14 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
         clearInterval(iv); beep();
         var msg = "⏰ " + (a.label || "Lembrete");
         toast(msg);
-        try { if (window.Notification && Notification.permission === "granted") new Notification("IA Council · Copiloto", { body: a.label || "Lembrete" }); } catch (e) {}
+        try { if (window.Notification && Notification.permission === "granted") new Notification("Jarvis · Copiloto", { body: a.label || "Lembrete" }); } catch (e) {}
         if (statusEl && statusEl.isConnected) { statusEl.textContent = "Tocou às " + new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }); statusEl.className = "okk"; }
         var old = document.title; document.title = msg; setTimeout(function () { document.title = old; }, 8000);
       }
     }, 1000);
   }
 
-  // ----- Copiloto no PC: dentro do app IA Council para Windows (window.iaDesktop) -----
+  // ----- Copiloto no PC: dentro do app Jarvis para Windows (window.iaDesktop) -----
   var D = window.iaDesktop || null;
   var pc = { connected: false, os: "", running: null, stopHook: null, version: "" };
   var PERMK = "iacouncil_pcperm";
@@ -1688,7 +1688,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
     $("pcPill").classList.toggle("on", ok);
     $("pcPillTxt").textContent = ok ? "PC conectado" : EXT.ready ? "Extensão ativa" : "Usar no meu PC";
     $("pcPill").classList.toggle("on", ok || EXT.ready);
-    $("pcPill").title = ok ? "O copiloto pode ver a tela, mover o mouse e digitar neste computador" : "Baixe o IA Council para Windows";
+    $("pcPill").title = ok ? "O copiloto pode ver a tela, mover o mouse e digitar neste computador" : "Baixe o Jarvis para Windows";
   }
   function pcCheck() {
     if (!D) { pcSetState(false); return Promise.resolve(false); }
@@ -1698,11 +1698,11 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
     var m = String((e && e.message) || e || "falha");
     var er = new Error(m.replace(/^EMERGENCIA:\s*/, "")); if (/^EMERGENCIA/.test(m)) er.emergency = true; return er;
   }
-  function pcScreenshot() { return D ? D.screenshot().catch(function (e) { throw pcErr(e); }) : Promise.reject(new Error("Abra pelo app IA Council para Windows.")); }
+  function pcScreenshot() { return D ? D.screenshot().catch(function (e) { throw pcErr(e); }) : Promise.reject(new Error("Abra pelo app Jarvis para Windows.")); }
   function pcAct(a) { return D.act(a).catch(function (e) { throw pcErr(e); }); }
   function openPC() {
     if (pc.connected) { toast("Já está conectado: é só pedir no Copiloto."); return; }
-    if (EXT.ready && !D) { toast("Extensão ativa: peça algo para fazer num site e acompanhe no grupo Council."); return; }
+    if (EXT.ready && !D) { toast("Extensão ativa: peça algo para fazer num site e acompanhe no grupo Jarvis."); return; }
     $("pcModal").classList.remove("hidden");
   }
   function closePC() { $("pcModal").classList.add("hidden"); }
@@ -1857,7 +1857,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
   function showUpd() {
     var bar = $("updBar"), txt = "", btn = "Atualizar";
     if (upd.app && upd.app.state === "ready") { txt = "✨ <b>Nova versão do app (" + esc(upd.app.next || "") + ")</b> pronta para instalar."; btn = "Reiniciar e atualizar"; }
-    else if (upd.web) { txt = "✨ <b>Nova versão do IA Council</b> disponível."; btn = "Atualizar agora"; }
+    else if (upd.web) { txt = "✨ <b>Nova versão do Jarvis</b> disponível."; btn = "Atualizar agora"; }
     else if (upd.app && upd.app.state === "downloading") { txt = "⬇ Baixando nova versão do app… " + (upd.app.percent ? upd.app.percent + "%" : ""); btn = ""; }
     if (!txt || upd.dismissed) { bar.classList.add("hidden"); return; }
     $("updTxt").innerHTML = txt; $("updBtn").textContent = btn; $("updBtn").classList.toggle("hidden", !btn);
@@ -1896,7 +1896,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
       $("cpTitle").textContent = st.title || "Navegador do Copiloto";
       $("cpTab").textContent = st.title || (st.url && st.url !== "about:blank" ? st.url : "Nova aba");
       p.classList.toggle("loading", !!st.loading);
-      $("cpDbg").textContent = st.working ? "“IA Council” está depurando esta aba" + (st.status ? " · " + st.status : "") : "Pronto · o Copiloto usa esta aba quando você pedir algo num site";
+      $("cpDbg").textContent = st.working ? "“Jarvis” está depurando esta aba" + (st.status ? " · " + st.status : "") : "Pronto · o Copiloto usa esta aba quando você pedir algo num site";
       $("cpUrl").textContent = (st.url || "").replace(/^https?:\/\/(www\.)?/, "").replace(/^about:blank$/, "");
     });
     Array.prototype.forEach.call(document.querySelectorAll("#cpPanel [data-n]"), function (b) { b.onclick = function () { D.web.nav(b.dataset.n); }; });
@@ -1915,7 +1915,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
     if (!host || st.__all || st[host] || onceSet[host]) return Promise.resolve(true);
     return new Promise(function (resolve) {
       var q = document.createElement("div"); q.className = "aq site";
-      q.innerHTML = '<span>🔐 O Council quer usar <b>' + esc(host) + '</b> (ler a página, clicar e digitar). A janela só abre depois que você permitir.</span><button class="btn pri">Permitir sempre</button><button class="btn">Só desta vez</button><button class="btn">Não permitir</button>';
+      q.innerHTML = '<span>🔐 O Jarvis quer usar <b>' + esc(host) + '</b> (ler a página, clicar e digitar). A janela só abre depois que você permitir.</span><button class="btn pri">Permitir sempre</button><button class="btn">Só desta vez</button><button class="btn">Não permitir</button>';
       holder.appendChild(q);
       var b = q.querySelectorAll("button"), done = function (v) { if (q.parentNode) q.remove(); resolve(v); };
       b[0].onclick = function () { var s2 = sitesOK(); s2[host] = 1; try { localStorage.setItem("iac-sites", JSON.stringify(s2)); } catch (e) {} done(true); };
@@ -2031,7 +2031,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
           return plan.confirm ? (clearNow(), askUser("⚠ " + plan.confirm, "Pode fazer", "Não")) : true;
         });
         return ok.then(function (yes) {
-          if (yes === "deny") return finish("stopped", "Você não permitiu o Council em " + host + ".", "err");
+          if (yes === "deny") return finish("stopped", "Você não permitiu o Jarvis em " + host + ".", "err");
           if (stopped) throw { stop: true };
           if (!yes) { log.steps.push("Usuário NÃO autorizou: " + plan.say); return finish("stopped", "Cancelado: você não autorizou.", "err"); }
           nowLine(plan.say); W.working(true, plan.say.slice(0, 60)).catch(function () {});
@@ -2055,7 +2055,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
     }
     W.working(true, "começando").then(function () { loop(); }, function () { loop(); });
   }
-  // ----- Extensão IA Council (navegador do usuário, grupo de abas "Council") -----
+  // ----- Extensão Jarvis (navegador do usuário, grupo de abas "Jarvis") -----
   var EXT = { ready: false, version: "", calls: {}, n: 0, listeners: [] };
   setTimeout(function () { if (!EXT.ready) extProbe(); }, 1500);
   window.addEventListener("message", function (e) {
@@ -2077,9 +2077,9 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
   function runWebExt(goal, box, data, attachId) {
     var log = data.webLog = data.webLog || { goal: goal, steps: [], status: "running" };
     var card = document.createElement("div"); card.className = "agent";
-    card.innerHTML = '<div class="ah"><svg class="ico" style="color:var(--ac)"><use href="#i-globe"/></svg><b>Na aba Council: ' + esc(goal) +
+    card.innerHTML = '<div class="ah"><svg class="ico" style="color:var(--ac)"><use href="#i-globe"/></svg><b>Na aba Jarvis: ' + esc(goal) +
       '</b><button class="btn show">Ver aba</button><button class="btn stop">Parar</button></div>' +
-      '<div class="shotwrap hidden"><img alt="Aba Council"></div><div class="obs hidden"></div><div class="alog"></div><div class="aqs"></div><div class="ans"></div>';
+      '<div class="shotwrap hidden"><img alt="Aba Jarvis"></div><div class="obs hidden"></div><div class="alog"></div><div class="aqs"></div><div class="ans"></div>';
     box.appendChild(card);
     var stopBtn = card.querySelector(".stop"), wrap = card.querySelector(".shotwrap"), img = wrap.querySelector("img"), obs = card.querySelector(".obs"),
       alog = card.querySelector(".alog"), aqs = card.querySelector(".aqs"), ansBox = card.querySelector(".ans"), myId = attachId || null, closed = false, lastShot = null;
@@ -2102,7 +2102,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
       aqs.innerHTML = "";
       if (t.waiting && t.waiting.kind === "site") {
         var qs = document.createElement("div"); qs.className = "aq site";
-        qs.innerHTML = '<span>🔐 O Council quer usar <b>' + esc(t.waiting.msg) + '</b> nesta aba (ler a página, clicar e digitar).</span><button class="btn pri">Permitir sempre</button><button class="btn">Só desta vez</button><button class="btn">Não permitir</button>';
+        qs.innerHTML = '<span>🔐 O Jarvis quer usar <b>' + esc(t.waiting.msg) + '</b> nesta aba (ler a página, clicar e digitar).</span><button class="btn pri">Permitir sempre</button><button class="btn">Só desta vez</button><button class="btn">Não permitir</button>';
         var sb = qs.querySelectorAll("button");
         sb[0].onclick = function () { extCall({ type: "answer", choice: "always" }); qs.remove(); };
         sb[1].onclick = function () { extCall({ type: "answer", choice: "once" }); qs.remove(); };
@@ -2111,7 +2111,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
       } else if (t.waiting) {
         var q = document.createElement("div"); q.className = "aq";
         var help = t.waiting.kind === "help";
-        q.innerHTML = "<span>" + (help ? "✋ " : "⚠ ") + esc(t.waiting.msg) + (help ? " (faça na aba Council)" : "") + '</span><button class="btn pri">' + (help ? "Já fiz, continuar" : "Pode fazer") + '</button><button class="btn">' + (help ? "Encerrar" : "Não") + "</button>";
+        q.innerHTML = "<span>" + (help ? "✋ " : "⚠ ") + esc(t.waiting.msg) + (help ? " (faça na aba Jarvis)" : "") + '</span><button class="btn pri">' + (help ? "Já fiz, continuar" : "Pode fazer") + '</button><button class="btn">' + (help ? "Encerrar" : "Não") + "</button>";
         var bs = q.querySelectorAll("button");
         bs[0].onclick = function () { extCall({ type: "answer", yes: true }); q.remove(); };
         bs[1].onclick = function () { extCall({ type: "answer", yes: false }); q.remove(); };
@@ -2185,7 +2185,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
 
   function webNeeded(box, goal) {
     var card = document.createElement("div"); card.className = "acard";
-    card.innerHTML = '<span class="ai">' + ic("globe") + '</span><span class="at"><b>Para eu fazer isso sozinho num site, instale a extensão IA Council</b><span>Ela abre um grupo de abas “Council” e trabalha em segundo plano, mesmo se você sair desta aba.</span></span>';
+    card.innerHTML = '<span class="ai">' + ic("globe") + '</span><span class="at"><b>Para eu fazer isso sozinho num site, instale a extensão Jarvis</b><span>Ela abre um grupo de abas “Jarvis” e trabalha em segundo plano, mesmo se você sair desta aba.</span></span>';
     var b = document.createElement("button"); b.className = "btn"; b.textContent = "Só abrir a pesquisa";
     b.onclick = function () { openURL(ENG.google[1](goal)); };
     var c = document.createElement("button"); c.className = "btn pri"; c.textContent = "Instalar extensão"; c.onclick = openExt;
@@ -2194,7 +2194,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
 
   function pcNeeded(box, retry) {
     var card = document.createElement("div"); card.className = "acard";
-    card.innerHTML = '<span class="ai">' + ic("monitor") + '</span><span class="at"><b>Para mexer no seu PC, use o app IA Council para Windows</b><span>No navegador, nenhum site consegue controlar o mouse. No app, sim — é só instalar e pedir de novo.</span></span>';
+    card.innerHTML = '<span class="ai">' + ic("monitor") + '</span><span class="at"><b>Para mexer no seu PC, use o app Jarvis para Windows</b><span>No navegador, nenhum site consegue controlar o mouse. No app, sim — é só instalar e pedir de novo.</span></span>';
     var b = document.createElement("button"); b.className = "btn pri"; b.textContent = "Baixar o app"; b.onclick = openPC;
     card.appendChild(b); box.appendChild(card);
   }
@@ -2450,7 +2450,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
       for (var k = 1; k < objs.length; k++) { offs[k] = out.length; out += k + " 0 obj\n" + objs[k] + "\nendobj\n"; }
       var xref = out.length;
       out += "xref\n0 " + objs.length + "\n0000000000 65535 f \n" + offs.slice(1).map(function (o) { return ("0000000000" + o).slice(-10) + " 00000 n \n"; }).join("");
-      out += "trailer\n<< /Size " + objs.length + " /Root 1 0 R /Info << /Producer (IA Council) /Title (" + win(title || "Documento") + ") >> >>\nstartxref\n" + xref + "\n%%EOF";
+      out += "trailer\n<< /Size " + objs.length + " /Root 1 0 R /Info << /Producer (Jarvis) /Title (" + win(title || "Documento") + ") >> >>\nstartxref\n" + xref + "\n%%EOF";
       return new Blob([out], { type: "application/pdf" });
     }
     var MIME = { txt: "text/plain", md: "text/markdown", csv: "text/csv", html: "text/html", json: "application/json" };
@@ -2666,7 +2666,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
     body.appendChild(meta);
     meta.querySelector('[data-a="copy"]').onclick = function () { copy([data.imageAnswer, data.say, data.screenAnswer].filter(Boolean).join("\n\n")); };
   }
-  // plano que só abre site/pesquisa, mas o pedido é achar/ver algo específico → tarefa na aba Council
+  // plano que só abre site/pesquisa, mas o pedido é achar/ver algo específico → tarefa na aba Jarvis
   function webish(plan, text) {
     var acts = (plan && plan.actions) || [];
     if (!acts.length || !acts.every(function (a) { return a.type === "open" || a.type === "search"; })) return false;
@@ -2674,7 +2674,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
     if (/^(abr\w*|entr\w*|acess\w*|v[aá] (para|pro|pra|no|na))\s+(o |a )?[\w.-]+[.!]?$/.test(s)) return false; // "abra o youtube" puro
     return /\b(procur|pesquis|bus[cq]|ach|encontr|canal|v[ií]deo|perfil|p[aá]gina d|conta d|mostr|vej|ver |confir|mais recente|[uú]ltimo|toc|coloc|bot)/.test(s);
   }
-  function toWeb(text) { return { say: "Vou fazer isso na aba Council e conferir se está certo.", actions: [{ type: "web", goal: text }] }; }
+  function toWeb(text) { return { say: "Vou fazer isso na aba Jarvis e conferir se está certo.", actions: [{ type: "web", goal: text }] }; }
   function extProbe() {
     if (EXT.ready) return Promise.resolve(true);
     return Promise.race([extCall({ type: "status" }).then(function () { EXT.ready = true; pcSetState(pc.connected, pc.os); return true; }, function () { return false; }),
@@ -2720,7 +2720,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
   // ---------- topo ----------
   $("shareBtn").onclick = function () {
     var h = cur(); if (!h) return;
-    var text = turnsOf(h).map(function (t) { return "Pergunta: " + t.prompt + "\n\n" + ((t.data && (t.data.final || t.data.say || t.data.imageAnswer)) || ""); }).join("\n\n---\n\n") + "\n\n— via IA Council (" + location.origin + ")";
+    var text = turnsOf(h).map(function (t) { return "Pergunta: " + t.prompt + "\n\n" + ((t.data && (t.data.final || t.data.say || t.data.imageAnswer)) || ""); }).join("\n\n---\n\n") + "\n\n— via Jarvis (" + location.origin + ")";
     if (navigator.share && mobile()) navigator.share({ title: h.title, text: text }).catch(function () {});
     else copy(text, "Conversa copiada para compartilhar");
   };
@@ -2740,7 +2740,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
       t.onblur = function () {
         t.contentEditable = "false"; var v = t.textContent.trim();
         if (v) { h.title = v.slice(0, 80); saveHist(); renderRecent(); }
-        t.textContent = h.title || shortTitle(h.prompt); document.title = t.textContent + " – IA Council";
+        t.textContent = h.title || shortTitle(h.prompt); document.title = t.textContent + " – Jarvis";
       };
       t.onkeydown = function (ev) { if (ev.key === "Enter") { ev.preventDefault(); t.blur(); } };
     };

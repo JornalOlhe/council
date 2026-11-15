@@ -36,17 +36,21 @@ jobs:
       - name: Gerar instalador
         working-directory: desktop
         run: npx electron-builder --win --publish never
+      - name: Cópia com o nome antigo (links antigos continuam funcionando)
+        shell: pwsh
+        run: Copy-Item desktop/dist/Jarvis-Setup.exe desktop/dist/IA-Council-Setup.exe
       - name: Publicar para download
         uses: softprops/action-gh-release@v2
         with:
           tag_name: desktop-latest
-          name: IA Council para Windows
+          name: Jarvis para Windows
           body: |
-            Instalador do **IA Council para Windows** (conselho de IAs + Copiloto que mexe no seu PC).
-            Baixe `IA-Council-Setup.exe`, abra e pronto. Se o Windows mostrar "O Windows protegeu o computador", clique em **Mais informações → Executar assim mesmo**.
+            Instalador do **Jarvis para Windows** (conselho de IAs + Copiloto que mexe no seu PC).
+            Baixe `Jarvis-Setup.exe`, abra e pronto. Se o Windows mostrar "O Windows protegeu o computador", clique em **Mais informações → Executar assim mesmo**.
           files: |
+            desktop/dist/Jarvis-Setup.exe
+            desktop/dist/Jarvis-Setup.exe.blockmap
             desktop/dist/IA-Council-Setup.exe
-            desktop/dist/IA-Council-Setup.exe.blockmap
             desktop/dist/latest.yml
           overwrite_files: true
           make_latest: true

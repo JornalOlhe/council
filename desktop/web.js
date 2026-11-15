@@ -14,7 +14,7 @@ function keyCode(k) {
   return c;
 }
 
-// Visual igual ao Claude in Chrome / extensão: borda laranja, pílula "Council · passo · Parar" e cursor laranja
+// Visual igual ao Claude in Chrome / extensão: borda laranja, pílula "Jarvis · passo · Parar" e cursor laranja
 const GLOW = `(() => { if (document.getElementById("iac-glow")) return; const s = document.createElement("style"); s.id = "iac-glow";
   s.textContent = 'html::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:2147483646;box-shadow:inset 0 0 0 3px #d97757,inset 0 0 34px 6px rgba(217,119,87,.5);animation:iacg 2.4s ease-in-out infinite}' +
     '@keyframes iacg{50%{box-shadow:inset 0 0 0 2px #d97757,inset 0 0 18px 2px rgba(217,119,87,.35)}}' +
@@ -30,7 +30,7 @@ const GLOW = `(() => { if (document.getElementById("iac-glow")) return; const s 
   (document.head || document.documentElement).appendChild(s);
   const p = document.createElement("div"); p.id = "iac-pill";
   const dot = document.createElement("i"), b = document.createElement("b"), sp = document.createElement("span"), bt = document.createElement("button");
-  b.textContent = "Council"; sp.textContent = window.__iacNow || "trabalhando nesta janela…"; bt.textContent = "Parar";
+  b.textContent = "Jarvis"; sp.textContent = window.__iacNow || "trabalhando nesta janela…"; bt.textContent = "Parar";
   bt.onclick = () => { console.log("__iacStop__"); sp.textContent = "parando…"; };
   p.append(dot, b, sp, bt); (document.body || document.documentElement).appendChild(p);
   const c = document.createElement("div"); c.id = "iac-cursor";

@@ -1,7 +1,7 @@
 // node desktop/test-extsync.js — atualização automática da extensão
 const assert = require("assert"), fs = require("fs"), os = require("os"), path = require("path");
 const { sync, newer } = require("./extsync.js");
-const zipBuf = fs.readFileSync(path.join(__dirname, "..", "extension", "ia-council-extension.zip"));
+const zipBuf = fs.readFileSync(path.join(__dirname, "..", "extension", "jarvis-extension.zip"));
 const ver = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "extension", "version.json"))).version;
 (async () => {
   assert.ok(newer("1.0.10", "1.0.9") && !newer("1.0.4", "1.0.4") && newer("1.1.0", "1.0.99"));

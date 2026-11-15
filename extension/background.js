@@ -1,5 +1,5 @@
-// IA Council — Navegador do Copiloto como extensão (igual ao Claude in Chrome):
-// abas num grupo laranja "Council", controladas por depuração (chrome.debugger).
+// Jarvis — Navegador do Copiloto como extensão (igual ao Claude in Chrome):
+// abas num grupo laranja "Jarvis", controladas por depuração (chrome.debugger).
 // A tarefa roda AQUI, em segundo plano: continua mesmo se você sair da aba do site.
 "use strict";
 const API = "https://council-one-sigma.vercel.app/api/copilot";
@@ -53,7 +53,7 @@ const GLOW = `(() => { if (document.getElementById("iac-glow")) return; const s 
   (document.head || document.documentElement).appendChild(s);
   const p = document.createElement("div"); p.id = "iac-pill";
   const dot = document.createElement("i"), b = document.createElement("b"), sp = document.createElement("span"), bt = document.createElement("button");
-  b.textContent = "Council"; sp.textContent = window.__iacNow || "trabalhando nesta aba…"; bt.textContent = "Parar";
+  b.textContent = "Jarvis"; sp.textContent = window.__iacNow || "trabalhando nesta aba…"; bt.textContent = "Parar";
   bt.onclick = () => { try { window.__iacStop("stop"); } catch (e) {} sp.textContent = "parando…"; };
   p.append(dot, b, sp, bt); (document.body || document.documentElement).appendChild(p); })()`;
 // Cursor laranja da IA: mostra onde ela vai clicar/digitar
@@ -87,7 +87,7 @@ const short = (m) => { m = String(m || "IA").replace(/^.*\//, "").replace(/:free
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let task = null; // tarefa atual (uma de cada vez)
 
-// ---------- eventos para o site (todas as abas do IA Council) ----------
+// ---------- eventos para o site (todas as abas do Jarvis) ----------
 function publicState() {
   if (!task) return null;
   const { id, goal, steps, lines, status, now, waiting, answer, plan, shot, url, title, cur } = task;
@@ -104,7 +104,7 @@ async function emit() {
 function setNow(t) { if (task) { task.now = t; emit(); if (task.tabId != null && t) evaluate(task.tabId, pillText(t)).catch(() => {}); } }
 function addLine(t, kind) { if (task) { task.lines.push({ t, kind: kind || "" }); if (task.lines.length > 80) task.lines.shift(); emit(); } }
 
-// ---------- aba no grupo "Council" ----------
+// ---------- aba no grupo "Jarvis" ----------
 async function ensureTab() {
   if (task.tabId != null) {
     const t = await chrome.tabs.get(task.tabId).catch(() => null);
@@ -118,13 +118,13 @@ async function ensureTab() {
   const g = groupId != null ? await chrome.tabGroups.get(groupId).catch(() => null) : null;
   if (g && g.windowId === tab.windowId) await chrome.tabs.group({ groupId, tabIds: [tab.id] });
   else groupId = await chrome.tabs.group({ tabIds: [tab.id], createProperties: { windowId: tab.windowId } });
-  await chrome.tabGroups.update(groupId, { title: "Council", color: "orange", collapsed: false }).catch(() => {});
+  await chrome.tabGroups.update(groupId, { title: "Jarvis", color: "orange", collapsed: false }).catch(() => {});
   await chrome.storage.session.set({ groupId, windowId: tab.windowId });
   task.tabId = tab.id;
   return tab.id;
 }
 
-// Nunca levar o usuário para a aba do Council (ele continua onde está), a não ser que peça "Ver aba" ou precise logar
+// Nunca levar o usuário para a aba do Jarvis (ele continua onde está), a não ser que peça "Ver aba" ou precise logar
 async function keepFocus() {
   if (!task || task.shown || task.tabId == null) return;
   const t = await chrome.tabs.get(task.tabId).catch(() => null);
@@ -321,13 +321,13 @@ async function askSite(host) {
     const list = new Set(st.allowedSites || []); list.add(host);
     await chrome.storage.local.set(choice === "all" ? { allowAll: true, allowedSites: [...list] } : { allowedSites: [...list] }).catch(() => {});
   }
-  addLine(choice === "all" ? "Você permitiu o Council em todos os sites" : "Você permitiu o Council em " + host + (choice === "always" ? " (sempre)" : " (só agora)"));
+  addLine(choice === "all" ? "Você permitiu o Jarvis em todos os sites" : "Você permitiu o Jarvis em " + host + (choice === "always" ? " (sempre)" : " (só agora)"));
   return true;
 }
 
 // ---------- o loop da tarefa ----------
 async function runTask(t) {
-  task = { ...t, steps: [], lines: [], status: "running", now: "Abrindo a aba no grupo Council…", waiting: null, answer: "", plan: "", tabId: null, stop: false, allowed: new Set(), rejections: 0 };
+  task = { ...t, steps: [], lines: [], status: "running", now: "Abrindo a aba no grupo Jarvis…", waiting: null, answer: "", plan: "", tabId: null, stop: false, allowed: new Set(), rejections: 0 };
   emit();
   chrome.alarms.create("iac-keepalive", { periodInMinutes: 0.5 });
   let step = 0;
@@ -347,7 +347,7 @@ async function runTask(t) {
     while (true) {
       if (task.stop) return finish("stopped", "Parado por você.", "err");
       if (step >= MAX_STEPS) return finish("max", "Parei depois de " + MAX_STEPS + " passos. Peça para continuar se precisar.", "err");
-      if (task.tabId == null && task.opened) return finish("stopped", "A aba do Council foi fechada.", "err");
+      if (task.tabId == null && task.opened) return finish("stopped", "A aba do Jarvis foi fechada.", "err");
       if (task.detached) { task.detached = null; await attach(task.tabId).catch(() => {}); }
       step++;
       setNow(step === 1 ? "Planejando…" : "Lendo a página… (passo " + step + ")");
@@ -391,12 +391,12 @@ async function runTask(t) {
       }
       // permissão do site antes de agir nele
       const host = a.type === "navigate" ? hostOf(a.url) : hostOf(page.url);
-      if (host && !(await askSite(host))) return finish("stopped", "Você não permitiu o Council em " + host + ".", "err");
+      if (host && !(await askSite(host))) return finish("stopped", "Você não permitiu o Jarvis em " + host + ".", "err");
       if (task.stop) return finish("stopped", "Parado por você.", "err");
       if (!task.opened) {
-        setNow("Abrindo a aba no grupo Council…");
+        setNow("Abrindo a aba no grupo Jarvis…");
         await ensureTab(); await keepFocus(); await attach(task.tabId); task.opened = true; await keepFocus();
-        addLine("Abri uma aba no grupo Council (você continua aqui; clique em “Ver aba” para acompanhar)");
+        addLine("Abri uma aba no grupo Jarvis (você continua aqui; clique em “Ver aba” para acompanhar)");
       }
       setNow(plan.say);
       const did = [];
@@ -420,7 +420,7 @@ async function runTask(t) {
   }
 }
 // ---------- atualização automática ----------
-// O app IA Council (Windows) grava a versão nova na pasta da extensão; aqui ela percebe e se recarrega sozinha.
+// O app Jarvis (Windows) grava a versão nova na pasta da extensão; aqui ela percebe e se recarrega sozinha.
 const newerV = (a, b) => { const x = String(a || "0").split(".").map(Number), y = String(b || "0").split(".").map(Number); for (let i = 0; i < Math.max(x.length, y.length); i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return d > 0; } return false; };
 async function checkSelfUpdate() {
   try {
@@ -453,7 +453,7 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
       return { task: s.lastTask || null };
     }
     if (msg.type === "start") {
-      if (task && task.status === "running") return { error: "Já existe uma tarefa no Council. Espere ou clique em Parar." };
+      if (task && task.status === "running") return { error: "Já existe uma tarefa no Jarvis. Espere ou clique em Parar." };
       const goal = String(msg.goal || "").slice(0, 1200);
       if (!goal) return { error: "objetivo vazio" };
       const id = String(msg.id || Date.now());
@@ -481,7 +481,7 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
   return true;
 });
 
-// clicar no ícone da extensão abre o IA Council
+// clicar no ícone da extensão abre o Jarvis
 chrome.action.onClicked.addListener(async () => {
   const [t] = await chrome.tabs.query({ url: SITE });
   if (t) { chrome.tabs.update(t.id, { active: true }); chrome.windows.update(t.windowId, { focused: true }); }

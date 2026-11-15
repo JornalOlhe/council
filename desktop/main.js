@@ -1,4 +1,4 @@
-// IA Council para Windows — abre o IA Council numa janela própria e deixa o Copiloto
+// Jarvis para Windows — abre o Jarvis numa janela própria e deixa o Copiloto
 // ver a tela, mover o mouse e digitar no PC (só para o site oficial, dentro deste app).
 "use strict";
 const { app, BrowserWindow, ipcMain, desktopCapturer, screen, clipboard, globalShortcut, shell, session, Menu, dialog, Notification, Tray, nativeImage } = require("electron");
@@ -20,19 +20,22 @@ let updateState = { state: "idle", version: app.getVersion() };
 let normalBounds = null;
 let stopFlag = false;
 
+// o app mudou de nome (IA Council → Jarvis): continua usando a mesma pasta de dados, para não perder conversas e configurações
+try { const fs0 = require("fs"), oldData = path.join(app.getPath("appData"), "IA Council"); if (fs0.existsSync(oldData)) app.setPath("userData", oldData); } catch {}
 if (!app.requestSingleInstanceLock()) app.quit();
-if (process.platform === "win32") app.setAppUserModelId("com.jornalolhe.iacouncil"); // notificações aparecem como "IA Council"
+if (process.platform === "win32") app.setAppUserModelId("com.jornalolhe.iacouncil"); // notificações aparecem como "Jarvis"
 app.on("second-instance", () => { openWindow(); });
 function openWindow() { if (!win || win.isDestroyed()) { createWindow(); return; } if (win.isMinimized()) win.restore(); win.show(); win.focus(); }
 
 // ---------- extensão sempre atualizada (pasta fixa + o app baixa as versões novas) ----------
-const EXT_DIR = path.join(app.getPath("home"), "IA-Council-Extensao");
+// se você já usa a pasta antiga no navegador, continua nela (assim a atualização automática não quebra)
+const EXT_DIR = (() => { const old = path.join(app.getPath("home"), "IA-Council-Extensao"); try { if (require("fs").existsSync(path.join(old, "manifest.json"))) return old; } catch {} return path.join(app.getPath("home"), "Jarvis-Extensao"); })();
 let extState = { dir: EXT_DIR, version: extsync.localVersion(EXT_DIR), last: 0, error: "" };
 async function syncExt(manual) {
   try {
     const r = await extsync.sync(EXT_DIR);
     extState = { dir: EXT_DIR, version: r.version, last: Date.now(), error: "", updated: r.updated };
-    if (r.updated && r.from && Notification.isSupported()) new Notification({ title: "IA Council", body: `Extensão atualizada para ${r.version}. Ela se recarrega sozinha no navegador.`, icon: path.join(__dirname, "icon.png") }).show();
+    if (r.updated && r.from && Notification.isSupported()) new Notification({ title: "Jarvis", body: `Extensão atualizada para ${r.version}. Ela se recarrega sozinha no navegador.`, icon: path.join(__dirname, "icon.png") }).show();
   } catch (e) { extState.error = e.message; if (manual) throw e; }
   return extState;
 }
@@ -45,10 +48,10 @@ let tray = null;
 function makeTray() {
   if (tray || process.platform !== "win32") return;
   tray = new Tray(nativeImage.createFromPath(path.join(__dirname, "icon.png")).resize({ width: 16, height: 16 }));
-  tray.setToolTip("IA Council");
+  tray.setToolTip("Jarvis");
   tray.setContextMenu(Menu.buildFromTemplate([
-    { label: "Abrir IA Council", click: openWindow },
-    { label: "Atualizar extensão agora", click: () => syncExt(true).then((s) => new Notification({ title: "IA Council", body: s.updated ? "Extensão atualizada para " + s.version : "A extensão já está na versão mais nova (" + s.version + ")." }).show(), (err) => dialog.showErrorBox("IA Council", "Não consegui atualizar a extensão: " + err.message)) },
+    { label: "Abrir Jarvis", click: openWindow },
+    { label: "Atualizar extensão agora", click: () => syncExt(true).then((s) => new Notification({ title: "Jarvis", body: s.updated ? "Extensão atualizada para " + s.version : "A extensão já está na versão mais nova (" + s.version + ")." }).show(), (err) => dialog.showErrorBox("Jarvis", "Não consegui atualizar a extensão: " + err.message)) },
     { label: "Abrir pasta da extensão", click: () => shell.openPath(EXT_DIR) },
     { type: "separator" },
     { label: "Sair", click: () => { app.isQuitting = true; app.quit(); } },
@@ -193,7 +196,7 @@ function askToRestart(version) {
   askedFor = version;
   try {
     if (Notification.isSupported()) {
-      const n = new Notification({ title: "IA Council", body: `Nova versão ${version} pronta. Clique para reiniciar e atualizar.`, icon: path.join(__dirname, "icon.png") });
+      const n = new Notification({ title: "Jarvis", body: `Nova versão ${version} pronta. Clique para reiniciar e atualizar.`, icon: path.join(__dirname, "icon.png") });
       n.on("click", () => autoUpdater.quitAndInstall(true, true));
       n.show();
     }
@@ -202,8 +205,8 @@ function askToRestart(version) {
     if (normalBounds) return setTimeout(show, 30000); // não interrompe uma tarefa no PC
     if (!win || win.isDestroyed()) return;
     dialog.showMessageBox(win, {
-      type: "info", title: "Atualização do IA Council",
-      message: `A versão ${version} do IA Council está pronta.`,
+      type: "info", title: "Atualização do Jarvis",
+      message: `A versão ${version} do Jarvis está pronta.`,
       detail: `Você está na ${app.getVersion()}. Reiniciar agora para atualizar? Leva poucos segundos.`,
       buttons: ["Reiniciar e atualizar", "Depois"], defaultId: 0, cancelId: 1, noLink: true,
     }).then((r) => { if (r.response === 0) autoUpdater.quitAndInstall(true, true); });
@@ -229,7 +232,7 @@ ipcMain.handle("app:check-update", async (e) => {
     if (updateState.state === "ready") return done({ state: "ready", next: updateState.next });
     autoUpdater.checkForUpdates().catch((er) => done({ state: "error", message: String((er && er.message) || er).slice(0, 200) }));
   });
-  const opts = { type: "info", title: "Atualização do IA Council", noLink: true };
+  const opts = { type: "info", title: "Atualização do Jarvis", noLink: true };
   if (result.state === "ready") {
     const r = await dialog.showMessageBox(win, { ...opts, message: `A versão ${result.next} está pronta.`, detail: `Você está na ${cur}. Reiniciar agora para atualizar?`, buttons: ["Reiniciar e atualizar", "Depois"], defaultId: 0, cancelId: 1 });
     if (r.response === 0) setImmediate(() => autoUpdater.quitAndInstall(true, true));
@@ -261,7 +264,7 @@ html,body{margin:0;height:100%;background:transparent;overflow:hidden;font-famil
 #c .r{position:absolute;left:-18px;top:-18px;width:38px;height:38px;border-radius:50%;border:3px solid #d97757;opacity:0}
 #c.k .r{animation:rp .6s ease-out}@keyframes rp{0%{opacity:1;transform:scale(.3)}100%{opacity:0;transform:scale(1.7)}}
 #c .tg{position:absolute;left:26px;top:24px;background:#d97757;color:#fff;font:600 12px/1 "Segoe UI",sans-serif;padding:5px 8px;border-radius:7px;white-space:nowrap;opacity:0}#c.ty .tg{opacity:1}
-</style></head><body><div class="g"></div><div class="t"><span class="d"></span>IA Council está controlando seu PC · <b>Ctrl+Shift+Q</b> para parar</div>
+</style></head><body><div class="g"></div><div class="t"><span class="d"></span>Jarvis está controlando seu PC · <b>Ctrl+Shift+Q</b> para parar</div>
 <div id="c"><div class="r"></div><svg width="28" height="33" viewBox="0 0 22 26"><path d="M2 1.5v20.2l5.6-5.2 3.6 8.3 3.7-1.6-3.6-8.1 7.7-.3z" fill="#d97757" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg><div class="tg">digitando…</div></div>
 <script>window.mv=function(x,y,m){var c=document.getElementById("c");c.classList.add("on");if(x!=null)c.style.transform="translate("+x+"px,"+y+"px)";c.classList.toggle("ty",m==="type");if(m==="click"){c.classList.remove("k");void c.offsetWidth;c.classList.add("k");}}</script></body></html>`;
 // cursor laranja da IA na tela (por cima de tudo, fora dos prints)
@@ -315,7 +318,7 @@ ipcMain.handle("pc:mini", (e, on) => {
 function createWindow() {
   win = new BrowserWindow({
     width: 1280, height: 820, minWidth: 380, minHeight: 480,
-    title: "IA Council", backgroundColor: "#1f1e1d", autoHideMenuBar: true,
+    title: "Jarvis", backgroundColor: "#1f1e1d", autoHideMenuBar: true,
     icon: path.join(__dirname, "icon.png"),
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),

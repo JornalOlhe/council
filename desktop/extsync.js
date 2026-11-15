@@ -1,4 +1,4 @@
-// Mantém a extensão IA Council sempre atualizada numa pasta fixa do PC.
+// Mantém a extensão Jarvis sempre atualizada numa pasta fixa do PC.
 // O app baixa a versão nova do site e grava os arquivos; a própria extensão percebe e se recarrega sozinha.
 "use strict";
 const fs = require("fs"), path = require("path"), zlib = require("zlib"), https = require("https");
@@ -47,7 +47,7 @@ async function sync(dir, fetcher = get) {
   const remote = JSON.parse((await fetcher(BASE + "version.json?t=" + Date.now())).toString("utf8")).version;
   const cur = localVersion(dir);
   if (cur && !newer(remote, cur)) return { updated: false, version: cur, dir };
-  const files = unzip(await fetcher(BASE + "ia-council-extension.zip?t=" + Date.now()));
+  const files = unzip(await fetcher(BASE + "jarvis-extension.zip?t=" + Date.now()));
   if (!files.some((f) => f.name === "manifest.json")) throw new Error("zip sem manifest.json");
   files.sort((a, b) => (a.name === "manifest.json") - (b.name === "manifest.json")); // manifesto por último
   fs.mkdirSync(dir, { recursive: true });

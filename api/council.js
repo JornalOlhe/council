@@ -1,4 +1,4 @@
-// IA Council — função serverless (Node 20+, sem dependências)
+// Jarvis — função serverless (Node 20+, sem dependências)
 // O conselho roda em ETAPAS (cada uma é uma chamada própria, com até ~55 s):
 //   start  -> decide se é conversa ou conselho; se houver fotos, o "olho" (Gemini) descreve
 //   open   -> rodada 1: cada membro dá sua análise independente
@@ -445,7 +445,7 @@ export default async function handler(req, res) {
           if (images.length && p.kind !== "gemini") continue;
           try {
             const text = await ask(p,
-              `Você é o IA Council, um assistente formado por um conselho de IAs (${team}). Responda SEMPRE em português do Brasil, de forma natural, cordial e direta, como um assistente de conversa. Para saudações, papo casual e perguntas simples (hora, data, clima, contas), responda em 1 ou 2 frases. Não use títulos nem listas a menos que ajudem. Não invente fatos: para hora, data e clima use SOMENTE os dados reais abaixo. Se a pessoa pedir algo que mereça análise profunda, responda o essencial e sugira mandar a pergunta completa para o conselho debater.${facts ? "\n\n" + facts : ""}`,
+              `Você é o Jarvis, um assistente formado por um conselho de IAs (${team}). Responda SEMPRE em português do Brasil, de forma natural, cordial e direta, como um assistente de conversa. Para saudações, papo casual e perguntas simples (hora, data, clima, contas), responda em 1 ou 2 frases. Não use títulos nem listas a menos que ajudem. Não invente fatos: para hora, data e clima use SOMENTE os dados reais abaixo. Se a pessoa pedir algo que mereça análise profunda, responda o essencial e sugira mandar a pergunta completa para o conselho debater.${facts ? "\n\n" + facts : ""}`,
               prompt, deadline, mode === "quick" ? eff : EFFORTS.low, mode === "quick" ? eff.tokens : 1500, images);
             return send(200, { ...info, mode: "chat", final: text, judge: p.name, judgeModel: p.lastUsed || p.model, errors });
           } catch (e) {

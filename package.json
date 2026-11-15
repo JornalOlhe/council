@@ -1,9 +1,9 @@
 {
-  "name": "ia-council",
+  "name": "jarvis",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "IA Council: várias IAs respondem, debatem e um presidente decide.",
+  "description": "Jarvis: várias IAs respondem, debatem e um presidente decide.",
   "engines": {
     "node": ">=20"
   },
