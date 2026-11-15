@@ -374,7 +374,7 @@ export default async function handler(req, res) {
               if (v) {
                 out.checker = v.model;
                 if (!v.ok) return send(200, { ...out, action: { type: "wait", seconds: 0.3 }, then: [], answer: "", confirm: "",
-                  rejected: v.reason || "o resultado não bate com o pedido", say: "O verificador não aprovou: " + (v.reason || "o resultado não bate com o pedido") });
+                  rejected: v.reason || "o resultado não bate com o pedido", say: "A conferência não aprovou: " + (v.reason || "o resultado não bate com o pedido") });
               }
             }
             return send(200, out);

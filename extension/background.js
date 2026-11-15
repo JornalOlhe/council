@@ -360,10 +360,10 @@ async function runTask(t) {
       const plan = await r.json().catch(() => ({ error: "resposta inválida do servidor" }));
       if (!r.ok) throw new Error(plan.error || "Erro " + r.status);
       if (task.stop) return finish("stopped", "Parado por você.", "err");
-      if (plan.plan && !task.plan) { task.plan = plan.plan; addLine("Plano (" + short(plan.model) + " vê a página e decide): " + plan.plan); }
+      if (plan.plan && !task.plan) { task.plan = plan.plan; addLine("Plano: " + plan.plan); }
       if (plan.rejected) {
         task.rejections++;
-        addLine("🔎 " + short(plan.checker) + " conferiu e não aprovou: " + plan.rejected, "err");
+        addLine("🔎 A conferência não aprovou: " + plan.rejected, "err");
         task.steps.push("O VERIFICADOR recusou o resultado: " + plan.rejected + " — corrija antes de terminar.");
         continue;
       }
@@ -371,7 +371,7 @@ async function runTask(t) {
       const a = plan.action;
       if (a.type === "done") {
         task.steps.push(plan.say);
-        if (plan.checker) addLine("🔎 Conferido por " + short(plan.checker));
+        if (plan.checker) addLine("🔎 Resultado conferido");
         return finish("done", "✓ " + plan.say, "", plan.answer);
       }
       if (a.type === "ask_user") {

@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Jarvis",
   "short_name": "Jarvis",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "O Copiloto do Jarvis faz tarefas em sites num grupo de abas próprio (Council), mesmo quando você sai da aba.",
   "icons": {
     "16": "icons/icon16.png",

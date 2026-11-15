@@ -83,7 +83,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   assert.ok(cmds.includes("Input.dispatchMouseEvent:mousePressed"));
   assert.ok(cmds.some((c) => c.startsWith("Input.dispatchKeyEvent:keyDown")), "apertou Enter");
   assert.ok(cmds.includes("detach") && !cmds.slice(cmds.lastIndexOf("detach")).some((c) => c.startsWith("Input.")), "desconecta e não age depois");
-  assert.ok(last.lines.some((l) => /não aprovou/.test(l.t)) && last.lines.some((l) => /Conferido por/.test(l.t)), "verificador recusou e depois aprovou");
+  assert.ok(last.lines.some((l) => /não aprovou/.test(l.t)) && last.lines.some((l) => /conferido/.test(l.t)), "conferência recusou e depois aprovou");
   assert.deepEqual((await send({ type: "perms" })).sites, ["google.com"]);
   assert.ok(cmds.includes("Runtime.addBinding"), "botão Parar na própria aba");
   assert.ok(cmds.filter((c) => c === "Runtime.evaluate").length > 0);

@@ -1512,7 +1512,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
         steps.push({
           t: r.title + " · " + r.answers.length + (r.answers.length > 1 ? " IAs" : " IA"),
           b: r.answers.map(function (a) {
-            return '<div class="who">' + esc(a.name) + " <span>" + esc(labelOf(a.name, d, a.model)) + '</span></div><div class="md">' + md(a.text) + "</div>";
+            return '<div class="who">' + esc(a.name) + '</div><div class="md">' + md(a.text) + "</div>";
           }).join("")
         });
       });
@@ -1522,9 +1522,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
     }
     h += '<div class="md">' + md(d.final) + "</div>";
     h += (d.errors || []).map(function (x) { return '<div class="warn">⚠ ' + esc(x.name) + " — " + esc(x.stage) + ": " + esc(x.error) + "</div>"; }).join("");
-    var jl = labelOf(d.judge, d, d.judgeModel);
-    var who = chatMode ? esc(d.judge) + (jl ? " · " + esc(jl) : "")
-      : "Conselho de " + (d.members || []).length + " IAs · presidente: " + esc(d.judge) + (jl ? " (" + esc(jl) + ")" : "");
+    var who = chatMode ? "Jarvis" : "Jarvis · conselho de " + (d.members || []).length + " IAs"; // sem nome de modelo
     h += '<div class="meta"><svg class="star"><use href="#i-star"/></svg><span>' + who + '</span><span class="acts">' +
       '<button data-a="copy" title="Copiar" aria-label="Copiar">' + ic("copy") + "</button>" +
       '<button data-a="retry" title="Perguntar de novo" aria-label="Perguntar de novo">' + ic("retry") + "</button></span></div>";
@@ -2014,9 +2012,9 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
         if (stopped) throw { stop: true };
         showShot(page, plan);
         if (plan.plan && !log.plan) { log.plan = plan.plan; line("Plano: " + plan.plan); }
-        if (plan.rejected) { rejections++; line("🔎 O verificador não aprovou: " + plan.rejected, "err"); log.steps.push("O VERIFICADOR recusou o resultado: " + plan.rejected + " — corrija antes de terminar."); return loop(); }
+        if (plan.rejected) { rejections++; line("🔎 A conferência não aprovou: " + plan.rejected, "err"); log.steps.push("O VERIFICADOR recusou o resultado: " + plan.rejected + " — corrija antes de terminar."); return loop(); }
         var a = plan.action;
-        if (a.type === "done") { log.steps.push(plan.say); if (plan.checker) line("🔎 Conferido por outro modelo"); return finish("done", "✓ " + plan.say, "", plan.answer); }
+        if (a.type === "done") { log.steps.push(plan.say); if (plan.checker) line("🔎 Resultado conferido"); return finish("done", "✓ " + plan.say, "", plan.answer); }
         if (a.type === "ask_user") {
           clearNow(); log.steps.push("Pediu ajuda: " + plan.say); W.show(true);
           return askUser("✋ " + plan.say + " (faça na janela do navegador do Copiloto)", "Já fiz, continuar", "Encerrar").then(function (go) {
@@ -2586,7 +2584,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
             st.textContent = "Analisando o que aparece na tela…";
             var w = document.createElement("div"); w.className = "shotwrap"; w.style.marginTop = "8px"; w.innerHTML = '<img alt="Tela do seu PC">'; w.querySelector("img").src = shot.image; c2.appendChild(w);
             return askAboutImage(a.question, shot.image).then(function (j) {
-              st.textContent = "Analisado por " + (pretty(j.model) || "Gemini"); st.className = "okk";
+              st.textContent = "Analisado"; st.className = "okk";
               var ans = document.createElement("div"); ans.className = "md"; ans.style.marginTop = "10px"; ans.innerHTML = md(j.answer); c2.appendChild(ans);
               data.screenAnswer = j.answer; saveHist();
             });
@@ -2662,7 +2660,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
     if (data.say) { var d1 = document.createElement("div"); d1.className = "md"; d1.innerHTML = md(data.say); body.appendChild(d1); }
     if (data.actions && data.actions.length) { var box = document.createElement("div"); box.className = "acards"; body.appendChild(box); runActions(box, data, auto); }
     var meta = document.createElement("div"); meta.className = "meta";
-    meta.innerHTML = '<svg class="helm"><use href="#i-helmet"/></svg><span>Copiloto' + (data.by ? " · " + esc(data.by) + (data.model ? " (" + esc(pretty(data.model)) + ")" : "") : " · ação imediata") + '</span><span class="acts"><button data-a="copy" title="Copiar" aria-label="Copiar">' + ic("copy") + "</button></span>";
+    meta.innerHTML = '<svg class="helm"><use href="#i-helmet"/></svg><span>Jarvis</span><span class="acts"><button data-a="copy" title="Copiar" aria-label="Copiar">' + ic("copy") + "</button></span>";
     body.appendChild(meta);
     meta.querySelector('[data-a="copy"]').onclick = function () { copy([data.imageAnswer, data.say, data.screenAnswer].filter(Boolean).join("\n\n")); };
   }
