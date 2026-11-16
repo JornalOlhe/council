@@ -1272,15 +1272,65 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
           if (V.on && V.state === "listen") $("vLine").textContent = "Preparando a voz natural (só na primeira vez)…";
           return Promise.race([lib.download(PVOICE, function (pr) { if (V.on && pr && pr.total) $("vLine").textContent = "Baixando a voz natural: " + Math.round(pr.loaded / pr.total * 100) + "% (só na primeira vez)"; }), lim(180000)]);
         });
-      }).then(function () { PIPER.st = "ready"; console.info("[Jarvis voz] Piper pronto em " + (Date.now() - tL) + " ms"); if (V.on && V.state === "listen") $("vLine").textContent = "Voz pronta. Pode falar!"; },
+      }).then(function () { PIPER.st = "ready"; console.info("[Jarvis voz] Piper pronto em " + (Date.now() - tL) + " ms"); fastInit().catch(function () {}); if (V.on && V.state === "listen") $("vLine").textContent = "Voz pronta. Pode falar!"; },
         function (e) { PIPER.st = "fail"; PIPER.p = null; console.warn("[Jarvis voz] Piper falhou: " + (e && e.message)); throw e; });
       return PIPER.p;
+    }
+    // motor rápido: o modelo de voz fica CARREGADO na memória (a biblioteca recarregava ~60 MB a cada frase)
+    var FAST = { p: null, ort: null, sess: null, cfg: null, phon: null };
+    function fastInit() {
+      if (FAST.p) return FAST.p;
+      var t0 = Date.now();
+      FAST.p = Promise.all([
+        import("https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/+esm"),
+        import("https://cdn.jsdelivr.net/npm/@diffusionstudio/vits-web@1.0.3/dist/piper-DeOu3H9E.js/+esm"),
+        navigator.storage.getDirectory().then(function (d) { return d.getDirectoryHandle("piper"); }),
+      ]).then(function (r) {
+        FAST.ort = r[0].default || r[0]; FAST.phon = r[1].createPiperPhonemize;
+        FAST.ort.env.wasm.wasmPaths = PIPER.lib.ONNX_BASE; FAST.ort.env.wasm.numThreads = self.crossOriginIsolated ? Math.min(4, navigator.hardwareConcurrency || 2) : 1;
+        return Promise.all([r[2].getFileHandle(PVOICE + ".onnx").then(function (h) { return h.getFile(); }).then(function (f) { return f.arrayBuffer(); }),
+          r[2].getFileHandle(PVOICE + ".onnx.json").then(function (h) { return h.getFile(); }).then(function (f) { return f.text(); })]);
+      }).then(function (r) {
+        FAST.cfg = JSON.parse(r[1]);
+        return FAST.ort.InferenceSession.create(r[0]);
+      }).then(function (sess) { FAST.sess = sess; console.info("[Jarvis voz] motor rápido pronto em " + (Date.now() - t0) + " ms"); },
+        function (e) { console.warn("[Jarvis voz] motor rápido indisponível, usando o normal: " + (e && e.message)); FAST.p = null; throw e; });
+      return FAST.p;
+    }
+    function wav(samples, rate) {
+      var n = samples.length, dv = new DataView(new ArrayBuffer(44 + n * 2)), w = function (o, str) { for (var i = 0; i < str.length; i++) dv.setUint8(o + i, str.charCodeAt(i)); };
+      w(0, "RIFF"); dv.setUint32(4, 36 + n * 2, true); w(8, "WAVE"); w(12, "fmt "); dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 1, true);
+      dv.setUint32(24, rate, true); dv.setUint32(28, rate * 2, true); dv.setUint16(32, 2, true); dv.setUint16(34, 16, true); w(36, "data"); dv.setUint32(40, n * 2, true);
+      for (var i = 0, o = 44; i < n; i++, o += 2) { var v = Math.max(-1, Math.min(1, samples[i])); dv.setInt16(o, v < 0 ? v * 32768 : v * 32767, true); }
+      return new Blob([dv.buffer], { type: "audio/wav" });
+    }
+    function fastPredict(text) {
+      return fastInit().then(function () {
+        var cfg = FAST.cfg, base = PIPER.lib.WASM_BASE;
+        return new Promise(function (res, rej) {
+          FAST.phon({ print: function (l) { try { res(JSON.parse(l).phoneme_ids); } catch (e) { rej(e); } }, printErr: function (l) { if (/error/i.test(l)) rej(new Error(l)); },
+            locateFile: function (f) { return f.endsWith(".wasm") ? base + ".wasm" : f.endsWith(".data") ? base + ".data" : f; } })
+            .then(function (m) { m.callMain(["-l", cfg.espeak.voice, "--input", JSON.stringify([{ text: text.trim() }]), "--espeak_data", "/espeak-ng-data"]); }, rej);
+        }).then(function (ids) {
+          var ort = FAST.ort, inf = cfg.inference, feeds = {
+            input: new ort.Tensor("int64", BigInt64Array.from(ids.map(BigInt)), [1, ids.length]),
+            input_lengths: new ort.Tensor("int64", BigInt64Array.from([BigInt(ids.length)])),
+            scales: new ort.Tensor("float32", Float32Array.from([inf.noise_scale, inf.length_scale * 0.95, inf.noise_w])),
+          };
+          if (Object.keys(cfg.speaker_id_map || {}).length) feeds.sid = new ort.Tensor("int64", BigInt64Array.from([0n]));
+          return FAST.sess.run(feeds).then(function (out) { return wav(out.output.data, cfg.audio.sample_rate); });
+        });
+      });
     }
     function sayPiper(text, then) {
       ui("speak", text);
       // fala a 1ª frase assim que ficar pronta; o resto é gerado enquanto ela toca
       var m = text.match(/^.{12,}?[.!?](\s|$)/), first = m ? m[0].trim() : text, rest = m ? text.slice(m[0].length).trim() : "";
-      var gen = function (t) { var t0 = Date.now(); return PIPER.lib.predict({ text: t, voiceId: PVOICE }).then(function (b) { console.info("[Jarvis voz] Piper gerou " + t.length + " letras em " + (Date.now() - t0) + " ms (" + b.size + " bytes)"); return b; }); };
+      var gen = function (t) {
+        var t0 = Date.now(), slow = function () { return PIPER.lib.predict({ text: t, voiceId: PVOICE }); };
+        return (FAST.ok === false ? slow() : fastPredict(t).then(function (b) { FAST.ok = true; return b; }, function () { FAST.ok = false; return slow(); }))
+          .then(function (b) { console.info("[Jarvis voz] Piper (" + (FAST.ok ? "rápido" : "normal") + ") gerou " + t.length + " letras em " + (Date.now() - t0) + " ms"); return b; });
+      };
       var p1 = gen(first), p2 = null;
       function play(p, next) {
         p.then(function (b) {
