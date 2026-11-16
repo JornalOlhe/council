@@ -1293,7 +1293,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
       }).then(function (r) {
         FAST.cfg = JSON.parse(r[1]);
         return FAST.ort.InferenceSession.create(r[0]);
-      }).then(function (sess) { FAST.sess = sess; console.info("[Jarvis voz] motor rápido pronto em " + (Date.now() - t0) + " ms"); },
+      }).then(function (sess) { FAST.sess = sess; console.info("[Jarvis voz] motor rápido pronto em " + (Date.now() - t0) + " ms"); setTimeout(function () { fastPredict("Ok.").catch(function () {}); }, 0); },
         function (e) { console.warn("[Jarvis voz] motor rápido indisponível, usando o normal: " + (e && e.message)); FAST.p = null; throw e; });
       return FAST.p;
     }
@@ -1322,26 +1322,36 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
         });
       });
     }
+    // divide em pedaços curtos (frases/vírgulas) e vai gerando o próximo enquanto o atual toca: fala sem pausas
+    function chunks(text) {
+      var out = [];
+      (text.match(/[^.!?;:]+[.!?;:]*\s*/g) || [text]).forEach(function (sen) {
+        sen = sen.trim(); if (!sen) return;
+        while (sen.length > 110) { var cut = sen.lastIndexOf(",", 100); if (cut < 30) cut = sen.lastIndexOf(" ", 100); if (cut < 30) cut = 100; out.push(sen.slice(0, cut + 1).trim()); sen = sen.slice(cut + 1).trim(); }
+        if (sen) { if (out.length && out[out.length - 1].length + sen.length < 45) out[out.length - 1] += " " + sen; else out.push(sen); }
+      });
+      return out.length ? out : [text];
+    }
     function sayPiper(text, then) {
       ui("speak", text);
-      // fala a 1ª frase assim que ficar pronta; o resto é gerado enquanto ela toca
-      var m = text.match(/^.{12,}?[.!?](\s|$)/), first = m ? m[0].trim() : text, rest = m ? text.slice(m[0].length).trim() : "";
+      var parts = chunks(text), gens = [], i = 0;
       var gen = function (t) {
         var t0 = Date.now(), slow = function () { return PIPER.lib.predict({ text: t, voiceId: PVOICE }); };
         return (FAST.ok === false ? slow() : fastPredict(t).then(function (b) { FAST.ok = true; return b; }, function () { FAST.ok = false; return slow(); }))
           .then(function (b) { console.info("[Jarvis voz] Piper (" + (FAST.ok ? "rápido" : "normal") + ") gerou " + t.length + " letras em " + (Date.now() - t0) + " ms"); return b; });
       };
-      var p1 = gen(first), p2 = null;
-      function play(p, next) {
-        p.then(function (b) {
+      // fila de geração em sequência (uma de cada vez, sempre à frente do que está tocando)
+      parts.reduce(function (prev, t, k) { gens[k] = prev.then(function () { return gen(t); }); return gens[k].catch(function () {}); }, Promise.resolve());
+      (function next() {
+        if (!V.on || V.state !== "speak") return;
+        if (i >= parts.length) { audio = null; ui("listen"); if (then) then(); return; }
+        var k = i++;
+        gens[k].then(function (b) {
           if (!V.on || V.state !== "speak") return;
-          if (rest && !p2) p2 = gen(rest);
-          audio = new Audio(URL.createObjectURL(b)); audio.playbackRate = 1.08; audio.onended = next; audio.onerror = function () { console.warn("[Jarvis voz] erro ao tocar o áudio"); next(); };
-          audio.play().then(function () { console.info("[Jarvis voz] tocando (Piper)"); }, function (e) { console.warn("[Jarvis voz] o navegador bloqueou o som: " + (e && e.message)); next(); });
-        }, function () { if (V.state === "speak") { PIPER.st = "fail"; V.state = "listen"; sayBrowser(text, then); } });
-      }
-      play(p1, function () { if (rest && V.on && V.state === "speak") play(p2 || gen(rest), done); else done(); });
-      function done() { audio = null; if (V.on && V.state === "speak") { ui("listen"); if (then) then(); } }
+          audio = new Audio(URL.createObjectURL(b)); audio.playbackRate = 1.06; audio.onended = next; audio.onerror = function () { console.warn("[Jarvis voz] erro ao tocar o áudio"); next(); };
+          audio.play().then(function () { console.info("[Jarvis voz] tocando (Piper) parte " + (k + 1) + "/" + parts.length); }, function (e) { console.warn("[Jarvis voz] o navegador bloqueou o som: " + (e && e.message)); next(); });
+        }, function () { if (V.state === "speak") { PIPER.st = "fail"; V.state = "listen"; sayBrowser(parts.slice(k).join(" "), then); } });
+      })();
     }
     function say(text, then) {
       text = plain(text);
