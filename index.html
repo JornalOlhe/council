@@ -1276,26 +1276,53 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
         function (e) { PIPER.st = "fail"; PIPER.p = null; console.warn("[Jarvis voz] Piper falhou: " + (e && e.message)); throw e; });
       return PIPER.p;
     }
-    // motor rápido: o modelo de voz fica CARREGADO na memória (a biblioteca recarregava ~60 MB a cada frase)
-    var FAST = { p: null, ort: null, sess: null, cfg: null, phon: null };
+    // motor rápido num WORKER: o modelo fica carregado e a página nunca trava (se algo emperrar, o worker é reiniciado)
+    var FAST = { w: null, n: 0, cb: {}, ready: null, ok: undefined };
+    var WORKER_SRC = [
+      "let ort, phon, sess, cfg, wasmBase;",
+      "self.onmessage = async (e) => { const d = e.data;",
+      " try {",
+      "  if (!sess) {",
+      "   const m = await import('https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/+esm'); ort = m.default || m;",
+      "   ort.env.wasm.wasmPaths = d.onnxBase; ort.env.wasm.numThreads = 1; wasmBase = d.wasmBase;",
+      "   phon = (await import('https://cdn.jsdelivr.net/npm/@diffusionstudio/vits-web@1.0.3/dist/piper-DeOu3H9E.js/+esm')).createPiperPhonemize;",
+      "   const dir = await (await navigator.storage.getDirectory()).getDirectoryHandle('piper');",
+      "   const model = await (await (await dir.getFileHandle(d.voice + '.onnx')).getFile()).arrayBuffer();",
+      "   cfg = JSON.parse(await (await (await dir.getFileHandle(d.voice + '.onnx.json')).getFile()).text());",
+      "   sess = await ort.InferenceSession.create(model);",
+      "  }",
+      "  if (d.cmd === 'init') return postMessage({ id: d.id, ok: true });",
+      "  const ids = await new Promise((res, rej) => { phon({ print: (l) => { try { res(JSON.parse(l).phoneme_ids); } catch (x) { rej(x); } }, printErr: () => {},",
+      "    locateFile: (f) => f.endsWith('.wasm') ? wasmBase + '.wasm' : f.endsWith('.data') ? wasmBase + '.data' : f })",
+      "    .then((m) => m.callMain(['-l', cfg.espeak.voice, '--input', JSON.stringify([{ text: d.text }]), '--espeak_data', '/espeak-ng-data']), rej); });",
+      "  const inf = cfg.inference, feeds = { input: new ort.Tensor('int64', BigInt64Array.from(ids.map(BigInt)), [1, ids.length]),",
+      "   input_lengths: new ort.Tensor('int64', BigInt64Array.from([BigInt(ids.length)])), scales: new ort.Tensor('float32', Float32Array.from([inf.noise_scale, inf.length_scale * 0.95, inf.noise_w])) };",
+      "  if (Object.keys(cfg.speaker_id_map || {}).length) feeds.sid = new ort.Tensor('int64', BigInt64Array.from([0n]));",
+      "  const out = await sess.run(feeds), samples = Float32Array.from(out.output.data);",
+      "  postMessage({ id: d.id, ok: true, samples, rate: cfg.audio.sample_rate }, [samples.buffer]);",
+      " } catch (err) { postMessage({ id: d.id, ok: false, error: String((err && err.message) || err) }); }",
+      "};"].join("\n");
+    function fastWorker() {
+      if (FAST.w) return FAST.w;
+      FAST.w = new Worker(URL.createObjectURL(new Blob([WORKER_SRC], { type: "text/javascript" })), { type: "module" });
+      FAST.w.onmessage = function (e) { var c = FAST.cb[e.data.id]; if (c) { delete FAST.cb[e.data.id]; c(e.data); } };
+      FAST.w.onerror = function (e) { console.warn("[Jarvis voz] erro no motor: " + (e && e.message)); };
+      return FAST.w;
+    }
+    function fastCall(msg, ms) {
+      return new Promise(function (res, rej) {
+        var id = ++FAST.n, w = fastWorker();
+        var t = setTimeout(function () { delete FAST.cb[id]; try { w.terminate(); } catch (e) {} if (FAST.w === w) { FAST.w = null; FAST.ready = null; } rej(new Error("o motor de voz demorou demais")); }, ms);
+        FAST.cb[id] = function (r) { clearTimeout(t); if (r.ok) res(r); else rej(new Error(r.error)); };
+        w.postMessage(Object.assign({ id: id, voice: PVOICE, onnxBase: PIPER.lib.ONNX_BASE, wasmBase: PIPER.lib.WASM_BASE }, msg));
+      });
+    }
     function fastInit() {
-      if (FAST.p) return FAST.p;
+      if (FAST.ready) return FAST.ready;
       var t0 = Date.now();
-      FAST.p = Promise.all([
-        import("https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/+esm"),
-        import("https://cdn.jsdelivr.net/npm/@diffusionstudio/vits-web@1.0.3/dist/piper-DeOu3H9E.js/+esm"),
-        navigator.storage.getDirectory().then(function (d) { return d.getDirectoryHandle("piper"); }),
-      ]).then(function (r) {
-        FAST.ort = r[0].default || r[0]; FAST.phon = r[1].createPiperPhonemize;
-        FAST.ort.env.wasm.wasmPaths = PIPER.lib.ONNX_BASE; FAST.ort.env.wasm.numThreads = self.crossOriginIsolated ? Math.min(4, navigator.hardwareConcurrency || 2) : 1;
-        return Promise.all([r[2].getFileHandle(PVOICE + ".onnx").then(function (h) { return h.getFile(); }).then(function (f) { return f.arrayBuffer(); }),
-          r[2].getFileHandle(PVOICE + ".onnx.json").then(function (h) { return h.getFile(); }).then(function (f) { return f.text(); })]);
-      }).then(function (r) {
-        FAST.cfg = JSON.parse(r[1]);
-        return FAST.ort.InferenceSession.create(r[0]);
-      }).then(function (sess) { FAST.sess = sess; console.info("[Jarvis voz] motor rápido pronto em " + (Date.now() - t0) + " ms"); setTimeout(function () { fastPredict("Ok.").catch(function () {}); }, 0); },
-        function (e) { console.warn("[Jarvis voz] motor rápido indisponível, usando o normal: " + (e && e.message)); FAST.p = null; throw e; });
-      return FAST.p;
+      FAST.ready = fastCall({ cmd: "init" }, 30000).then(function () { console.info("[Jarvis voz] motor rápido pronto em " + (Date.now() - t0) + " ms"); },
+        function (e) { console.warn("[Jarvis voz] motor rápido indisponível: " + e.message); FAST.ready = null; throw e; });
+      return FAST.ready;
     }
     function wav(samples, rate) {
       var n = samples.length, dv = new DataView(new ArrayBuffer(44 + n * 2)), w = function (o, str) { for (var i = 0; i < str.length; i++) dv.setUint8(o + i, str.charCodeAt(i)); };
@@ -1304,32 +1331,24 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
       for (var i = 0, o = 44; i < n; i++, o += 2) { var v = Math.max(-1, Math.min(1, samples[i])); dv.setInt16(o, v < 0 ? v * 32768 : v * 32767, true); }
       return new Blob([dv.buffer], { type: "audio/wav" });
     }
-    // uma geração de cada vez (o motor não aceita duas ao mesmo tempo) e nunca trava: 8 s de limite
     FAST.q = Promise.resolve();
-    function fastPredict(text) {
-      var job = FAST.q.then(function () {
-        return Promise.race([fastPredict1(text), new Promise(function (_, rej) { setTimeout(function () { rej(new Error("voz demorou demais")); }, 8000); })]);
-      });
+    function fastPredict(text) { // uma de cada vez, com limite
+      var job = FAST.q.then(function () { return fastInit().then(function () { return fastCall({ cmd: "say", text: text }, 10000); }); })
+        .then(function (r) { return wav(r.samples, r.rate); });
       FAST.q = job.catch(function () {});
       return job;
     }
-    function fastPredict1(text) {
-      return fastInit().then(function () {
-        var cfg = FAST.cfg, base = PIPER.lib.WASM_BASE;
-        return new Promise(function (res, rej) {
-          FAST.phon({ print: function (l) { try { res(JSON.parse(l).phoneme_ids); } catch (e) { rej(e); } }, printErr: function (l) { if (/error/i.test(l)) rej(new Error(l)); },
-            locateFile: function (f) { return f.endsWith(".wasm") ? base + ".wasm" : f.endsWith(".data") ? base + ".data" : f; } })
-            .then(function (m) { m.callMain(["-l", cfg.espeak.voice, "--input", JSON.stringify([{ text: text.trim() }]), "--espeak_data", "/espeak-ng-data"]); }, rej);
-        }).then(function (ids) {
-          var ort = FAST.ort, inf = cfg.inference, feeds = {
-            input: new ort.Tensor("int64", BigInt64Array.from(ids.map(BigInt)), [1, ids.length]),
-            input_lengths: new ort.Tensor("int64", BigInt64Array.from([BigInt(ids.length)])),
-            scales: new ort.Tensor("float32", Float32Array.from([inf.noise_scale, inf.length_scale * 0.95, inf.noise_w])),
-          };
-          if (Object.keys(cfg.speaker_id_map || {}).length) feeds.sid = new ort.Tensor("int64", BigInt64Array.from([0n]));
-          return FAST.sess.run(feeds).then(function (out) { return wav(out.output.data, cfg.audio.sample_rate); });
-        });
-      });
+    // como se FALA: símbolos e números do jeito que a gente lê
+    var SUPD = { "⁰": "0", "¹": "1", "²": "2", "³": "3", "⁴": "4", "⁵": "5", "⁶": "6", "⁷": "7", "⁸": "8", "⁹": "9" };
+    function speakable(t) {
+      return String(t)
+        .replace(/([\w)])²/g, "$1 ao quadrado").replace(/([\w)])³/g, "$1 ao cubo")
+        .replace(/⁻?[⁰¹²³⁴⁵⁶⁷⁸⁹]+/g, function (m) { return " elevado a " + (m[0] === "⁻" ? "menos " : "") + m.replace("⁻", "").split("").map(function (c) { return SUPD[c]; }).join(""); })
+        .replace(/\^\s*\(?(-?\d+)\)?/g, " elevado a $1").replace(/\s\+\s|(\d)\+(\d)/g, function (m, x, y) { return x ? x + " mais " + y : " mais "; }).replace(/\s=\s|(\w)=(\w)/g, function (m, x, y) { return x ? x + " igual a " + y : " igual a "; })
+        .replace(/(\d)\s*\/\s*(\d)/g, "$1 sobre $2").replace(/×/g, " vezes ").replace(/÷/g, " dividido por ").replace(/√/g, " raiz de ").replace(/±/g, " mais ou menos ").replace(/≈/g, " aproximadamente ")
+        .replace(/≤/g, " menor ou igual a ").replace(/≥/g, " maior ou igual a ").replace(/≠/g, " diferente de ").replace(/π/g, " pi ").replace(/∞/g, " infinito ")
+        .replace(/(\d)\s*%/g, "$1 por cento").replace(/R\$\s*/g, "").replace(/[→⇒←↔]/g, ", ").replace(/[()[\]{}"“”«»]/g, " ")
+        .replace(/[^\p{L}\p{N}\s.,!?;:'-]/gu, " ").replace(/\s{2,}/g, " ").trim();
     }
     // divide em pedaços curtos (frases/vírgulas) e vai gerando o próximo enquanto o atual toca: fala sem pausas
     function chunks(text) {
@@ -1343,7 +1362,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
     }
     function sayPiper(text, then) {
       ui("speak", text);
-      var parts = chunks(text), gens = [], i = 0;
+      var parts = chunks(speakable(text)), gens = [], i = 0;
       var gen = function (t) {
         var t0 = Date.now(), slow = function () { return PIPER.lib.predict({ text: t, voiceId: PVOICE }); };
         return (FAST.ok === false ? slow() : fastPredict(t).then(function (b) { FAST.ok = true; return b; }, function (e) { console.warn("[Jarvis voz] motor rápido falhou (" + (e && e.message) + "), usando o normal"); FAST.ok = false; return slow(); }))
