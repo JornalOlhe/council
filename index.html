@@ -1163,13 +1163,50 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
           if (!V.on || V.state !== "speak") return;
           audio = new Audio(URL.createObjectURL(b)); audio.onended = next; audio.onerror = next;
           audio.play().catch(next);
-        }, function () { if (V.state === "speak") { ELEVEN = false; V.state = "listen"; sayBrowser(rest ? first + " " + rest : first, then); } });
+        }, function () { if (V.state === "speak") { ELEVEN = false; V.state = "listen"; piperLoad().catch(function () {}); if (PIPER.st === "ready") sayPiper(rest ? first + " " + rest : first, then); else sayBrowser(rest ? first + " " + rest : first, then); } });
       }
       play(p1, function () { if (p2 && V.on && V.state === "speak") play(p2, done); else done(); });
       function done() { audio = null; if (V.on && V.state === "speak") { ui("listen"); if (then) then(); } }
     }
+    // voz neural GRÁTIS e sem limite (Piper, roda no seu próprio PC): baixa o modelo uma vez (~60 MB) e fica guardado
+    var PIPER = { st: "idle", lib: null, p: null }, PVOICE = "pt_BR-faber-medium";
+    function piperLoad() {
+      if (PIPER.p) return PIPER.p;
+      PIPER.st = "loading";
+      var lim = function (ms) { return new Promise(function (_, rej) { setTimeout(function () { rej(new Error("tempo esgotado")); }, ms); }); };
+      PIPER.p = Promise.race([import("https://cdn.jsdelivr.net/npm/@diffusionstudio/vits-web@1.0.3/+esm"), lim(20000)]).then(function (lib) {
+        PIPER.lib = lib;
+        return lib.stored().catch(function () { return []; }).then(function (have) {
+          if (have.indexOf(PVOICE) >= 0) return;
+          if (V.on && V.state === "listen") $("vLine").textContent = "Preparando a voz natural (só na primeira vez)…";
+          return Promise.race([lib.download(PVOICE, function (pr) { if (V.on && pr && pr.total) $("vLine").textContent = "Baixando a voz natural: " + Math.round(pr.loaded / pr.total * 100) + "% (só na primeira vez)"; }), lim(180000)]);
+        });
+      }).then(function () { PIPER.st = "ready"; if (V.on && V.state === "listen") $("vLine").textContent = "Voz pronta. Pode falar!"; },
+        function (e) { PIPER.st = "fail"; PIPER.p = null; throw e; });
+      return PIPER.p;
+    }
+    function sayPiper(text, then) {
+      ui("speak", text);
+      // fala a 1ª frase assim que ficar pronta; o resto é gerado enquanto ela toca
+      var m = text.match(/^.{12,}?[.!?](\s|$)/), first = m ? m[0].trim() : text, rest = m ? text.slice(m[0].length).trim() : "";
+      var gen = function (t) { return PIPER.lib.predict({ text: t, voiceId: PVOICE }); };
+      var p1 = gen(first), p2 = null;
+      function play(p, next) {
+        p.then(function (b) {
+          if (!V.on || V.state !== "speak") return;
+          if (rest && !p2) p2 = gen(rest);
+          audio = new Audio(URL.createObjectURL(b)); audio.playbackRate = 1.08; audio.onended = next; audio.onerror = next; audio.play().catch(next);
+        }, function () { if (V.state === "speak") { PIPER.st = "fail"; V.state = "listen"; sayBrowser(text, then); } });
+      }
+      play(p1, function () { if (rest && V.on && V.state === "speak") play(p2 || gen(rest), done); else done(); });
+      function done() { audio = null; if (V.on && V.state === "speak") { ui("listen"); if (then) then(); } }
+    }
     function say(text, then) {
       text = plain(text);
+      if (text && V.on && !ELEVEN && PIPER.st === "ready") {
+        if (text.length > 420) { var k1 = "", s1 = text.match(/[^.!?]+[.!?]+/g) || [text]; for (var q1 = 0; q1 < s1.length && (k1 + s1[q1]).length < 380; q1++) k1 += s1[q1]; text = (k1 || text.slice(0, 380)).trim() + " O resto está na tela."; }
+        return sayPiper(text, then);
+      }
       if (text && ELEVEN && V.on) {
         if (text.length > 420) { var k0 = "", s0 = text.match(/[^.!?]+[.!?]+/g) || [text]; for (var q0 = 0; q0 < s0.length && (k0 + s0[q0]).length < 380; q0++) k0 += s0[q0]; text = (k0 || text.slice(0, 380)).trim() + " O resto está na tela."; }
         return sayEleven(text, then);
@@ -1274,6 +1311,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
         proc.onaudioprocess = onAudio; src.connect(proc); proc.connect(ac.destination);
         $("vdock").classList.remove("hidden"); $("vdock").classList.remove("muted"); $("voiceBtn").classList.add("on");
         ui("listen", "Fale com o Jarvis. Diga “use o debate” para o conselho discutir, ou “tchau” para encerrar.");
+        if (!ELEVEN) piperLoad().catch(function () {}); // voz natural grátis (fica pronta em segundo plano)
         try { if (window.iaDesktop && iaDesktop.voiceActive) iaDesktop.voiceActive(true); } catch (e) {}
       }, function (e) { toast(e && e.name === "NotAllowedError" ? "Permita o microfone para conversar por voz." : "Não consegui abrir o microfone."); });
     }
