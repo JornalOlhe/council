@@ -1358,6 +1358,8 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
         while (sen.length > 110) { var cut = sen.lastIndexOf(",", 100); if (cut < 30) cut = sen.lastIndexOf(" ", 100); if (cut < 30) cut = 100; out.push(sen.slice(0, cut + 1).trim()); sen = sen.slice(cut + 1).trim(); }
         if (sen) { if (out.length && out[out.length - 1].length + sen.length < 45) out[out.length - 1] += " " + sen; else out.push(sen); }
       });
+      // o 1º pedaço é curtinho: o som começa quase na hora
+      if (out.length && out[0].length > 70) { var f0 = out[0], c0 = f0.lastIndexOf(",", 60); if (c0 < 20) c0 = f0.lastIndexOf(" ", 55); if (c0 > 15) out.splice(0, 1, f0.slice(0, c0 + 1).trim(), f0.slice(c0 + 1).trim()); }
       return out.length ? out : [text];
     }
     function sayPiper(text, then) {
