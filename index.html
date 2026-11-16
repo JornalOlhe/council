@@ -1351,7 +1351,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
         .replace(/[^\p{L}\p{N}\s.,!?;:'-]/gu, " ").replace(/\s{2,}/g, " ").trim();
     }
     // divide em pedaços curtos (frases/vírgulas) e vai gerando o próximo enquanto o atual toca: fala sem pausas
-    function chunks(text) {
+    function splitSpeech(text) {
       var out = [];
       (text.match(/[^.!?;:]+[.!?;:]*\s*/g) || [text]).forEach(function (sen) {
         sen = sen.trim(); if (!sen) return;
@@ -1362,7 +1362,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
     }
     function sayPiper(text, then) {
       ui("speak", text);
-      var parts = chunks(speakable(text)), gens = [], i = 0;
+      var parts = splitSpeech(speakable(text)), gens = [], i = 0;
       var gen = function (t) {
         var t0 = Date.now(), slow = function () { return PIPER.lib.predict({ text: t, voiceId: PVOICE }); };
         return (FAST.ok === false ? slow() : fastPredict(t).then(function (b) { FAST.ok = true; return b; }, function (e) { console.warn("[Jarvis voz] motor rápido falhou (" + (e && e.message) + "), usando o normal"); FAST.ok = false; return slow(); }))
@@ -1489,7 +1489,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
       V.reading = true; V.on = true; V.state = "listen";
       if (!ELEVEN && PIPER.st === "idle") { toast("Preparando a voz natural… (na 1ª vez baixa ~60 MB)"); piperLoad().then(function () { if (V.reading) go(); }, function () { if (V.reading) go(); }); }
       else go();
-      function go() { say(t, function () { V.reading = false; V.on = false; V.state = "off"; }); }
+      function go() { try { say(t, function () { V.reading = false; V.on = false; V.state = "off"; }); } catch (e) { console.warn("[Jarvis voz] " + e.message); V.reading = false; V.on = false; V.state = "off"; } }
     };
     function start() {
       if (V.on) return;
