@@ -1263,7 +1263,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
     var PIPER = { st: "idle", lib: null, p: null }, PVOICE = "pt_BR-faber-medium";
     function piperLoad() {
       if (PIPER.p) return PIPER.p;
-      PIPER.st = "loading";
+      PIPER.st = "loading"; var tL = Date.now(); console.info("[Jarvis voz] carregando voz natural (Piper)…");
       var lim = function (ms) { return new Promise(function (_, rej) { setTimeout(function () { rej(new Error("tempo esgotado")); }, ms); }); };
       PIPER.p = Promise.race([import("https://cdn.jsdelivr.net/npm/@diffusionstudio/vits-web@1.0.3/+esm"), lim(20000)]).then(function (lib) {
         PIPER.lib = lib;
@@ -1272,21 +1272,22 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
           if (V.on && V.state === "listen") $("vLine").textContent = "Preparando a voz natural (só na primeira vez)…";
           return Promise.race([lib.download(PVOICE, function (pr) { if (V.on && pr && pr.total) $("vLine").textContent = "Baixando a voz natural: " + Math.round(pr.loaded / pr.total * 100) + "% (só na primeira vez)"; }), lim(180000)]);
         });
-      }).then(function () { PIPER.st = "ready"; if (V.on && V.state === "listen") $("vLine").textContent = "Voz pronta. Pode falar!"; },
-        function (e) { PIPER.st = "fail"; PIPER.p = null; throw e; });
+      }).then(function () { PIPER.st = "ready"; console.info("[Jarvis voz] Piper pronto em " + (Date.now() - tL) + " ms"); if (V.on && V.state === "listen") $("vLine").textContent = "Voz pronta. Pode falar!"; },
+        function (e) { PIPER.st = "fail"; PIPER.p = null; console.warn("[Jarvis voz] Piper falhou: " + (e && e.message)); throw e; });
       return PIPER.p;
     }
     function sayPiper(text, then) {
       ui("speak", text);
       // fala a 1ª frase assim que ficar pronta; o resto é gerado enquanto ela toca
       var m = text.match(/^.{12,}?[.!?](\s|$)/), first = m ? m[0].trim() : text, rest = m ? text.slice(m[0].length).trim() : "";
-      var gen = function (t) { return PIPER.lib.predict({ text: t, voiceId: PVOICE }); };
+      var gen = function (t) { var t0 = Date.now(); return PIPER.lib.predict({ text: t, voiceId: PVOICE }).then(function (b) { console.info("[Jarvis voz] Piper gerou " + t.length + " letras em " + (Date.now() - t0) + " ms (" + b.size + " bytes)"); return b; }); };
       var p1 = gen(first), p2 = null;
       function play(p, next) {
         p.then(function (b) {
           if (!V.on || V.state !== "speak") return;
           if (rest && !p2) p2 = gen(rest);
-          audio = new Audio(URL.createObjectURL(b)); audio.playbackRate = 1.08; audio.onended = next; audio.onerror = next; audio.play().catch(next);
+          audio = new Audio(URL.createObjectURL(b)); audio.playbackRate = 1.08; audio.onended = next; audio.onerror = function () { console.warn("[Jarvis voz] erro ao tocar o áudio"); next(); };
+          audio.play().then(function () { console.info("[Jarvis voz] tocando (Piper)"); }, function (e) { console.warn("[Jarvis voz] o navegador bloqueou o som: " + (e && e.message)); next(); });
         }, function () { if (V.state === "speak") { PIPER.st = "fail"; V.state = "listen"; sayBrowser(text, then); } });
       }
       play(p1, function () { if (rest && V.on && V.state === "speak") play(p2 || gen(rest), done); else done(); });
@@ -1306,6 +1307,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
     }
     function sayBrowser(text, then) {
       if (!text || !window.speechSynthesis) { if (then) then(); return; }
+      console.info("[Jarvis voz] usando a voz do sistema: " + (voice ? voice.name : "padrão"));
       if (text.length > 420) { // resposta longa: fala o essencial e deixa o resto na tela
         var keep = "", ss = text.match(/[^.!?]+[.!?]+/g) || [text];
         for (var q = 0; q < ss.length && (keep + ss[q]).length < 380; q++) keep += ss[q];
