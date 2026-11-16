@@ -272,9 +272,9 @@ body.collapsed #openSide{display:grid}
 .vdock{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);z-index:55;display:flex;align-items:center;gap:12px;width:min(520px,calc(100vw - 32px));padding:10px 10px 10px 12px;border-radius:18px;background:#262624f2;border:1px solid var(--line2);box-shadow:0 14px 44px #000a;backdrop-filter:blur(8px)}
 .vorb{flex:none;width:48px;height:48px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#e9967a,#c4633f);display:flex;align-items:center;justify-content:center;gap:3px;box-shadow:0 0 0 0 #d9775766;transition:box-shadow .15s}
 .vorb i{display:block;width:4px;border-radius:2px;background:#fff;height:calc(6px + var(--l,0) * 22px);transition:height .08s}
-.vorb i:nth-child(1){--k:1}.vorb i:nth-child(2){--k:.55}.vorb i:nth-child(3){--k:.8}.vorb i:nth-child(4){--k:.45}
+.vorb i:nth-child(1){--k:.35}.vorb i:nth-child(2){--k:1}.vorb i:nth-child(3){--k:.55}.vorb i:nth-child(4){--k:.8}.vorb i:nth-child(5){--k:.45}
 .vorb i{height:calc(5px + var(--l,0) * var(--k) * 26px)}
-.vdock.think .vorb i{animation:vth 1s ease-in-out infinite}.vdock.think .vorb i:nth-child(2){animation-delay:.12s}.vdock.think .vorb i:nth-child(3){animation-delay:.24s}.vdock.think .vorb i:nth-child(4){animation-delay:.36s}
+.vdock.think .vorb i{animation:vth 1s ease-in-out infinite}.vdock.think .vorb i:nth-child(2){animation-delay:.12s}.vdock.think .vorb i:nth-child(3){animation-delay:.24s}.vdock.think .vorb i:nth-child(4){animation-delay:.36s}.vdock.think .vorb i:nth-child(5){animation-delay:.48s}
 @keyframes vth{50%{height:18px}}
 .vdock.speak .vorb{box-shadow:0 0 0 6px #d9775733}
 .vdock.muted .vorb{filter:grayscale(1) brightness(.7)}
@@ -511,7 +511,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
       <path d="M4.5 22.6h23v.4a2 2 0 0 1-2 2h-19a2 2 0 0 1-2-2z" fill="#a9a59b"/>
       <circle cx="6.6" cy="20.5" r="1.1" fill="#8f8b81"/><circle cx="25.4" cy="20.5" r="1.1" fill="#8f8b81"/>
     </symbol>
-    <symbol id="i-voice" viewBox="0 0 24 24"><g fill="currentColor"><rect x="3.2" y="3" width="3" height="18" rx="1.5"/><rect x="8.4" y="8.5" width="3" height="7" rx="1.5"/><rect x="13.6" y="5.5" width="3" height="13" rx="1.5"/><rect x="18.8" y="9.5" width="3" height="5" rx="1.5"/></g></symbol>
+    <symbol id="i-voice" viewBox="0 0 24 24"><g fill="currentColor"><rect x="1.6" y="9.75" width="2.6" height="4.5" rx="1.3"/><rect x="6.1" y="3" width="2.6" height="18" rx="1.3"/><rect x="10.6" y="8.5" width="2.6" height="7" rx="1.3"/><rect x="15.1" y="5.5" width="2.6" height="13" rx="1.3"/><rect x="19.6" y="9.5" width="2.6" height="5" rx="1.3"/></g></symbol>
     <symbol id="i-image" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.8"/><path d="m4 18 5-5 4 4 3-3 4 4"/></g></symbol>
     <symbol id="i-file" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></g></symbol>
     <symbol id="i-enter" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" d="M19 5v7a3 3 0 0 1-3 3H6m4-4-4 4 4 4"/></symbol>
@@ -579,7 +579,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
 </aside>
 <div class="scrim" id="scrim"></div>
 <div class="vdock hidden" id="vdock" role="dialog" aria-label="Conversa por voz">
-  <button class="vorb" id="vOrb" title="Toque para interromper"><i></i><i></i><i></i><i></i></button>
+  <button class="vorb" id="vOrb" title="Toque para interromper"><i></i><i></i><i></i><i></i><i></i></button>
   <div class="vtx"><b id="vState">Ouvindo…</b><span id="vLine">Fale com o Jarvis. Diga “use o debate” para o conselho discutir.</span></div>
   <button class="ib" id="vMute" title="Silenciar microfone" aria-label="Silenciar microfone"><svg class="ico"><use href="#i-mic"/></svg></button>
   <button class="ib" id="vEnd" title="Encerrar conversa por voz" aria-label="Encerrar"><svg class="ico"><use href="#i-x"/></svg></button>
@@ -1153,7 +1153,11 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
     function say(text, then) {
       text = plain(text);
       if (!text || !window.speechSynthesis) { if (then) then(); return; }
-      if (text.length > 900) text = text.slice(0, 900).replace(/[^.!?]*$/, "");
+      if (text.length > 420) { // resposta longa: fala o essencial e deixa o resto na tela
+        var keep = "", ss = text.match(/[^.!?]+[.!?]+/g) || [text];
+        for (var q = 0; q < ss.length && (keep + ss[q]).length < 380; q++) keep += ss[q];
+        text = (keep || text.slice(0, 380)).trim() + " O resto está na tela.";
+      }
       speechSynthesis.cancel();
       var parts = text.match(/[^.!?]+[.!?]*/g) || [text], i = 0;
       ui("speak", text);
@@ -1516,7 +1520,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
       $("chat").innerHTML = ""; $("chat").classList.add("hidden");
     }
     var t = { prompt: prompt, kind: kind, files: fnames && fnames.length ? fnames : undefined, data: null };
-    if (VOICE.flag) t.voice = true;
+    if (VOICE.flag || VOICE.on) t.voice = true; // com a voz ligada, até o que você digita é respondido falando
     h.turns.push(t); h.ts = Date.now(); toTop(h);
     var k = h.turns.length - 1;
     ensureChat(h.title || shortTitle(prompt));
@@ -1593,6 +1597,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
       now: new Date().toLocaleString("pt-BR", { weekday: "long", year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" }),
       tz: (Intl.DateTimeFormat().resolvedOptions().timeZone || "") };
     if (VOICE.flag) { base.voice = true; base.mode = mode = VOICE.mode; if (mode === "council") rounds = Math.min(rounds, 1); }
+    else if (VOICE.on) base.voice = true;
     var fnames = fl.map(function (f) { return f.name; });
     var T = beginTurn("council", prompt, sent, fnames), h = T.h, k = T.k;
     var job = jobs[h.id + ":" + k] = { done: [], now: [mode === "quick" ? "Pensando…" : sent.length ? "O olho do conselho está lendo as fotos…" : "Lendo sua mensagem…", ""] };
@@ -1804,6 +1809,16 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
     if (a.type === "file") return ["file", a.name, (a.format || "").toUpperCase() + (a.title ? " · " + a.title : "")];
     if (a.type === "image") return ["image", "Imagem", a.prompt];
     return ["globe", a.type, ""];
+  }
+  // abre um site SÓ na aba do Jarvis (painel do app ou grupo Jarvis da extensão), com permissão do site
+  function agentOpenable() { return !!((D && D.web && D.web.onPanel) || EXT.ready); }
+  function openInAgent(url, holder) {
+    var host = hostOf(url);
+    return askSitePerm(holder, host, {}, null).then(function (ok) {
+      if (!ok) throw new Error("Você não permitiu o Jarvis em " + host + ".");
+      if (D && D.web && D.web.onPanel) return D.web.open(url).then(function () { return D.web.show(true); });
+      return extCall({ type: "open", url: url, allow: host });
+    });
   }
   function openURL(url) {
     if (/^mailto:/i.test(url)) { var l = document.createElement("a"); l.href = url; document.body.appendChild(l); l.click(); l.remove(); return true; }
@@ -2725,13 +2740,23 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
       box.appendChild(card);
       function setStatus(t, cls) { status.textContent = t; status.className = cls || ""; }
       if (url) {
-        btn.textContent = a.type === "email" ? "Abrir e-mail" : a.type === "whatsapp" ? "Abrir WhatsApp" : "Abrir";
-        btn.onclick = function () { if (openURL(url)) { setStatus("Aberto em nova aba", "okk"); btn.textContent = "Abrir de novo"; } else setStatus("O navegador bloqueou. Permita pop-ups para este site.", "bad"); };
+        // O Jarvis NUNCA abre abas sozinho: sites abrem só na aba dele (painel do app / grupo Jarvis da extensão).
+        // E-mail e WhatsApp abrem só quando VOCÊ clica.
+        var web = /^https?:/i.test(url) && a.type !== "email" && a.type !== "whatsapp";
+        btn.textContent = a.type === "email" ? "Abrir e-mail" : a.type === "whatsapp" ? "Abrir WhatsApp" : agentOpenable() ? "Abrir na aba do Jarvis" : "Abrir";
+        var openNow = function (byUser) {
+          if (web && agentOpenable()) {
+            setStatus("Abrindo na aba do Jarvis…");
+            openInAgent(url, box).then(function () { setStatus("Aberto na aba do Jarvis", "okk"); btn.textContent = "Abrir de novo"; },
+              function (e) { setStatus(e.message || "Não consegui abrir", "bad"); });
+          } else if (byUser) { if (openURL(url)) { setStatus("Aberto", "okk"); btn.textContent = "Abrir de novo"; } else setStatus("O navegador bloqueou. Permita pop-ups para este site.", "bad"); }
+        };
+        btn.onclick = function () { openNow(true); };
         row.appendChild(btn);
         if (auto && !navDone) {
           navDone = true;
-          if (openURL(url)) { setStatus(a.type === "email" ? "E-mail aberto no seu aplicativo" : "Aberto em nova aba", "okk"); btn.textContent = "Abrir de novo"; }
-          else { setStatus("Clique em Abrir — o navegador bloqueou a aba automática", "bad"); btn.style.background = "var(--ac)"; btn.style.color = "#fff"; }
+          if (web && agentOpenable()) openNow(false);
+          else { setStatus(web ? "Clique em Abrir (o Jarvis não abre abas sozinho fora da aba dele)" : "Clique para abrir", ""); btn.style.background = "var(--ac)"; btn.style.color = "#fff"; }
         }
       } else if (a.type === "copy") {
         btn.textContent = "Copiar"; btn.onclick = function () { copy(a.text, "Texto copiado"); setStatus("Copiado", "okk"); };

@@ -109,6 +109,21 @@ function setNow(t) { if (task) { task.now = t; emit(); if (task.tabId != null &&
 function addLine(t, kind) { if (task) { task.lines.push({ t, kind: kind || "" }); if (task.lines.length > 80) task.lines.shift(); emit(); } }
 
 // ---------- aba no grupo "Jarvis" ----------
+// a aba do Jarvis (fora de tarefa): reaproveita a última, senão cria uma no grupo
+async function jarvisTab() {
+  const st = await chrome.storage.session.get(["lastTabId"]).catch(() => ({}));
+  if (st.lastTabId != null && (await chrome.tabs.get(st.lastTabId).catch(() => null))) return st.lastTabId;
+  const saved = task; task = { tabId: null };
+  try { const id = await ensureTab(); await chrome.storage.session.set({ lastTabId: id }); return id; } finally { task = saved; }
+}
+// páginas que tentam abrir OUTRA aba durante a tarefa: o link vai para a aba do Jarvis e a aba nova é fechada
+chrome.tabs.onCreated.addListener(async (tab) => {
+  if (!task || task.status !== "running" || task.tabId == null || tab.openerTabId !== task.tabId) return;
+  await sleep(250);
+  const t = await chrome.tabs.get(tab.id).catch(() => null), url = t && (t.pendingUrl || t.url);
+  if (url && /^https?:/i.test(url)) await chrome.tabs.update(task.tabId, { url }).catch(() => {});
+  chrome.tabs.remove(tab.id).catch(() => {});
+});
 async function ensureTab() {
   if (task.tabId != null) {
     const t = await chrome.tabs.get(task.tabId).catch(() => null);
@@ -125,6 +140,7 @@ async function ensureTab() {
   await chrome.tabGroups.update(groupId, { title: "Jarvis", color: "orange", collapsed: false }).catch(() => {});
   await chrome.storage.session.set({ groupId, windowId: tab.windowId });
   task.tabId = tab.id;
+  chrome.storage.session.set({ lastTabId: tab.id }).catch(() => {});
   return tab.id;
 }
 
@@ -400,6 +416,8 @@ async function runTask(t) {
       if (task.stop) return finish("stopped", "Parado por você.", "err");
       if (!task.opened) {
         setNow("Abrindo a aba no grupo Jarvis…");
+        { const st = await chrome.storage.session.get(["lastTabId"]).catch(() => ({})); // reaproveita a aba do Jarvis
+          if (st.lastTabId != null && (await chrome.tabs.get(st.lastTabId).catch(() => null))) task.tabId = st.lastTabId; }
         await ensureTab(); await keepFocus(); await attach(task.tabId); task.opened = true; await keepFocus();
         addLine("Abri uma aba no grupo Jarvis (você continua aqui; clique em “Ver aba” para acompanhar)");
       }
@@ -467,6 +485,16 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
     }
     if (msg.type === "stop") { if (task && task.status === "running") { task.stop = true; const w = waiters.get(task.id); if (w) { waiters.delete(task.id); w(false); } } return { ok: true }; }
     if (msg.type === "answer") { if (task) { const w = waiters.get(task.id); if (w) { waiters.delete(task.id); w(msg.choice ? msg.choice : !!msg.yes); } } return { ok: true }; }
+    if (msg.type === "open") { // abrir um site: SEMPRE na aba do Jarvis (nunca em outra aba)
+      if (task && task.status === "running") return { error: "O Jarvis está no meio de uma tarefa. Espere ou clique em Parar." };
+      let u; try { u = new URL(String(msg.url || "")); } catch { return { error: "endereço inválido" }; }
+      if (!/^https?:$/.test(u.protocol)) return { error: "só abro sites http/https" };
+      if (msg.allow) { const st = await chrome.storage.local.get(["allowedSites"]).catch(() => ({})); const l = new Set(st.allowedSites || []); l.add(String(msg.allow)); await chrome.storage.local.set({ allowedSites: [...l] }).catch(() => {}); }
+      const tabId = await jarvisTab();
+      await chrome.tabs.update(tabId, { url: u.href, active: true }).catch(() => {});
+      const t = await chrome.tabs.get(tabId).catch(() => null); if (t) chrome.windows.update(t.windowId, { focused: true }).catch(() => {});
+      return { ok: true };
+    }
     if (msg.type === "perms") {
       if (msg.reset) await chrome.storage.local.set({ allowAll: false, allowedSites: [] }).catch(() => {});
       const st = await chrome.storage.local.get(["allowAll", "allowedSites"]).catch(() => ({}));

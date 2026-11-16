@@ -116,6 +116,7 @@ ipcMain.handle("pc:info", async (e) => {
 
 ipcMain.handle("pc:shot", async (e) => {
   guard(e);
+  if (glow && !glow.isDestroyed()) glow.webContents.executeJavaScript(`mv(null,null,"think")`).catch(() => {}); // cursor: "olhando a tela"
   const d = screen.getPrimaryDisplay();
   const pw = Math.round(d.size.width * d.scaleFactor), ph = Math.round(d.size.height * d.scaleFactor);
   const sources = await desktopCapturer.getSources({ types: ["screen"], thumbnailSize: { width: pw, height: ph } });
@@ -141,6 +142,7 @@ ipcMain.handle("pc:act", async (e, a) => {
   const [w, h] = await physSize();
   const steps = control.plan(a, w, h);
   if (a && a.point) await aiCursor(a.point, /click/.test(a.type) ? "click" : a.type === "type" ? "type" : "");
+  else if (glow && !glow.isDestroyed()) glow.webContents.executeJavaScript(`mv(null,null,${JSON.stringify(a && a.type === "type" ? "type" : "")})`).catch(() => {});
   for (const s of steps) {
     if (stopFlag) { stopFlag = false; throw new Error("EMERGENCIA: parada pedida pelo atalho Ctrl+Shift+Q"); }
     if (s.sleep) await sleep(s.sleep);
@@ -266,10 +268,10 @@ html,body{margin:0;height:100%;background:transparent;overflow:hidden;font-famil
 #c.on{opacity:1}#c svg{display:block;filter:drop-shadow(0 1px 3px rgba(0,0,0,.45))}
 #c .r{position:absolute;left:-11px;top:-11px;width:24px;height:24px;border-radius:50%;background:rgba(217,119,87,.45);opacity:0}
 #c.k .r{animation:rp .6s ease-out}@keyframes rp{0%{opacity:1;transform:scale(.3)}100%{opacity:0;transform:scale(1.7)}}
-#c .tg{position:absolute;left:17px;top:23px;background:#d97757;color:#fff;font:600 12px/1 "Segoe UI",sans-serif;padding:4px 8px;border-radius:3px 9px 9px 9px;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.35)}#c.ty .tg:after{content:" · digitando"}
+#c .tg{position:absolute;left:17px;top:23px;background:#d97757;color:#fff;font:600 12px/1 "Segoe UI",sans-serif;padding:4px 8px;border-radius:3px 9px 9px 9px;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.35)}#c.ty .tg:after{content:" · digitando"}#c.th .tg:after{content:" · olhando a tela"}
 </style></head><body><div class="g"></div><div class="t"><span class="d"></span>Jarvis está controlando seu PC · <b>Ctrl+Shift+Q</b> para parar</div>
 <div id="c"><div class="r"></div><svg width="22" height="27" viewBox="0 0 18 22"><path d="M2 2v16.5l4.3-4.1 2.9 6.6 2.6-1.1-2.9-6.5h6.1z" fill="#d97757" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg><div class="tg">Jarvis</div></div>
-<script>window.mv=function(x,y,m){var c=document.getElementById("c");c.classList.add("on");if(x!=null)c.style.transform="translate("+x+"px,"+y+"px)";c.classList.toggle("ty",m==="type");if(m==="click"){c.classList.remove("k");void c.offsetWidth;c.classList.add("k");}}</script></body></html>`;
+<script>window.mv=function(x,y,m){var c=document.getElementById("c");c.classList.add("on");if(x!=null)c.style.transform="translate("+x+"px,"+y+"px)";c.classList.toggle("ty",m==="type");c.classList.toggle("th",m==="think");if(m==="click"){c.classList.remove("k");void c.offsetWidth;c.classList.add("k");}}</script></body></html>`;
 // cursor laranja da IA na tela (por cima de tudo, fora dos prints)
 async function aiCursor(point, mode) {
   if (!glow || glow.isDestroyed() || !Array.isArray(point)) return;
@@ -292,7 +294,10 @@ function showGlow() {
   glow.setAlwaysOnTop(true, "screen-saver");
   glow.setContentProtection(true); // fica fora dos prints que o Copiloto analisa
   glow.loadURL("data:text/html;charset=utf-8," + encodeURIComponent(GLOW_HTML));
-  glow.once("ready-to-show", () => { if (glow && !glow.isDestroyed()) glow.showInactive(); if (win) win.moveTop(); });
+  glow.once("ready-to-show", () => {
+    if (glow && !glow.isDestroyed()) { glow.showInactive(); const p = screen.getCursorScreenPoint(), b = d.bounds; glow.webContents.executeJavaScript(`mv(${p.x - b.x},${p.y - b.y},"think")`).catch(() => {}); }
+    if (win) win.moveTop();
+  });
 }
 function hideGlow() { if (glow && !glow.isDestroyed()) glow.destroy(); glow = null; }
 

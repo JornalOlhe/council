@@ -10,7 +10,7 @@ const chrome = {
   tabs: {
     async query() { return [{ id: 99 }]; }, async sendMessage(id, m) { events.push(m.ev.task); },
     async create(o) { return { id: 7, windowId: 1 }; }, async group(o) { return 55; }, async get(id) { return { id, windowId: 1 }; }, async update() {},
-    onRemoved: ev("removed"),
+    onRemoved: ev("removed"), onCreated: ev("created"),
   },
   tabGroups: { async get() { return null; }, async update(id, o) { groupTitle = o.title + "/" + o.color; } },
   windows: { async get() { return null; }, async update() {} },
@@ -109,4 +109,8 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   remoteV = "1.0.9"; await listeners.alarm({ name: "iac-update" }); await wait(20);
   assert.equal(reloads, 1, "arquivos novos no disco: recarrega");
   console.log("✓ extensão se recarrega sozinha quando sai versão nova");
+  const o = await send({ type: "open", url: "https://www.youtube.com/", allow: "youtube.com" });
+  assert.equal(o.ok, true);
+  assert.ok(!(await send({ type: "open", url: "javascript:alert(1)" })).ok, "só http/https");
+  console.log("✓ abrir site: só na aba do Jarvis");
 })().catch((e) => { console.error(e); process.exit(1); });
