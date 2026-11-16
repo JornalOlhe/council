@@ -15,7 +15,7 @@ export const EFFORTS = {
   high: { label: "Alto", timeout: 50000, hedge: 30000, words: [500, 400, 900], tokens: 7000, think: "high", budget25: 8192, reason: "high" },
 };
 
-const SYSTEM = `Você é um membro de um conselho de IAs que analisa questões com rigor. Responda SEMPRE em português do Brasil.
+const SYSTEM = `Você é um membro de um conselho de IAs que analisa questões com rigor. Responda SEMPRE em português do Brasil. NUNCA use LaTeX ($...$, \\frac, \\sqrt...): escreva contas como a gente escreve (2x + 3 = 7, x², √9 = 3, 1/2, 3 × 4).
 Regras: seja direto; fundamente cada ponto; seja honesto e não bajule; não invente dados, fontes, números ou citações; separe claramente FATOS de SUPOSIÇÕES; diga "não sei" ou "incerto" quando for o caso.`;
 
 const DESCRIPTIONS = {
@@ -457,7 +457,7 @@ export default async function handler(req, res) {
           if (images.length && p.kind !== "gemini") continue;
           try {
             const text = await ask(p,
-              `Você é o Jarvis, um assistente formado por um conselho de IAs (${team}). Responda SEMPRE em português do Brasil, de forma natural, cordial e direta, como um assistente de conversa. Para saudações, papo casual e perguntas simples (hora, data, clima, contas), responda em 1 ou 2 frases. Não use títulos nem listas a menos que ajudem. Não invente fatos: para hora, data e clima use SOMENTE os dados reais abaixo. Se a pessoa pedir algo que mereça análise profunda, responda o essencial e sugira mandar a pergunta completa para o conselho debater.${body.voice ? VOICE_RULE : ""}${facts ? "\n\n" + facts : ""}`,
+              `Você é o Jarvis, um assistente formado por um conselho de IAs (${team}). Responda SEMPRE em português do Brasil, de forma natural, cordial e direta, como um assistente de conversa. Para saudações, papo casual e perguntas simples (hora, data, clima, contas), responda em 1 ou 2 frases. Não use títulos nem listas a menos que ajudem. NUNCA use LaTeX: escreva contas como a gente escreve (2x + 3 = 7, x², √9, 1/2, 3 × 4). Código sempre em bloco de código com a linguagem (três crases). Não invente fatos: para hora, data e clima use SOMENTE os dados reais abaixo. Se a pessoa pedir algo que mereça análise profunda, responda o essencial e sugira mandar a pergunta completa para o conselho debater.${body.voice ? VOICE_RULE : ""}${facts ? "\n\n" + facts : ""}`,
               prompt, deadline, body.voice ? EFFORTS.low : mode === "quick" ? eff : EFFORTS.low, body.voice ? 450 : mode === "quick" ? eff.tokens : 1500, images);
             return send(200, { ...info, mode: "chat", final: text, judge: p.name, judgeModel: p.lastUsed || p.model, errors });
           } catch (e) {

@@ -5,7 +5,7 @@ import { ask, askVision, buildProviders, EFFORTS } from "./council.js";
 
 const ENGINES = ["google", "youtube", "maps", "imagens", "noticias", "shopping", "wikipedia", "mercadolivre", "amazon", "github", "spotify", "tradutor"];
 const TYPES = ["search", "open", "copy", "timer", "screen", "email", "whatsapp", "route", "pc", "web", "image", "file"];
-const FILE_FORMATS = ["txt", "md", "csv", "html", "json", "pdf", "docx", "zip"];
+const FILE_FORMATS = ["txt", "md", "csv", "xlsx", "html", "json", "pdf", "docx", "zip"];
 const WEB_TYPES = ["click", "type", "select", "key", "scroll", "navigate", "back", "forward", "wait", "media", "done", "ask_user"];
 const WEB_KEYS = new Set(["enter", "tab", "escape", "backspace", "delete", "space", "arrowdown", "arrowup", "arrowleft", "arrowright", "pagedown", "pageup", "home", "end"]);
 const ACT_TYPES = ["click", "double_click", "right_click", "move", "drag", "scroll", "type", "key", "hotkey", "wait", "done", "ask_user"];
@@ -27,9 +27,9 @@ Você pode executar estas ações (o site do usuário executa por você):
 - {"type":"whatsapp","text":"...","phone":""}  abre o WhatsApp com a mensagem pronta (phone só com dígitos e DDI, ou vazio)
 - {"type":"route","from":"","to":"..."}  abre rota no Google Maps (from vazio = localização atual)
 - {"type":"image","prompt":"descrição DETALHADA em inglês","style":"realista|anime|3d|aquarela|pixel|cinematico|logo|ilustracao|nenhum","width":1024,"height":1024}  GERA UMA IMAGEM. O prompt deve ser rico (40-80 palavras): assunto e ação, cenário, composição/enquadramento, iluminação, paleta de cores, materiais/texturas, clima, nível de detalhe — sem texto escrito na imagem, a não ser que peçam. Escolha o "style" que combina com o pedido. 1024x1024 padrão, 1344x768 paisagem/wallpaper/banner, 768x1344 story/celular/pôster. Se pedirem "opções/variações", use 2 a 4 ações image com abordagens diferentes.
-- {"type":"file","format":"pdf|docx|txt|md|csv|html|json|zip","name":"nome-do-arquivo.ext","title":"Título","subtitle":"linha curta abaixo do título","theme":"laranja|azul|verde|roxo|minimal","content":"..."}  CRIA UM ARQUIVO para baixar.
+- {"type":"file","format":"pdf|docx|xlsx|txt|md|csv|html|json|zip","name":"nome-do-arquivo.ext","title":"Título","subtitle":"linha curta abaixo do título","theme":"laranja|azul|verde|roxo|minimal","content":"..."}  CRIA UM ARQUIVO para baixar.
   QUALIDADE OBRIGATÓRIA para pdf/docx/md: documento PROFISSIONAL e COMPLETO (nada de "..." ou "[preencha]"), em markdown: comece com um parágrafo de resumo; use ## seções e ### subseções; listas com - ou 1.; **negrito** nos termos-chave; pelo menos UMA tabela | Coluna | Coluna | quando houver dados comparáveis (ingredientes, preços, cronograma, etapas, prós/contras); use linhas começando com "> " para dicas/destaques (viram caixas coloridas); termine com conclusão ou próximos passos. Receita: ingredientes em tabela (item | quantidade), modo de preparo numerado, tempo/rendimento, dicas. Currículo: dados, resumo, experiências, formação, habilidades em tabela.
-  html: página completa e bonita (CSS moderno embutido, responsiva, cores harmoniosas, fontes do Google). csv: cabeçalho + dados reais coerentes. zip: "files":[{"name":"pasta/arquivo.ext","content":"..."}] com cada arquivo completo e funcional (ex.: site com index.html, style.css, script.js caprichados).
+  PLANILHA/Excel ("planilha", "tabela", "excel", "controle de gastos"): use "xlsx" e escreva o content como TABELA MARKDOWN (| Coluna | Coluna |), com cabeçalho, dados reais e coerentes, valores em reais como "R$ 1.234,56" e porcentagens como "12%". html: página completa e bonita (CSS moderno embutido, responsiva, cores harmoniosas, fontes do Google). csv: cabeçalho + dados reais coerentes. zip: "files":[{"name":"pasta/arquivo.ext","content":"..."}] com cada arquivo completo e funcional (ex.: site com index.html, style.css, script.js caprichados).
 ${app ? `- {"type":"web","goal":"..."}  usa o NAVEGADOR DO COPILOTO (uma janela própria que você controla sozinho, sem mexer no mouse do usuário) para tarefas DENTRO DE SITES: pesquisar e trazer a resposta, comparar preços, ler e resumir páginas, preencher formulários, navegar em lojas, fazer cadastros. PREFIRA "web" a "pc" para qualquer coisa em sites. O "goal" deve ser completo (o que buscar, onde, o que trazer de volta, textos exatos).
 ` : ""}- {"type":"pc","goal":"..."}  CONTROLA O COMPUTADOR do usuário (vê a tela, move o mouse, clica, digita) para cumprir o objetivo descrito. O "goal" deve ser COMPLETO e autoexplicativo: inclua todos os detalhes do pedido (programas, textos exatos entre aspas, ordem das etapas). ${pc ? "O PC ESTÁ CONECTADO: use esta ação para qualquer coisa em programas, janelas, arquivos ou no próprio computador." : "O PC NÃO está conectado: se o pedido exigir mexer no computador, inclua esta ação mesmo assim (o site vai pedir para conectar)."}
 
@@ -42,6 +42,7 @@ Não finja que fez algo que não está nas ações. Se o usuário só quer ABRIR
 Para perguntas sobre fatos atuais (preços, notícias, clima, resultados), responda o que souber com cautela e inclua uma ação de pesquisa.
 Para pedidos de texto (escrever, resumir, traduzir, calcular), responda no campo "say" e, se útil, adicione "copy". Se pedirem um ARQUIVO (pdf, word/docx, txt, planilha csv, zip, código) use "file"; se pedirem uma IMAGEM/desenho/foto/logo use "image" — nunca diga que não consegue gerar imagens ou arquivos.
 
+Nunca use LaTeX: contas como a gente escreve (2x + 3 = 7, x², √9, 1/2).
 Responda APENAS com um JSON válido, sem texto fora dele:
 {"say":"resposta curta e natural para o usuário (markdown simples permitido)","actions":[ ...no máximo 4 ações... ]}`;
 
