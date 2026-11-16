@@ -283,6 +283,9 @@ async function ask(p, system, user, deadline, eff, maxTokens, images = [], depth
 // ---------- roteamento: conversa x conselho ----------
 const CASUAL = /^\s*(oi+|ol[aá]+|opa+|e a[ií]|eai|hey|hi|hello|bom dia|boa tarde|boa noite|tudo (bem|bom|certo)\??|como vai\??|obrigad[oa]s?|valeu+|vlw|blz|beleza|ok+|okay|show|top|legal|massa|teste|testando|kk+|haha+|rs+|tchau|at[eé] mais|quem [eé] voc[eê]s?\??|o que voc[eê]s? (faz|fazem)\??)[\s!.?,\p{Extended_Pictographic}]*$/iu;
 
+const NO_COUNCIL = /\b(sem (o )?conselho|n[aã]o (use|usa|usar|chame|chama|precisa d[eo]) (o )?(conselho|debate)|s[oó] (uma|1) ia|uma ia s[oó]|sem debate|responde r[aá]pido|resposta r[aá]pida|modo r[aá]pido)\b/i;
+const WANT_COUNCIL = /\b((use|usa|usar|chame|chama|pergunt[ea] (pro|para o|ao)|consulte|consulta) (o )?(conselho|debate)|debatam|debate (isso|entre)|todas as ias|discutam|com o conselho|o conselho (decide|decida|analise))\b/i;
+const DEEP = /(^[^?]{2,40} ou [^?]{2,40}\?$)|\b(compar\w+|vale a pena|considerando|escolher|qual (plataforma|op[çc][ãa]o|caminho|ferramenta|linguagem|curso|carro|celular|notebook)|por qu[eê] (devo|deveria)|devo |deveria|qual (é )?(o |a )?melhor|pr[oó]s e contras|vantagens e desvantagens|estrat[eé]gia|plano de|analis\w+|avali\w+|decid\w+|invest\w+|diagn[oó]stic\w+|riscos?|cen[aá]rios?|argumentos?|opini[aã]o sobre)/i;
 // Conversa por voz: a resposta vai ser FALADA
 const VOICE_RULE = "\n\nMODO VOZ: sua resposta será lida em voz alta para o usuário (ele pode estar jogando ou ocupado). Fale como numa conversa: 1 a 4 frases curtas e naturais, SEM markdown, sem listas, sem títulos, sem emojis, sem links. Números e siglas do jeito que se fala.";
 // Perguntas simples do dia a dia: o presidente responde sozinho, com dados reais (hora, data, clima)
@@ -394,8 +397,11 @@ export default async function handler(req, res) {
     if (!body || typeof body !== "object") return send(400, { error: "Corpo da requisição inválido." });
 
     const stage = ["start", "open", "debate", "final"].includes(body.stage) ? body.stage : "start";
-    const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
-    if (!prompt) return send(400, { error: "Escreva uma mensagem." });
+    const ask0 = typeof body.prompt === "string" ? body.prompt.trim() : "";
+    if (!ask0) return send(400, { error: "Escreva uma mensagem." });
+    // contexto da conversa só vem quando a pergunta precisa dele (o site decide); a rota é decidida SÓ pela mensagem nova
+    const ctxText = typeof body.context === "string" ? body.context.trim().slice(0, 8000) : "";
+    const prompt = ctxText ? `CONVERSA ANTERIOR (contexto):\n${ctxText}\n\nNOVA MENSAGEM DO USUÁRIO:\n${ask0}` : ask0;
     if (prompt.length > MAX_TEXT) return send(400, { error: `Texto longo demais (máximo ${MAX_TEXT} caracteres).` });
 
     const rawImages = Array.isArray(body.images) ? body.images : [];
@@ -422,18 +428,22 @@ export default async function handler(req, res) {
 
     // ===== START =====
     if (stage === "start") {
-      const mode = ["auto", "council", "quick"].includes(body.mode) ? body.mode : "auto";
+      let mode = ["auto", "council", "quick"].includes(body.mode) ? body.mode : "auto";
       const fastest = providers.find((p) => p.name === "Groq") || providers.find((p) => p.kind !== "gemini") || providers[0];
+      // o usuário manda: "sem conselho / só uma IA / rápido" → uma IA; "use o conselho / debate" → conselho
+      if (NO_COUNCIL.test(ask0)) mode = "quick"; else if (WANT_COUNCIL.test(ask0)) mode = "council";
       let route = mode === "quick" ? "chat" : mode === "council" ? "council" : null;
-      const quickFact = !images.length && prompt.length <= 160 && QUICK.test(prompt);
+      const quickFact = !images.length && ask0.length <= 160 && QUICK.test(ask0);
       if (!route) {
-        if (images.length) route = "council";
-        else if (CASUAL.test(prompt) || quickFact) route = "chat";
-        else if (prompt.length <= 60) route = await classify(fastest, prompt, deadline);
+        if (CASUAL.test(ask0) || quickFact) route = "chat";
+        else if (images.length) route = "council";
+        else if (DEEP.test(ask0)) route = "council";             // decisões, comparações, análises: vale debater
+        else if (ask0.length <= 220) route = "chat";              // pergunta comum: uma IA responde na hora
+        else if (ask0.length <= 500) route = await classify(fastest, ask0, deadline);
         else route = "council";
       }
       if (route === "chat") {
-        const first = mode === "quick" || quickFact ? leader : fastest; // perguntas simples: só o presidente
+        const first = body.voice ? fastest : mode === "quick" || quickFact ? leader : fastest; // voz: o mais rápido; senão o presidente
         const now = typeof body.now === "string" ? body.now.slice(0, 80) : "";
         const tz = typeof body.tz === "string" ? body.tz.slice(0, 60) : "";
         let facts = now ? `DATA E HORA ATUAIS DO USUÁRIO: ${now}${tz ? " (fuso " + tz + ")" : ""}.` : "";
@@ -448,7 +458,7 @@ export default async function handler(req, res) {
           try {
             const text = await ask(p,
               `Você é o Jarvis, um assistente formado por um conselho de IAs (${team}). Responda SEMPRE em português do Brasil, de forma natural, cordial e direta, como um assistente de conversa. Para saudações, papo casual e perguntas simples (hora, data, clima, contas), responda em 1 ou 2 frases. Não use títulos nem listas a menos que ajudem. Não invente fatos: para hora, data e clima use SOMENTE os dados reais abaixo. Se a pessoa pedir algo que mereça análise profunda, responda o essencial e sugira mandar a pergunta completa para o conselho debater.${body.voice ? VOICE_RULE : ""}${facts ? "\n\n" + facts : ""}`,
-              prompt, deadline, mode === "quick" ? eff : EFFORTS.low, mode === "quick" ? eff.tokens : 1500, images);
+              prompt, deadline, body.voice ? EFFORTS.low : mode === "quick" ? eff : EFFORTS.low, body.voice ? 450 : mode === "quick" ? eff.tokens : 1500, images);
             return send(200, { ...info, mode: "chat", final: text, judge: p.name, judgeModel: p.lastUsed || p.model, errors });
           } catch (e) {
             errors.push({ name: p.name, stage: "Resposta", error: e.message });

@@ -156,6 +156,25 @@ await t("auto: pergunta longa vai direto ao conselho sem chamar IA", async () =>
   assert.equal(r.json.mode, "council");
   assert.equal(calls.length, 0);
 });
+await t("auto: pergunta comum curta vai para UMA IA (sem conselho, sem classificador)", async () => {
+  const r = await run({ stage: "start", prompt: "o que é fotossíntese?", mode: "auto" });
+  assert.equal(r.json.mode, "chat"); assert.equal(calls.length, 1);
+});
+await t("o usuário manda: 'sem conselho' usa uma IA; 'use o conselho' chama o conselho", async () => {
+  assert.equal((await run({ stage: "start", prompt: "sem conselho: qual melhor estratégia de investimento?", mode: "auto" })).json.mode, "chat");
+  reset();
+  assert.equal((await run({ stage: "start", prompt: "use o conselho: o que é DNS?", mode: "auto" })).json.mode, "council");
+});
+await t("contexto: a rota usa só a mensagem nova, o contexto vai junto para a IA", async () => {
+  const r = await run({ stage: "start", prompt: "e em inglês?", context: "Usuário: como se diz bom dia?\nResposta: Bom dia!", mode: "auto" });
+  assert.equal(r.json.mode, "chat");
+  assert.ok(calls[0].body.messages.at(-1).content.includes("como se diz bom dia"));
+});
+await t("voz: responde com a IA mais rápida e curta", async () => {
+  const r = await run({ stage: "start", prompt: "explique o que é DNS", mode: "quick", leader: "OpenRouter", voice: true });
+  assert.equal(r.json.judge, "Groq");
+  assert.ok(calls[0].body.messages[0].content.includes("MODO VOZ"));
+});
 await t("pergunta simples (hora/data): só o presidente, com a hora do usuário, sem classificador", async () => {
   const r = await run({ stage: "start", prompt: "que horas são?", mode: "auto", leader: "OpenRouter", now: "14/11/2026, 14:30:00", tz: "America/Sao_Paulo" });
   assert.equal(r.json.mode, "chat");

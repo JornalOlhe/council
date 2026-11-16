@@ -1150,8 +1150,33 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
       return String(t || "").replace(/```[\s\S]*?```/g, " ").replace(/`([^`]+)`/g, "$1").replace(/!\[[^\]]*\]\([^)]*\)/g, "").replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
         .replace(/^#+\s*/gm, "").replace(/^\s*[-*•]\s+/gm, "").replace(/^\s*\|.*\|\s*$/gm, "").replace(/[*_~>#|]/g, "").replace(/https?:\/\/\S+/g, "").replace(/\p{Extended_Pictographic}️?/gu, "").replace(/\s+/g, " ").trim();
     }
+    // voz natural (ElevenLabs) quando o servidor tem a chave; senão, a voz do sistema
+    var ELEVEN = null, audio = null;
+    fetch("/api/tts").then(function (r) { return r.json(); }).then(function (j) { ELEVEN = !!j.eleven; }, function () { ELEVEN = false; });
+    function ttsBlob(t) { return fetch("/api/tts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: t }) }).then(function (r) { if (!r.ok) throw new Error("tts " + r.status); return r.blob(); }); }
+    function sayEleven(text, then) {
+      var m = text.match(/^.{12,}?[.!?](\s|$)/), first = m ? m[0].trim() : text, rest = m ? text.slice(m[0].length).trim() : "";
+      var p1 = ttsBlob(first), p2 = rest ? ttsBlob(rest) : null; // a 1ª frase sai rápido; o resto já vai sendo gerado
+      ui("speak", text);
+      function play(p, next) {
+        p.then(function (b) {
+          if (!V.on || V.state !== "speak") return;
+          audio = new Audio(URL.createObjectURL(b)); audio.onended = next; audio.onerror = next;
+          audio.play().catch(next);
+        }, function () { if (V.state === "speak") { ELEVEN = false; V.state = "listen"; sayBrowser(rest ? first + " " + rest : first, then); } });
+      }
+      play(p1, function () { if (p2 && V.on && V.state === "speak") play(p2, done); else done(); });
+      function done() { audio = null; if (V.on && V.state === "speak") { ui("listen"); if (then) then(); } }
+    }
     function say(text, then) {
       text = plain(text);
+      if (text && ELEVEN && V.on) {
+        if (text.length > 420) { var k0 = "", s0 = text.match(/[^.!?]+[.!?]+/g) || [text]; for (var q0 = 0; q0 < s0.length && (k0 + s0[q0]).length < 380; q0++) k0 += s0[q0]; text = (k0 || text.slice(0, 380)).trim() + " O resto está na tela."; }
+        return sayEleven(text, then);
+      }
+      return sayBrowser(text, then);
+    }
+    function sayBrowser(text, then) {
       if (!text || !window.speechSynthesis) { if (then) then(); return; }
       if (text.length > 420) { // resposta longa: fala o essencial e deixa o resto na tela
         var keep = "", ss = text.match(/[^.!?]+[.!?]+/g) || [text];
@@ -1172,7 +1197,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
         speechSynthesis.speak(u);
       })();
     }
-    function stopSpeaking() { if (window.speechSynthesis) speechSynthesis.cancel(); if (V.state === "speak") ui("listen"); }
+    function stopSpeaking() { if (window.speechSynthesis) speechSynthesis.cancel(); if (audio) { try { audio.pause(); } catch (e) {} audio = null; } if (V.state === "speak") ui("listen"); }
     // ---- escuta contínua com detecção de fala (roda no áudio, funciona com a janela em segundo plano) ----
     function onAudio(e) {
       var d = e.inputBuffer.getChannelData(0), sum = 0;
@@ -1188,7 +1213,7 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
         if (!speaking && voiceMs > 110) startUtter();
       } else if (speaking) {
         silenceMs += ms;
-        if (silenceMs > 950 || Date.now() - utterStart > 30000) endUtter();
+        if (silenceMs > 700 || Date.now() - utterStart > 30000) endUtter(); // 0,7 s de silêncio = você terminou
       } else voiceMs = 0;
     }
     function startUtter() {
@@ -1541,6 +1566,20 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
   }
 
   // ---------- enviar ----------
+  // só manda o contexto da conversa quando a pergunta depende dele ("e em inglês?", "explica melhor", "isso", "ele"...)
+  function needsContext(text) {
+    var s = String(text || "").trim().toLowerCase();
+    if (!s) return false;
+    if (/\b(isso|isto|disso|nisso|desse|dessa|deste|desta|nesse|nessa|esse|essa|este|esta|aquilo|ele|ela|eles|elas|dele|dela|anterior|acima|antes|continu\w+|de novo|outra vez|mais (detalhes|exemplos|coisas)|explica melhor|explique melhor|resum\w+|traduz\w*|reescrev\w+|melhor[ae]|corrig\w+|o que (voc[eê] )?(disse|falou)|primeir[oa]|segund[oa]|últim[oa]|ultim[oa]|item|op[cç][aã]o \d|e (se|o|a|os|as|em|no|na|pra|para|quanto|qual|como|por que)\b)/.test(s)) return true;
+    return s.split(/\s+/).length <= 3 && !/^(oi+|ol[aá]|bom dia|boa (tarde|noite)|obrigad[oa]|valeu|tchau)\b/.test(s); // "e amanhã?", "por quê?"
+  }
+  function convContext() {
+    var h = cur(); if (!h) return "";
+    return turnsOf(h).filter(function (t) { return t.data && !t.data.error; }).slice(-3).map(function (t) {
+      var d = t.data || {};
+      return "Usuário: " + t.prompt + "\nResposta: " + String(d.final || (d.webLog && d.webLog.answer) || d.say || d.imageAnswer || "").slice(0, 1500);
+    }).join("\n\n").slice(-6000);
+  }
   function withContext(prompt) {
     var h = cur(); if (!h) return prompt;
     var ctx = turnsOf(h).filter(function (t) { return t.data && !t.data.error; }).slice(-2).map(function (t) {
@@ -1592,8 +1631,8 @@ body.in-chat .under .disc{font-size:12px;color:#8f8c84}
     var sent = images.slice(), fl = files.slice(), rounds = prefs.rounds, mode = prefs.mode;
     var L = leaderMember();
     var full = withFiles(prompt, fl);
-    var ctxPrompt = cur() ? withContext(full) : full;
-    var base = { prompt: ctxPrompt, effort: prefs.effort, mode: mode, leader: L ? L.name : "", models: prefs.models,
+    var ctx = needsContext(prompt) ? convContext() : "";
+    var base = { prompt: full, context: ctx, effort: prefs.effort, mode: mode, leader: L ? L.name : "", models: prefs.models,
       now: new Date().toLocaleString("pt-BR", { weekday: "long", year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" }),
       tz: (Intl.DateTimeFormat().resolvedOptions().timeZone || "") };
     if (VOICE.flag) { base.voice = true; base.mode = mode = VOICE.mode; if (mode === "council") rounds = Math.min(rounds, 1); }

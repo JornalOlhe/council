@@ -4,6 +4,12 @@ Várias IAs (cada uma com sua chave) respondem ao seu prompt, **debatem entre si
 
 Stack: `index.html` (JS puro) + `api/council.js` (Node 20, sem dependências). Sem build.
 
+## Voz natural (ElevenLabs)
+A conversa por voz usa a ElevenLabs quando a Vercel tem `ELEVENLABS_API_KEY` (opcional: `ELEVENLABS_VOICE_ID`, `ELEVENLABS_MODEL`; padrão `eleven_flash_v2_5`, a mais rápida). Sem a chave, usa a voz do sistema. Endpoint: `api/tts.js`.
+
+## Rota automática
+Uma IA responde na hora (oi, perguntas comuns, até ~220 caracteres); o conselho entra em decisões/comparações/análises ou quando o usuário pede ("use o conselho"). "Sem conselho" / "só uma IA" sempre responde com uma IA. O contexto da conversa só é enviado quando a pergunta depende dele.
+
 ## Copiloto dentro da conversa
 Não existe mais aba separada: na conversa normal, pedidos de AÇÃO ("pesquise X e me diga", "abra…", "gere uma imagem", "crie um pdf", "me lembre…") vão para o Copiloto; perguntas vão para o Conselho. Para decidir rápido, o agente de navegador usa o Groq com a lista de elementos da página e chama a visão do Gemini só quando a página é visual ou um passo falhou; outro modelo verifica o resultado.
 
