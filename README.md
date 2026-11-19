@@ -22,7 +22,7 @@ O site chama `/api/council` em etapas (cada uma com até ~55 s, por causa do lim
 `start` (conversa ou conselho; o Gemini descreve as fotos) → `open` (rodada 1) → `debate` (1 a 3 vezes) → `final` (o presidente escolhido decide).
 No seletor de modelos dá para trocar o presidente, o **esforço** (Baixo/Médio/Alto: raciocínio e tamanho das respostas), o número de **debates** e, em **Mais modelos**, escolher qualquer modelo que cada chave libera (`GET /api/council?list=1`).
 
-## Copiloto (botão do capacete)
+## Copiloto (botão do Copiloto)
 Você pede em português e ele faz:
 - **No site (qualquer navegador):** abre abas e pesquisa (Google, YouTube, Maps, Mercado Livre, Spotify…), abre sites, cria lembretes com alarme, copia textos e prepara e-mails e WhatsApp.
 - **No app Jarvis para Windows:** além disso, vê a tela, **identifica cada elemento** (botões, campos, ícones), **troca de apps e abas, move o mouse e digita** até cumprir o pedido — como os apps de desktop do Claude e do ChatGPT. Sem código de pareamento.
